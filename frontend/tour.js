@@ -73,7 +73,7 @@
       findTarget: findNeedsReviewTarget,
       title: "Plan for bills that change",
       body:
-        "Not every bill is the same each month — that’s okay.\n\nMark an item as 'Amount varies' and use your best estimate. BalanceWhiz will remind you to update it when the actual amount is known.",
+        "Not every bill is the same each month — that’s okay.\n\nOpen the bill and mark it as Amount varies, then use your best estimate. BalanceWhiz will remind you to update it when the actual amount is known.",
       helperList: {
         lead: "Great for:",
         items: ["Credit card payments", "Utilities", "Other changing bills"],
@@ -93,7 +93,7 @@
     {
       id: "cash-outlook",
       findTarget: findCashHealthTarget,
-      title: "Know when cash gets tight",
+      title: "Know before your balance gets too low",
       body:
         "BalanceWhiz watches your forecast against the minimum balance you chose.\n\nIf a future day falls below your target, we’ll flag it so you can plan ahead.",
       helperExample: readTourMinimumBalanceExample,
@@ -106,13 +106,13 @@
     {
       id: "reconcile",
       findTarget: findExpectedCalendarConfirmAnchor,
-      title: "Keep your forecast on track",
+      title: "Keep your forecast accurate",
       body:
-        "Reconcile when everything matches.\n\nWhen your BalanceWhiz balance matches your checking account, reconcile it. This creates a checkpoint so you know exactly where things last matched.\n\nGet behind? Just update your balance.\n\nEnter your current checking balance and use it as a fresh starting point. No need to go back and fix every transaction you missed.",
+        "Keep your forecast accurate by checking it against your actual bank balance.\n\nEverything matches? Reconcile to mark a checkpoint.\n\nBalance is different? Update your balance to start fresh. You don't need to fix every missed transaction.",
       reconcilePreview: readTourReconcilePreview,
-      note: "Stay current when you can. Catch up quickly when you can\u2019t.",
-      ctaLabel: "See My Forecast",
-      placement: ["below", "above", "right", "left"],
+      note: "Stay current when you can. Catch up easily when you can\u2019t.",
+      ctaLabel: "Finish Tour",
+      placement: ["right", "left", "above", "below"],
       retryable: true,
       targetExtraClass: "bw-tour-target--reconcile-head",
     },
@@ -201,7 +201,8 @@
   }
 
   function findExpectedCalendarConfirmAnchor() {
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const balanceHit =
       document.querySelector(
         `.cal-cell[data-iso="${todayIso}"]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit`
@@ -209,11 +210,10 @@
       document.querySelector(
         ".cal-cell[data-iso]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit"
       );
-    if (balanceHit && isVisible(balanceHit)) return balanceHit;
+    const cell = balanceHit && balanceHit.closest(".cal-cell");
+    if (cell && isVisible(cell)) return cell;
     const row = findExpectedCalendarRowTarget();
-    const fromRow = row
-      ? row.closest(".cal-cell")?.querySelector(".cal-ledger-metrics.cal-day-balance-hit")
-      : null;
+    const fromRow = row ? row.closest(".cal-cell") : null;
     if (fromRow && isVisible(fromRow)) return fromRow;
     const updateBtn = document.getElementById("forecastConfidenceVerifyBtn");
     if (isVisible(updateBtn)) return updateBtn;
@@ -222,9 +222,31 @@
     return null;
   }
 
+  function findAmountVariesExampleTarget() {
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const lines = Array.from(
+      document.querySelectorAll(
+        ".cal-cell[data-iso]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-day-tx-line--flow-out"
+      )
+    ).filter((line) => isVisible(line));
+    if (!lines.length) return null;
+    const upcoming = lines.find((line) => {
+      const iso = line.closest(".cal-cell")?.getAttribute("data-iso") || "";
+      return iso >= todayIso;
+    });
+    return upcoming || lines[0];
+  }
+
   function findNeedsReviewTarget() {
-    const card = document.getElementById("sidebarPendingTxCard");
-    return isVisible(card) ? card : null;
+    // A variable bill that already needs a review is the real control.
+    // Otherwise point at a bill on the calendar. The empty "Nothing to review"
+    // card is not where Amount varies is set.
+    const pending = findFirstPendingReviewItem();
+    if (pending) return pending;
+    const bill = findAmountVariesExampleTarget();
+    if (bill) return bill;
+    return findFutureCalendarCellTarget();
   }
 
   function findFirstPendingReviewItem() {
@@ -362,6 +384,23 @@
     return backdropEl;
   }
 
+  function onTourKeydown(e) {
+    if (!tooltipEl || !tooltipEl.classList.contains("bw-tour-tooltip--open")) return;
+    const tag = e.target && e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      endTour({ skipped: true });
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      advanceStep();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      retreatStep();
+    }
+  }
+
   function ensureTooltip() {
     if (tooltipEl) return tooltipEl;
     tooltipEl = document.createElement("div");
@@ -397,6 +436,7 @@
     });
     tooltipEl.querySelector("[data-bw-tour-next]").addEventListener("click", advanceStep);
     tooltipEl.querySelector("[data-bw-tour-back]").addEventListener("click", retreatStep);
+    document.addEventListener("keydown", onTourKeydown, true);
     return tooltipEl;
   }
 
@@ -491,7 +531,7 @@
     return [placement];
   }
 
-  function getPlacementCandidate(placement, tr, tw, th, vw, vh, gap, pad) {
+  function getPlacementCandidate(placement, tr, tw, th, vw, vh, gap, pad, minTop) {
     const targetCenterX = tr.left + tr.width / 2;
     const targetCenterY = tr.top + tr.height / 2;
     let left = 0;
@@ -514,19 +554,39 @@
       top = tr.bottom + gap;
       side = "top";
     }
+    const clampedLeft = clamp(left, pad, Math.max(pad, vw - tw - pad));
+    const clampedTop = clamp(top, minTop, Math.max(minTop, vh - th - pad));
     const overflow =
       Math.max(0, pad - left) +
-      Math.max(0, pad - top) +
+      Math.max(0, minTop - top) +
       Math.max(0, left + tw - (vw - pad)) +
       Math.max(0, top + th - (vh - pad));
+    const overlap = rectOverlapArea(
+      { left: clampedLeft, top: clampedTop, right: clampedLeft + tw, bottom: clampedTop + th },
+      tr
+    );
     return {
-      left: clamp(left, pad, Math.max(pad, vw - tw - pad)),
-      top: clamp(top, pad, Math.max(pad, vh - th - pad)),
+      left: clampedLeft,
+      top: clampedTop,
       side,
-      overflow,
+      overflow: overflow + overlap,
       targetCenterX,
       targetCenterY,
     };
+  }
+
+  function rectOverlapArea(a, b) {
+    const width = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+    const height = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+    return width * height;
+  }
+
+  function stickyHeaderBottom() {
+    const nav = document.querySelector(".top-nav");
+    if (!nav) return 0;
+    const pos = window.getComputedStyle(nav).position;
+    if (pos !== "fixed" && pos !== "sticky") return 0;
+    return nav.getBoundingClientRect().bottom;
   }
 
   function targetIsUsable(el) {
@@ -568,27 +628,51 @@
     repaintObserver = null;
   }
 
-  function positionTooltip(targetEl, placement) {
+  function positionTooltip(targetEl, placement, allowScroll) {
     if (!tooltipEl || !targetIsUsable(targetEl)) return;
     const gap = 12;
     const pad = 10;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    const headerBottom = stickyHeaderBottom();
     const tr = targetEl.getBoundingClientRect();
+    if (allowScroll !== false && vw <= 800 && tr.top < headerBottom + 12) {
+      window.scrollBy(0, tr.top - (headerBottom + 16));
+      return positionTooltip(targetEl, placement, false);
+    }
     const tw = tooltipEl.offsetWidth;
     const th = tooltipEl.offsetHeight;
     if (tw < 2 || th < 2) return;
 
     const arrow = tooltipEl.querySelector("[data-bw-tour-arrow]");
     const placements = normalizePlacements(placement);
-    const candidates = placements.map((place) => getPlacementCandidate(place, tr, tw, th, vw, vh, gap, pad));
+    const minTop = Math.max(pad, headerBottom + 8);
+    const candidates = placements.map((place) =>
+      getPlacementCandidate(place, tr, tw, th, vw, vh, gap, pad, minTop)
+    );
     let chosen = candidates.find((item) => item.overflow === 0) || candidates[0];
     for (const item of candidates) {
       if (item.overflow < chosen.overflow) chosen = item;
     }
 
-    tooltipEl.style.left = `${Math.round(chosen.left)}px`;
-    tooltipEl.style.top = `${Math.round(chosen.top)}px`;
+    if (allowScroll !== false && vw <= 800) {
+      const overlaps = rectOverlapArea(
+        { left: chosen.left, top: chosen.top, right: chosen.left + tw, bottom: chosen.top + th },
+        tr
+      );
+      const spaceBelow = vh - tr.bottom;
+      const need = th + gap + 16;
+      const shift = Math.min(Math.max(0, need - spaceBelow), Math.max(0, tr.top - (headerBottom + 16)));
+      if (overlaps > 0 && shift > 8) {
+        window.scrollBy(0, shift);
+        return positionTooltip(targetEl, placement, false);
+      }
+    }
+
+    const maxLeft = Math.max(pad, vw - tw - pad);
+    const maxTop = Math.max(minTop, vh - th - pad);
+    tooltipEl.style.left = `${Math.round(clamp(chosen.left, pad, maxLeft))}px`;
+    tooltipEl.style.top = `${Math.round(clamp(chosen.top, minTop, maxTop))}px`;
 
     if (arrow) {
       arrow.dataset.side = chosen.side;
@@ -607,6 +691,27 @@
   // ---------------------------------------------------------------------
   // Step rendering
   // ---------------------------------------------------------------------
+
+  function fillTourBody(el, text) {
+    if (!el) return;
+    el.replaceChildren();
+    String(text || "")
+      .split("\n\n")
+      .filter((part) => part.trim())
+      .forEach((part) => {
+        const para = document.createElement("span");
+        para.className = "bw-tour-tooltip__para";
+        const lead = part.match(/^(Everything matches\?|Balance is different\?|Fallen behind\?)\s+([\s\S]*)$/);
+        if (lead) {
+          const strong = document.createElement("strong");
+          strong.textContent = lead[1];
+          para.append(strong, document.createTextNode(" " + lead[2]));
+        } else {
+          para.textContent = part;
+        }
+        el.append(para);
+      });
+  }
 
   function renderStep(stepIdx, direction) {
     const backward = direction === "back";
@@ -633,12 +738,14 @@
       return;
     }
 
-    // Make sure the target is in view before highlighting.
+    // Keep the highlighted control below a fixed header. The tooltip then
+    // places itself in the remaining space.
     try {
       const rect = target.getBoundingClientRect();
-      const margin = 60;
-      if (rect.top < margin || rect.bottom > window.innerHeight - margin) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      const topLimit = stickyHeaderBottom() + 16;
+      if (rect.top < topLimit) window.scrollBy(0, rect.top - topLimit);
+      else if (rect.bottom > window.innerHeight - 24) {
+        target.scrollIntoView({ behavior: "auto", block: "nearest" });
       }
     } catch (_) {}
 
@@ -649,7 +756,7 @@
 
     tooltipEl.querySelector("[data-bw-tour-counter]").textContent = `${stepIdx + 1} of ${STEPS.length}`;
     tooltipEl.querySelector("[data-bw-tour-title]").textContent = step.title;
-    tooltipEl.querySelector("[data-bw-tour-body]").textContent = step.body;
+    fillTourBody(tooltipEl.querySelector("[data-bw-tour-body]"), step.body);
     const contextEl = tooltipEl.querySelector("[data-bw-tour-context]");
     if (contextEl) {
       if (step.context) {

@@ -3191,6 +3191,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   background: rgba(255,255,255,0.10);
   color: #fff;
   cursor: pointer;
+  text-decoration: none;
 }
 .top-nav__actions .top-nav__admin{
   display: inline-flex;
@@ -3204,11 +3205,13 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   filter: none;
   background: rgba(255,255,255,0.16);
   border-color: rgba(255,255,255,0.34);
+  text-decoration: none;
 }
 .top-nav__logout:focus-visible,
 .top-nav__admin:focus-visible{
   outline: 2px solid rgba(255,255,255,0.85);
   outline-offset: 2px;
+  text-decoration: none;
 }
 .view-only-banner{
   margin: 0 12px 10px;
@@ -3626,7 +3629,7 @@ body[data-bw-view="settings"]:has(#settingsViewPanel:not([hidden]) .settings-pan
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(31, 41, 55, 0.52);
+  color: rgba(31, 41, 55, 0.78);
 }
 .app-footer__list{
   list-style: none;
@@ -3640,7 +3643,7 @@ body[data-bw-view="settings"]:has(#settingsViewPanel:not([hidden]) .settings-pan
 .app-footer__text{
   display: inline-block;
   padding: 2px 0;
-  color: rgba(55, 65, 81, 0.7);
+  color: rgba(55, 65, 81, 0.88);
   font-weight: 450;
   font-size: 12px;
   line-height: 1.32;
@@ -3847,7 +3850,7 @@ body.landing-page .landing-hero__microtrust{
   line-height: 1.42;
   font-weight: 400;
   letter-spacing: 0.01em;
-  color: rgba(71, 85, 105, 0.7);
+  color: #5b6b7c;
   text-align: center;
 }
 body.landing-page .landing-hero__microtrust-item{
@@ -3861,11 +3864,11 @@ body.landing-page .landing-hero__microtrust-check{
   font-size: 0.72em;
   font-weight: 500;
   line-height: 1;
-  color: rgba(71, 85, 105, 0.54);
+  color: #5b6b7c;
 }
 body.landing-page .landing-hero__microtrust__sep{
   display: inline;
-  opacity: 0.34;
+  opacity: 0.72;
   user-select: none;
 }
 body.landing-page .landing-hero__bridge{
@@ -4688,7 +4691,7 @@ body.landing-page .landing-shell > .landing-offer .landing-offer__footnote{
   line-height: 1.28;
   font-weight: 500;
   letter-spacing: 0.006em;
-  color: rgba(100, 116, 139, 0.62);
+  color: #5b6b7c;
   text-align: center;
 }
 body.landing-page .landing-shell > .landing-offer .landing-offer__cta:focus-visible{
@@ -13448,13 +13451,21 @@ label{
 }
 
 html.bw-billing-readonly .tm-primary-action,
+
 html.bw-billing-readonly .cash-health-status__cta,
+
 html.bw-billing-readonly #openAccountModalBtn,
+
 html.bw-billing-readonly #addAccountBtn,
+
 html.bw-billing-readonly #saveAccountEditBtn,
+
 html.bw-billing-readonly #balanceThresholdSaveBtn,
+
 html.bw-billing-readonly .cats-pane__action,
+
 html.bw-billing-readonly .cal-confirmed-tip__action,
+
 html.bw-billing-readonly .cal-confirmed-tip__edit-btn{
   opacity: 0.55;
   cursor: not-allowed !important;
@@ -17488,12 +17499,12 @@ body.account-setup-page .account-setup-wizard__eyebrow{
 body.account-setup-page .account-setup-wizard__reassurance{
   margin: 0 auto;
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.92rem;
   font-weight: 500;
-  letter-spacing: 0.03em;
-  line-height: 1.35;
-  color: rgba(11, 61, 46, 0.46);
-  max-width: 42ch;
+  letter-spacing: 0;
+  line-height: 1.45;
+  color: #3d5348;
+  max-width: 36rem;
 }
 body.account-setup-page .account-setup-wizard__reassurance:not([hidden]){
   margin-top: calc(var(--as-wizard-title-subtitle-gap) * 0.72);
@@ -17523,6 +17534,27 @@ body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard
 body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__reassurance:not([hidden]){
   margin-top: 0;
   margin-bottom: clamp(0.7rem, 1.35vw, 0.95rem);
+}
+body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard__subeyebrow{
+  max-width: 36rem;
+}
+body.account-setup-page .account-setup-sample-back{
+  display: block;
+  margin: 12px auto 0;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #3d5348;
+  text-decoration: underline;
+  text-decoration-thickness: 0.5px;
+  text-underline-offset: 3px;
+}
+body.account-setup-page .account-setup-sample-back:hover{
+  color: #14532d;
+}
+body.account-setup-page .account-setup-sample-back[hidden]{
+  display: none;
 }
 body.account-setup-page .account-setup-wizard__roadmap{
   margin: 0 0 14px;
@@ -21861,8 +21893,11 @@ body.plans-page--polished .plans-quote{
   }
 }
 body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__label,
+
 body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__label,
+
 body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__label,
+
 body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__label{
   font-size: 11px;
   font-weight: 700;
@@ -27966,9 +28001,16 @@ body.account-setup-page
   font-size: 0.92rem;
   line-height: 1.46;
   color: #374151;
-  /* Preserve `\n\n` paragraph breaks in step copy without rendering
-     stray whitespace. */
-  white-space: pre-line;
+}
+.bw-tour-tooltip__para{
+  display: block;
+}
+.bw-tour-tooltip__para + .bw-tour-tooltip__para{
+  margin-top: 0.55rem;
+}
+.bw-tour-tooltip__para strong{
+  font-weight: 700;
+  color: #1f2937;
 }
 .bw-tour-tooltip__helper{
   margin: 3px 0 0;
@@ -28000,7 +28042,7 @@ body.account-setup-page
   font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.3;
-  color: rgba(100, 116, 139, 0.78);
+  color: #4a5968;
   text-align: left;
 }
 .bw-tour-tooltip__helper-example-amount{
@@ -28037,7 +28079,7 @@ body.account-setup-page
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.07em;
-  color: rgba(100, 116, 139, 0.62);
+  color: #4a5968;
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__close{
   width: 24px;
@@ -28146,9 +28188,9 @@ body.account-setup-page
 }
 .bw-tour-tooltip__reconcile-preview-balance-k{
   font-size: 0.68rem;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.25;
-  color: rgba(100, 116, 139, 0.62);
+  color: #4a5968;
 }
 .bw-tour-tooltip__reconcile-preview-balance-v{
   font-size: 0.8rem;
@@ -28164,7 +28206,7 @@ body.account-setup-page
   font-size: 0.7rem;
   font-weight: 400;
   line-height: 1.38;
-  color: rgba(100, 116, 139, 0.48);
+  color: #4a5968;
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__actions{
   margin-top: var(--bw-tour-rx-gap-4);
@@ -28180,7 +28222,7 @@ body.account-setup-page
   font-size: 0.76rem;
   font-weight: 450;
   line-height: 1;
-  color: rgba(100, 116, 139, 0.52);
+  color: #4a5968;
 }
 .bw-tour-tooltip:has(.bw-tour-tooltip__helper--reconcile-preview) .bw-tour-tooltip__back{
   display: inline-flex;
@@ -28249,7 +28291,7 @@ body.account-setup-page
   font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.32;
-  color: rgba(100, 116, 139, 0.78);
+  color: #4a5968;
 }
 .bw-tour-tooltip__helper-list-items li + li{
   margin-top: 1px;
@@ -28258,7 +28300,7 @@ body.account-setup-page
   margin: 3px 0 0;
   font-size: 0.7rem;
   line-height: 1.32;
-  color: rgba(100, 116, 139, 0.52);
+  color: #4a5968;
 }
 .bw-tour-tooltip__actions{
   margin-top: 7px;
@@ -28304,16 +28346,16 @@ body.account-setup-page
   font: inherit;
   font-size: 0.8rem;
   font-weight: 500;
-  color: rgba(100, 116, 139, 0.5);
+  color: #4a5968;
   text-decoration: underline;
   text-decoration-thickness: 0.5px;
   text-underline-offset: 2px;
-  text-decoration-color: rgba(100, 116, 139, 0.35);
+  text-decoration-color: #4a5968;
   cursor: pointer;
 }
 .bw-tour-tooltip__skip:hover{
-  color: rgba(71, 85, 105, 0.72);
-  text-decoration-color: rgba(71, 85, 105, 0.45);
+  color: #243044;
+  text-decoration-color: #243044;
 }
 .bw-tour-tooltip__skip:focus-visible{
   outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
@@ -28332,13 +28374,16 @@ body.account-setup-page
   background: var(--accent);
   color: #fff;
   cursor: pointer;
+  text-decoration: none;
 }
 .bw-tour-tooltip__cta:hover{
   background: color-mix(in srgb, var(--accent) 92%, #000);
+  text-decoration: none;
 }
 .bw-tour-tooltip__cta:focus-visible{
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, #fff);
   outline-offset: 2px;
+  text-decoration: none;
 }
 .bw-tour-restart-link{
   appearance: none;
@@ -28395,29 +28440,13 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--calendar-add .cal-daynum
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
 }
 
-body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-target--reconcile-head{
-  position: relative;
-  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  border-top-color: color-mix(in srgb, var(--accent) 24%, transparent);
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent),
-    0 0 0 6px color-mix(in srgb, var(--accent) 10%, transparent) !important;
+body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head{
+  background: color-mix(in srgb, var(--accent) 6%, #ffffff) !important;
 }
-body[data-bw-view="calendar"] .cal-ledger-metrics.cal-day-balance-hit.bw-tour-target--reconcile-head::after{
-  content: "Update balance";
-  position: absolute;
-  right: 8px;
-  top: -12px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 8.5px;
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: rgba(11, 61, 46, 0.96);
-  background: #ffffff;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  box-shadow: 0 4px 14px -10px rgba(11, 61, 46, 0.32);
+body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head .cal-ledger-metrics.cal-day-balance-hit{
+  background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 body[data-bw-view="calendar"] #sidebarCashHealthCard.bw-tour-support-highlight--sidebar-soft,
@@ -32066,6 +32095,438 @@ body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
   color: color-mix(in srgb, var(--danger) 68%, #78716c);
 }
 
+/* Forecast sidebar polish: a little more air, a clearer healthy status, a quieter empty review line. */
+body[data-bw-view="calendar"] #sidebarCashHealthCard{
+  padding: 14px 14px 12px;
+}
+body[data-bw-view="calendar"] #sidebarCashHealthCard .sidebar-section-head{
+  margin-bottom: 10px;
+}
+body[data-bw-view="calendar"] #sidebarCashHealthCard .sidebar-cash-health__body{
+  gap: 8px;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion{
+  margin-top: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 61, 46, 0.14);
+  background: #e7f6ee;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-suggestion strong{
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: #14532d;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-intro{
+  margin-top: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #f4f7f5;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-intro strong{
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: #1f3d32;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-intro .cash-outlook-secondary{
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #3d5348;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle{
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #5b6b7c;
+}
+body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]{
+  padding: 14px 14px 16px;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head{
+  margin-bottom: 10px;
+}
+body[data-bw-view="calendar"] .sidebar-month-row{
+  margin: 0 0 12px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--income,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense{
+  padding: 8px 2px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:not(:has(.v.danger)){
+  margin-top: 8px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  background: #e7f6ee;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger){
+  margin-top: 8px;
+  padding: 8px 8px;
+}
+
+
+/* Forecast (calendar): fixed narrow sidebar + fluid calendar (not 50/50 fr split) */
+/* Cash Health sidebar refinement: status-first, compact, one internal divider. */
+/* Final left-rail rhythm: tighter card spacing, compact Forecast Snapshot hierarchy. */
+
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="settings"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
+  padding-top: 8px;
+  padding-bottom: 7px;
+}
+body[data-bw-view="calendar"] .cash-outlook-card__line--tertiary,
+body[data-bw-view="transactions"] .cash-outlook-card__line--tertiary,
+body[data-bw-view="settings"] .cash-outlook-card__line--tertiary,
+body[data-bw-view="reports"] .cash-outlook-card__line--tertiary{
+  font-size: 10.25px;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__label{
+  font-size: 9.5px;
+  font-weight: 620;
+  color: rgba(100, 116, 139, 0.74);
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.045);
+  font-size: 9.75px;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxList.list,
+body[data-bw-view="transactions"] #sidebarPendingTxList.list,
+body[data-bw-view="settings"] #sidebarPendingTxList.list,
+body[data-bw-view="reports"] #sidebarPendingTxList.list{
+  margin-top: 2px;
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
+  font-family: var(--font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 10.75px;
+  font-weight: 520;
+}
+
+/* Sidebar polish: compact warning + month control without shrinking content. */
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view="settings"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger{
+  padding: 10px 11px;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="settings"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card),
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
+  padding: 10px 11px 9px;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head,
+body[data-bw-view="transactions"] .sidebar-forecast-head,
+body[data-bw-view="settings"] .sidebar-forecast-head,
+body[data-bw-view="reports"] .sidebar-forecast-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head__actions,
+body[data-bw-view="transactions"] .sidebar-forecast-head__actions,
+body[data-bw-view="settings"] .sidebar-forecast-head__actions,
+body[data-bw-view="reports"] .sidebar-forecast-head__actions{
+  align-self: center;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head .sidebar-collapse-btn,
+body[data-bw-view="transactions"] .sidebar-forecast-head .sidebar-collapse-btn,
+body[data-bw-view="settings"] .sidebar-forecast-head .sidebar-collapse-btn,
+body[data-bw-view="reports"] .sidebar-forecast-head .sidebar-collapse-btn{
+  align-self: center;
+}
+body[data-bw-view="calendar"] .sidebar-month-row,
+body[data-bw-view="transactions"] .sidebar-month-row,
+body[data-bw-view="settings"] .sidebar-month-row,
+body[data-bw-view="reports"] .sidebar-month-row{
+  margin: 2px 0 3px;
+}
+body[data-bw-view="calendar"] .sidebar-month-input,
+body[data-bw-view="transactions"] .sidebar-month-input,
+body[data-bw-view="settings"] .sidebar-month-input,
+body[data-bw-view="reports"] .sidebar-month-input{
+  height: 24px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* Cash Health rhythm tokens: title -> alert -> balance check -> divider -> review. */
+body[data-bw-view="calendar"] #sidebarCashHealthCard,
+body[data-bw-view="transactions"] #sidebarCashHealthCard,
+body[data-bw-view="settings"] #sidebarCashHealthCard,
+body[data-bw-view="reports"] #sidebarCashHealthCard{
+  --section-gap-large: 24px;
+  --status-to-divider-gap: 12px;
+  --divider-to-review-gap: 14px;
+  --section-gap-small: 8px;
+  --review-row-gap: 6px;
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__head,
+body[data-bw-view="transactions"] .sidebar-cash-health__head,
+body[data-bw-view="settings"] .sidebar-cash-health__head,
+body[data-bw-view="reports"] .sidebar-cash-health__head{
+  margin-bottom: var(--section-gap-large);
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__body,
+body[data-bw-view="transactions"] .sidebar-cash-health__body,
+body[data-bw-view="settings"] .sidebar-cash-health__body,
+body[data-bw-view="reports"] .sidebar-cash-health__body{
+  gap: 0;
+}
+body[data-bw-view="calendar"] .sidebar-cash-health__alerts,
+body[data-bw-view="transactions"] .sidebar-cash-health__alerts,
+body[data-bw-view="settings"] .sidebar-cash-health__alerts,
+body[data-bw-view="reports"] .sidebar-cash-health__alerts{
+  margin-bottom: 18px;
+}
+body[data-bw-view="calendar"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="transactions"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="settings"] .cash-health-status.cash-health-status--balance,
+body[data-bw-view="reports"] .cash-health-status.cash-health-status--balance{
+  padding: 0;
+  margin-bottom: var(--status-to-divider-gap);
+}
+body[data-bw-view="calendar"] .cash-health-status--review,
+body[data-bw-view="transactions"] .cash-health-status--review,
+body[data-bw-view="settings"] .cash-health-status--review,
+body[data-bw-view="reports"] .cash-health-status--review{
+  margin-top: 0;
+  padding-top: var(--divider-to-review-gap);
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__row{
+  gap: var(--section-gap-small);
+}
+body[data-bw-view="calendar"] #sidebarPendingTxList.list,
+body[data-bw-view="transactions"] #sidebarPendingTxList.list,
+body[data-bw-view="settings"] #sidebarPendingTxList.list,
+body[data-bw-view="reports"] #sidebarPendingTxList.list{
+  gap: var(--review-row-gap);
+  margin-top: var(--section-gap-small);
+}
+
+/* Sidebar restore: preserve the refined card structure without horizontal compression. */
+body[data-bw-view="calendar"] .sidebar-cash-health__alerts,
+body[data-bw-view="transactions"] .sidebar-cash-health__alerts,
+body[data-bw-view="settings"] .sidebar-cash-health__alerts,
+body[data-bw-view="reports"] .sidebar-cash-health__alerts,
+body[data-bw-view="calendar"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="transactions"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="settings"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="reports"] .sidebar-balance-threshold-alerts,
+body[data-bw-view="calendar"] .calendar-low-balance--sidebar,
+body[data-bw-view="transactions"] .calendar-low-balance--sidebar,
+body[data-bw-view="settings"] .calendar-low-balance--sidebar,
+body[data-bw-view="reports"] .calendar-low-balance--sidebar,
+body[data-bw-view="calendar"] .cash-outlook-card,
+body[data-bw-view="transactions"] .cash-outlook-card,
+body[data-bw-view="settings"] .cash-outlook-card,
+body[data-bw-view="reports"] .cash-outlook-card{
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+body[data-bw-view="calendar"] .cash-outlook-card__body,
+body[data-bw-view="transactions"] .cash-outlook-card__body,
+body[data-bw-view="settings"] .cash-outlook-card__body,
+body[data-bw-view="reports"] .cash-outlook-card__body{
+  max-width: none;
+}
+body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--balance .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__value{
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+body[data-bw-view="calendar"] .pending-attn-item,
+body[data-bw-view="transactions"] .pending-attn-item,
+body[data-bw-view="settings"] .pending-attn-item,
+body[data-bw-view="reports"] .pending-attn-item{
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px 6px 10px;
+  gap: 8px;
+  box-sizing: border-box;
+}
+body[data-bw-view="calendar"] .pending-attn-text,
+body[data-bw-view="transactions"] .pending-attn-text,
+body[data-bw-view="settings"] .pending-attn-text,
+body[data-bw-view="reports"] .pending-attn-text{
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body[data-bw-view="calendar"] .pending-attn-name,
+body[data-bw-view="transactions"] .pending-attn-name,
+body[data-bw-view="settings"] .pending-attn-name,
+body[data-bw-view="reports"] .pending-attn-name{
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  font-size: 12.25px;
+  line-height: 1.2;
+}
+body[data-bw-view="calendar"] .pending-attn-meta,
+body[data-bw-view="transactions"] .pending-attn-meta,
+body[data-bw-view="settings"] .pending-attn-meta,
+body[data-bw-view="reports"] .pending-attn-meta{
+  flex: 0 0 auto;
+  min-width: auto;
+  white-space: nowrap;
+}
+body[data-bw-view="calendar"] .pending-attn-indicator,
+body[data-bw-view="transactions"] .pending-attn-indicator,
+body[data-bw-view="settings"] .pending-attn-indicator,
+body[data-bw-view="reports"] .pending-attn-indicator{
+  flex: 0 0 auto;
+}
+body[data-bw-view="calendar"] .sidebar-forecast-head h2,
+body[data-bw-view="transactions"] .sidebar-forecast-head h2,
+body[data-bw-view="settings"] .sidebar-forecast-head h2,
+body[data-bw-view="reports"] .sidebar-forecast-head h2{
+  white-space: nowrap;
+  overflow: visible;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__row{
+  justify-content: flex-start;
+  gap: 10px;
+}
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  margin-left: 0;
+}
+body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--success .cash-health-status__row,
+body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--success .cash-health-status__row,
+body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--success .cash-health-status__row,
+body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--success .cash-health-status__row{
+  justify-content: flex-start;
+  min-height: 0;
+}
+body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--success,
+body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--success,
+body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--success,
+body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--success{
+  min-height: 0;
+  padding-bottom: 0;
+}
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty.sidebar-pending--success,
+body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty.sidebar-pending--success,
+body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty.sidebar-pending--success,
+body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty.sidebar-pending--success{
+  padding-bottom: 0;
+}
+body[data-bw-view="calendar"] #sidebarCashHealthCard:has(.sidebar-pending--success),
+body[data-bw-view="transactions"] #sidebarCashHealthCard:has(.sidebar-pending--success),
+body[data-bw-view="settings"] #sidebarCashHealthCard:has(.sidebar-pending--success),
+body[data-bw-view="reports"] #sidebarCashHealthCard:has(.sidebar-pending--success){
+  height: auto;
+  min-height: 0;
+}
+body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label{
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 620;
+  color: color-mix(in srgb, var(--ok) 68%, #64748b);
+}
+body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--success #sidebarPendingTxList,
+body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--success #sidebarPendingTxList,
+body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--success #sidebarPendingTxList,
+body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--success #sidebarPendingTxList{
+  display: none;
+}
+body[data-bw-view="calendar"] .sidebar-month-input,
+body[data-bw-view="transactions"] .sidebar-month-input,
+body[data-bw-view="settings"] .sidebar-month-input,
+body[data-bw-view="reports"] .sidebar-month-input{
+  height: 21px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+body[data-bw-view="calendar"] .sidebar-month-row,
+body[data-bw-view="transactions"] .sidebar-month-row,
+body[data-bw-view="settings"] .sidebar-month-row,
+body[data-bw-view="reports"] .sidebar-month-row{
+  margin-bottom: 12px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total,
+body[data-bw-view="settings"] #sidebarBodyMonth .total,
+body[data-bw-view="reports"] #sidebarBodyMonth .total{
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .k,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .k,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .k{
+  font-size: 10.5px;
+  font-weight: 760;
+  color: rgba(71, 85, 105, 0.9);
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .v{
+  font-size: 14px;
+  font-weight: 760;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v{
+  font-size: 14px;
+  font-weight: 760;
+}
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v.danger{
+  color: color-mix(in srgb, var(--danger) 68%, #78716c);
+}
+
+
+
 /* ——— Checkout (Stripe-hosted redirect) ——— */
 body.checkout-page .container > .grid{
   margin: 24px auto 56px;
@@ -32365,7 +32826,6 @@ body.checkout-page .container > .grid{
   box-sizing: border-box;
 }
 
-
 /* Phone tap targets (~44px). The visible control stays the same size;
    the extra area is a transparent hit slop, except where a larger box
    would overlap a neighboring control. Desktop is unchanged. */
@@ -32621,3 +33081,161 @@ body[data-bw-view] #sidebarBodyMonth .total .v{
 body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
   padding-bottom: 12px;
 }
+
+/* Public header: Home, Learn, Pricing stay available. Phones use a Menu disclosure. */
+.public-nav{
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.public-nav__toggle{
+  display: none;
+}
+.public-nav__panel{
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.public-nav__link{
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 6px 10px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.875rem;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  border-radius: 8px;
+}
+.public-nav__link:hover,
+.public-nav__link:focus-visible{
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.public-nav__link[aria-current="page"]{
+  color: #fff;
+  font-weight: 650;
+}
+.landing-hero__trial{
+  margin: 0.7rem 0 0;
+  color: #243044;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+}
+.landing-hero__sample,
+.plan-sample,
+.support-doc__sample{
+  display: inline-block;
+  margin-top: 0.65rem;
+  color: var(--accent, #0b3d2e);
+  font-size: 0.95rem;
+  font-weight: 650;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.plan-cta-block .plan-sample{
+  display: block;
+}
+.plan-card.plan-card--polished .plan-features--outcomes a{
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+.plan-card.plan-card--polished .plan-features--outcomes a:hover,
+.plan-card.plan-card--polished .plan-features--outcomes a:focus-visible{
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+@media (max-width: 860px){
+  .public-nav__toggle{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 650;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .public-nav__toggle:focus-visible{
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+  .public-nav__panel{
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 40;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 196px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: var(--accent, #0b3d2e);
+  }
+  .public-nav.is-open .public-nav__panel{
+    display: flex;
+  }
+  .public-nav__link{
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+  .top-nav__actions{
+    flex-wrap: nowrap;
+  }
+  .top-nav__logout{
+    box-sizing: border-box;
+    min-height: 44px;
+  }
+}
+@media (max-width: 420px){
+  body.landing-page .top-nav .app-title--logo .app-logo,
+  body.plans-page .top-nav .app-title--logo .app-logo,
+  body.contact-page .top-nav .app-title--logo .app-logo,
+  body.login-page .top-nav .app-title--logo .app-logo,
+  body.preview-page .top-nav .app-title--logo .app-logo,
+  body.account-setup-page .top-nav .app-title--logo .app-logo,
+  body.checkout-page .top-nav .app-title--logo .app-logo{
+    max-width: 132px;
+    height: 32px;
+  }
+}
+@media (max-width: 800px){
+  body.preview-page .cal-today-btn,
+  body.preview-page .cal-arrow-btn,
+  body.preview-page #previewDetailClose,
+  body.preview-page .preview-range__btn,
+  body.preview-page .preview-demo__apply,
+  body.preview-page .preview-demo__reset,
+  body.preview-page .bw-tour-tooltip__close{
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  body.preview-page .preview-demo summary,
+  body.preview-page .preview-demo-row{
+    box-sizing: border-box;
+    min-height: 44px;
+  }
+}
+

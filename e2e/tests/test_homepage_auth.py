@@ -28,12 +28,12 @@ def _expect_logged_out(page) -> None:
     expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_have_attribute("href", GUEST_CTA)
     expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_have_attribute("href", GUEST_CTA)
     expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_be_visible()
-    expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_have_text("See my future balance")
+    expect(page.locator("a.landing-hero__cta.home-cta--guest")).to_have_text("Start my free forecast")
     expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_be_visible()
-    expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_have_text("See my future balance")
+    expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_have_text("Start my free forecast")
     expect(page.locator("#homeForecastLink")).to_be_hidden()
-    expect(page.locator("a.top-nav__learn", has_text="Learn more")).to_be_visible()
-    expect(page.locator("a.top-nav__learn", has_text="Pricing")).to_be_visible()
+    expect(page.locator("a.public-nav__link", has_text="Learn more")).to_be_visible()
+    expect(page.locator("a.public-nav__link", has_text="Pricing")).to_be_visible()
     expect(page.locator("a.home-cta--member")).to_have_count(2)
     for cta in page.locator("a.home-cta--member").all():
         expect(cta).to_be_hidden()
@@ -53,8 +53,8 @@ def _expect_logged_in(page) -> None:
     expect(page.locator("#homeForecastLink")).to_be_visible()
     expect(page.locator("#homeForecastLink")).to_have_text("My Forecast")
     expect(page.locator("#homeForecastLink")).to_have_attribute("href", MEMBER_CTA)
-    expect(page.locator("a.top-nav__learn", has_text="Learn more")).to_be_visible()
-    expect(page.locator("a.top-nav__learn", has_text="Pricing")).to_be_visible()
+    expect(page.locator("a.public-nav__link", has_text="Learn more")).to_be_visible()
+    expect(page.locator("a.public-nav__link", has_text="Pricing")).to_be_visible()
     expect(page.locator("a.home-cta--guest")).to_have_count(2)
     for cta in page.locator("a.home-cta--guest").all():
         expect(cta).to_be_hidden()
@@ -261,20 +261,20 @@ def test_me_failure_does_not_clear_stored_session(page, guard):
 
 
 PUBLIC_LOGIN_PAGES = (
-    ("/plans/", "Login"),
+    ("/plans/", "Log in"),
     ("/learn/", "Log in"),
-    ("/about.html", "Login"),
-    ("/help.html", "Login"),
-    ("/trust.html", "Login"),
-    ("/privacy.html", "Login"),
-    ("/terms.html", "Login"),
-    ("/contactus/", "Login"),
-    ("/forecasting-vs-budgeting/", "Login"),
-    ("/safe-to-spend/", "Login"),
-    ("/recurring-and-irregular-expenses/", "Login"),
-    ("/preview/", "Login"),
-    ("/checkout/cancel/", "Login"),
-    ("/account-setup/?fresh=1", "Login"),
+    ("/about.html", "Log in"),
+    ("/help.html", "Log in"),
+    ("/trust.html", "Log in"),
+    ("/privacy.html", "Log in"),
+    ("/terms.html", "Log in"),
+    ("/contactus/", "Log in"),
+    ("/forecasting-vs-budgeting/", "Log in"),
+    ("/safe-to-spend/", "Log in"),
+    ("/recurring-and-irregular-expenses/", "Log in"),
+    ("/preview/", "Log in"),
+    ("/checkout/cancel/", "Log in"),
+    ("/account-setup/?fresh=1", "Log in"),
 )
 
 
@@ -308,6 +308,16 @@ def test_public_headers_follow_session(page, guard, seed):
         response = page.goto(signed_in_path)
         assert_route_ok(response, signed_in_path.split("?")[0])
         _expect_public_logged_in(page)
+        if path == "/preview/":
+            expect(page.locator("#previewSignup")).to_have_attribute("href", MEMBER_CTA)
+            expect(page.locator("#previewSignup")).to_have_text("Go to my forecast")
+
+    fresh = page.goto("/account-setup/?fresh=1")
+    assert_route_ok(fresh, "/account-setup/")
+    page.wait_for_url(lambda url: "/calendar" in url)
+    expect(page.locator("#logoutBtn")).to_be_visible()
+    stored = _tokens(page)
+    assert stored["session"] or stored["local"]
 
     for path in ("/invite/",):
         response = page.goto(path)

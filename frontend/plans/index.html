@@ -71,12 +71,12 @@
       }
     </script>
 <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="/public-auth.css?v=1" />
-    <script src="/homepage-auth.js?v=3"></script>
+    <link rel="stylesheet" href="/public-auth.css?v=3" />
+    <script src="/homepage-auth.js?v=4"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=822" />
+    <link rel="stylesheet" href="../styles.css?v=825" />
   </head>
   <body class="plans-page plans-page--polished">
     
@@ -99,13 +99,19 @@
               </a>
             </div>
           </div>
-          <nav class="plans-public-nav" aria-label="Site">
-            <a href="/" class="plans-public-nav__link">Home</a>
-            <a href="/learn/" class="plans-public-nav__link">Learn more</a>
-            <a class="plans-public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
-            <a href="../login.html" class="plans-public-nav__link plans-public-nav__link--cta" id="homeLoginLink">Login</a>
-            <button type="button" class="plans-public-nav__link plans-public-nav__link--cta" id="homeLogoutBtn">Log Out</button>
-          </nav>
+          <div class="top-nav__actions" aria-label="Account actions">
+            <nav class="public-nav" aria-label="Site">
+              <button type="button" class="public-nav__toggle" aria-expanded="false" aria-controls="publicNavMenu">Menu</button>
+              <div class="public-nav__panel" id="publicNavMenu">
+                <a class="public-nav__link" href="/">Home</a>
+                <a class="public-nav__link" href="/learn/">Learn more</a>
+                <a class="public-nav__link" href="/plans/" aria-current="page">Pricing</a>
+                <a class="public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
+              </div>
+            </nav>
+            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Log in</a>
+            <button type="button" class="top-nav__logout" id="homeLogoutBtn">Log Out</button>
+          </div>
         </div>
       </div>
 
@@ -114,8 +120,8 @@
           <p class="plans-hero__eyebrow">Pricing</p>
           <h1 id="plansHeroTitle" class="plans-hero__title">Know what cash is safe to use.</h1>
           <p class="plans-hero__subtitle">
-            BalanceWhiz forecasts your upcoming cash flow so you can avoid overdrafts, move excess cash with
-            confidence, and keep more of it earning interest.
+            BalanceWhiz forecasts your upcoming cash flow so you can avoid overdrafts and decide when you may be
+            able to move money into your own interest-earning accounts. BalanceWhiz does not pay interest or move money.
           </p>
         </section>
 
@@ -161,9 +167,10 @@
                   class="plan-cta plan-cta--primary"
                   href="/account-setup/?fresh=1"
                   role="button"
-                  aria-label="Get started free for 14 days"
-                >Get Started Free</a>
-                <p class="plan-cta-reassurance">No credit card required during your 14-day trial.</p>
+                  aria-label="Start my free forecast. Free for 14 days."
+                >Start my free forecast</a>
+                <a class="plan-sample" href="/preview/">Try a sample forecast</a>
+                <p class="plan-cta-reassurance">No credit card required during your 14-day trial. Then $5.99 a month or $59.99 a year.</p>
               </div>
 
               <ul class="plan-features plan-features--outcomes" aria-label="What's included">
@@ -181,7 +188,7 @@
                 </span><span><a href="/safe-to-spend/">Catch low-balance periods early</a></span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span>Keep extra cash earning interest</span></li>
+                </span><span>See when extra cash could earn interest in your own accounts</span></li>
               </ul>
             </article>
           </div>
@@ -189,7 +196,7 @@
           <ul class="plans-trust" aria-label="What to expect">
             <li><span class="plans-trust__check" aria-hidden="true">✓</span>No bank connection required</li>
             <li><span class="plans-trust__check" aria-hidden="true">✓</span>No credit card required</li>
-            <li><span class="plans-trust__check" aria-hidden="true">✓</span>Set up in about 10 minutes</li>
+            <li><span class="plans-trust__check" aria-hidden="true">✓</span>First forecast takes about 10 minutes</li>
             <li><span class="plans-trust__check" aria-hidden="true">✓</span>Cancel anytime</li>
           </ul>
         </section>

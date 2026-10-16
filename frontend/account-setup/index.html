@@ -32,12 +32,12 @@
     <link rel="manifest" href="../site.webmanifest" />
     <!-- /bw:seo-head -->
 <script>window.API_BASE = "__API_BASE__";</script>
-    <link rel="stylesheet" href="/public-auth.css?v=1" />
-    <script src="/homepage-auth.js?v=3"></script>
+    <link rel="stylesheet" href="/public-auth.css?v=3" />
+    <script src="/homepage-auth.js?v=4"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=805" />
+    <link rel="stylesheet" href="../styles.css?v=830" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -59,8 +59,16 @@
             </div>
           </div>
           <div class="top-nav__actions" aria-label="Account actions">
-            <a class="plans-public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
-            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Login</a>
+            <nav class="public-nav" aria-label="Site">
+              <button type="button" class="public-nav__toggle" aria-expanded="false" aria-controls="publicNavMenu">Menu</button>
+              <div class="public-nav__panel" id="publicNavMenu">
+                <a class="public-nav__link" href="/">Home</a>
+                <a class="public-nav__link" href="/learn/">Learn more</a>
+                <a class="public-nav__link" href="/plans/">Pricing</a>
+                <a class="public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
+              </div>
+            </nav>
+            <a href="/login.html" class="top-nav__logout" id="homeLoginLink">Log in</a>
             <button type="button" class="top-nav__logout" id="homeLogoutBtn">Log Out</button>
           </div>
         </div>
@@ -89,11 +97,11 @@
               </div>
             </div>
           </div>
-          <p class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Create your login</p>
+          <h1 class="account-setup-wizard__eyebrow" id="accountSetupWizardEyebrow">Create your login</h1>
           <p class="account-setup-wizard__subeyebrow" id="accountSetupWizardSubeyebrow">
-            Next, we&rsquo;ll build your first cash flow forecast.
+            You&rsquo;re just a few minutes away from seeing your future checking balance.
           </p>
-          <p class="account-setup-wizard__reassurance" id="accountSetupWizardReassurance">Takes less than 2 minutes. No credit card required.</p>
+          <p class="account-setup-wizard__reassurance" id="accountSetupWizardReassurance">Start with a 14-day free trial. No credit card required.</p>
           <div class="card auth-section auth-section--open account-setup-wizard__shell">
             <div class="account-setup-wizard__viewport">
               <div class="account-setup-wizard__track" id="accountSetupWizardTrack">
@@ -735,6 +743,7 @@
                 <button type="button" id="signupBtn" class="top-nav__logout">
                   Create my account
                 </button>
+                <a id="accountSetupBackToSample" class="account-setup-sample-back" href="/preview/">Back to sample forecast</a>
               </div>
             </div>
           </div>
@@ -792,7 +801,7 @@
         <h3 id="accountSetupDuplicateEmailTitle" class="sr-only">Email already registered</h3>
         <p class="account-setup-duplicate-email__body">
           <span class="account-setup-duplicate-email__line">We found an account with that email address.</span>
-          <a class="account-setup-duplicate-email__login" href="/login.html">Login now</a>
+          <a class="account-setup-duplicate-email__login" href="/login.html">Log in</a>
         </p>
         <div class="modal-actions">
           <button type="button" class="secondary" id="accountSetupDuplicateEmailClose">OK</button>
@@ -800,6 +809,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=138"></script>
+    <script src="../signup/signup.js?v=140"></script>
   </body>
 </html>

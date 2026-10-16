@@ -1363,18 +1363,66 @@ function buildCashOutlookBannerHtml(raw) {
   return [`<strong>${headText}</strong>`, bodyHtml].filter(Boolean).join("");
 }
 
+const BW_FORECAST_INTRO_KEY = "bw_forecast_intro_family";
+
+function forecastIntroApplies() {
+  try {
+    const flagged = localStorage.getItem(BW_FORECAST_INTRO_KEY);
+    return !!flagged && String(state.activeFamilyId || "") === String(flagged);
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Same bar the setup wizard uses: an income item and an expense item. */
+function forecastSetupHasIncomeAndExpense() {
+  const items = [
+    ...(state.monthExpectedItems || []),
+    ...(state.calendarExtraExpectedItems || []),
+    ...(state.upcomingActualItems || []),
+  ];
+  let income = false;
+  let expense = false;
+  for (const it of items) {
+    const kind = String((it && (it.kind || it.type)) || "").toLowerCase();
+    if (kind === "income") income = true;
+    else if (kind === "expense") expense = true;
+  }
+  return income && expense;
+}
+
+function releaseForecastIntroIfSetupIsComplete() {
+  if (!forecastIntroApplies() || !forecastSetupHasIncomeAndExpense()) return;
+  try {
+    localStorage.removeItem(BW_FORECAST_INTRO_KEY);
+  } catch (_) {}
+  lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+  scheduleLowBalanceRefresh();
+}
+
+function showForecastGettingStartedBanner() {
+  setSidebarLowBalanceBanner(
+    "Your forecast is getting started\nSECONDARY:Add your upcoming bills and income to see where your balance is headed.",
+    "muted"
+  );
+  if (sidebarLowBalanceBanner) {
+    sidebarLowBalanceBanner.classList.add("is-intro");
+    sidebarLowBalanceBanner.classList.remove("is-suggestion");
+  }
+}
+
 /** @param {"off"|"danger"|"muted"} style */
 function setSidebarLowBalanceBanner(text, style = "off") {
   if (!sidebarLowBalanceBanner) return;
   if (!text || style === "off") {
     sidebarLowBalanceBanner.style.display = "none";
     sidebarLowBalanceBanner.textContent = "";
-    sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
+    sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted", "is-intro");
     return;
   }
   sidebarLowBalanceBanner.innerHTML = buildCashOutlookBannerHtml(text);
   sidebarLowBalanceBanner.style.display = "flex";
-  sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted");
+  sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted", "is-intro");
   sidebarLowBalanceBanner.classList.toggle("is-danger", style === "danger");
   sidebarLowBalanceBanner.classList.toggle("is-muted", style === "muted");
 }
@@ -2659,7 +2707,9 @@ async function refreshLowBalanceAlert() {
         parts.push(
           `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(btMinEl?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
         );
-        if (lowBalanceAlertsEnabled) {
+        if (forecastIntroApplies()) {
+          showForecastGettingStartedBanner();
+        } else if (lowBalanceAlertsEnabled) {
           setSidebarLowBalanceBanner("✓ Within your target range", "muted");
         } else {
           setSidebarLowBalanceBanner("", "off");
@@ -6118,7 +6168,8 @@ function lastBalanceCheckTier(days) {
   if (days == null) return "none";
   const n = Number(days);
   if (!Number.isFinite(n) || n < 0) return "none";
-  if (n >= 30) return "stale";
+  // Fresh for 6 calendar days. Day 7 and after asks for a balance check.
+  if (n >= 7) return "stale";
   return "fresh";
 }
 
@@ -6188,9 +6239,21 @@ function applyForecastConfidenceUi(data) {
   const confirmedDate = data?.last_confirmed_balance_date;
   const tier = lastBalanceCheckTier(days);
 
+  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
+  if (tier === "fresh") {
+    forecastConfidenceCard.hidden = true;
+    if (forecastConfidenceLabel) forecastConfidenceLabel.hidden = true;
+    if (forecastConfidenceHelper) {
+      forecastConfidenceHelper.textContent = "";
+      forecastConfidenceHelper.hidden = true;
+    }
+    if (forecastConfidenceVerifyBtn) forecastConfidenceVerifyBtn.hidden = true;
+    if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = "";
+    return;
+  }
+
   forecastConfidenceCard.hidden = false;
   forecastConfidenceCard.className = `cash-health-status cash-health-status--balance cash-health-status--${tier}`;
-  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
 
   let helper = "";
   let showLabel = false;
@@ -16729,6 +16792,7 @@ function monthStartEndIso(ym) {
 
 function renderSidebarPendingTransactionsForMonth() {
   if (!sidebarPendingTxList) return;
+  releaseForecastIntroIfSetupIsComplete();
   const month = calendarMonth?.value || monthInput?.value;
   const range = monthStartEndIso(month);
   sidebarPendingTxList.innerHTML = "";
@@ -16784,11 +16848,21 @@ function renderSidebarPendingTransactionsForMonth() {
   });
 
   if (!rows.length) {
+    if (forecastIntroApplies()) {
+      if (sidebarPendingTxCard) {
+        sidebarPendingTxCard.hidden = true;
+        sidebarPendingTxCard.classList.add("sidebar-pending--empty");
+      }
+      setPendingStatus("");
+      return;
+    }
+    if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty", "sidebar-pending--success");
     if (sidebarPendingTitle) sidebarPendingTitle.textContent = "✓ Nothing to review";
     setPendingStatus("");
     return;
   }
+  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
 
   setTitle();
   setPendingStatus(`(${rows.length})`);

@@ -1173,7 +1173,7 @@ function getAccountSetupStepCopy(step, ctx) {
     case 0:
       return {
         title: "Create your login",
-        subtitle: "Next, we’ll build your first cash flow forecast.",
+        subtitle: "You're just a few minutes away from seeing your future checking balance.",
       };
     case 1:
       return {
@@ -1282,11 +1282,15 @@ function syncAccountSetupWizardShellButtons() {
       subEyebrow.textContent = copy.subtitle;
       subEyebrow.hidden = false;
     }
+    const sampleBack = document.getElementById("accountSetupBackToSample");
+    if (sampleBack) sampleBack.hidden = s !== 0;
   } catch (_) {
     if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
     if (eyebrow) eyebrow.textContent = "Let’s build your forecast";
     if (reassurance) reassurance.hidden = s !== 0;
     if (subEyebrow) subEyebrow.hidden = false;
+    const sampleBack = document.getElementById("accountSetupBackToSample");
+    if (sampleBack) sampleBack.hidden = s !== 0;
   }
 
   try {
@@ -3148,7 +3152,7 @@ async function maybeCreateFirstAccountFromDraft(draft) {
       { maxMs: 12000 }
     );
     if (created && created.ok && created.data && created.data.id) {
-      return { ok: true, accountId: Number(created.data.id) };
+      return { ok: true, accountId: Number(created.data.id), familyId };
     }
     return { ok: false, accountId: null, error: `account_create_failed_${created?.status || "network"}` };
   } catch (e) {
@@ -3295,13 +3299,36 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
     }
   }
 
-  if (totalApplicable === 0) return { ok: true, createdCount: 0, totalCount: 0 };
+  if (totalApplicable === 0) return { ok: true, createdCount: 0, totalCount: 0, familyId };
   return {
     ok: createdCount === totalApplicable,
     createdCount,
     totalCount: totalApplicable,
     error: createdCount === totalApplicable ? null : lastError,
   };
+}
+
+const BW_FORECAST_INTRO_KEY = "bw_forecast_intro_family";
+
+/** The setup wizard already treats one income and one expense as enough to forecast. */
+function draftIncludesIncomeAndExpense(draft) {
+  const txs = draft && Array.isArray(draft.transactions) ? draft.transactions : [];
+  let income = false;
+  let expense = false;
+  for (const t of txs) {
+    const kind = String((t && t.kind) || "").toLowerCase();
+    if (kind === "income") income = true;
+    if (kind === "expense") expense = true;
+  }
+  return income && expense;
+}
+
+function noteForecastGettingStarted(draft, familyId) {
+  try {
+    if (!familyId) return;
+    if (draftIncludesIncomeAndExpense(draft)) localStorage.removeItem(BW_FORECAST_INTRO_KEY);
+    else localStorage.setItem(BW_FORECAST_INTRO_KEY, String(familyId));
+  } catch (_) {}
 }
 
 async function maybePatchForecastThresholdsFromDraft(draft) {
@@ -3360,10 +3387,42 @@ function captureVisibleCheckingAccountIntoDraft() {
 }
 
 async function endSessionForFreshAccountSetup() {
-  clearStoredApiAccessToken();
+  const params = new URLSearchParams(String(window.location.search || ""));
+  const invited = String(params.get("invite") || "").trim();
+  if (invited) {
+    clearStoredApiAccessToken();
+    try {
+      await request("/api/auth/logout", "POST");
+    } catch (_) {}
+    document.documentElement.removeAttribute("data-bw-home-auth");
+    return "";
+  }
+  let user = null;
   try {
-    await request("/api/auth/logout", "POST");
+    const me = await request("/api/auth/me", "GET");
+    user = me.ok && me.data && me.data.user ? me.data.user : null;
   } catch (_) {}
+  if (!user) {
+    clearStoredApiAccessToken();
+    document.documentElement.removeAttribute("data-bw-home-auth");
+    return "";
+  }
+  let hasAccount = false;
+  try {
+    const fams = await request("/api/families", "GET");
+    const familyId =
+      fams.ok && Array.isArray(fams.data) && fams.data[0] && fams.data[0].id ? fams.data[0].id : null;
+    if (familyId) {
+      const accounts = await request(`/api/families/${encodeURIComponent(String(familyId))}/accounts`, "GET");
+      hasAccount = !!(accounts.ok && Array.isArray(accounts.data) && accounts.data.length > 0);
+    }
+  } catch (_) {}
+  if (hasAccount) {
+    window.location.replace("/calendar/");
+    return "redirect";
+  }
+  document.documentElement.setAttribute("data-bw-home-auth", "in");
+  return "";
 }
 
 async function maybeEnterAccountSetupResume() {
@@ -3446,6 +3505,7 @@ async function finishResumeAccountSetup() {
     setForecastBuildOverlayMessage(overlay, "Saving your income and bills…");
     bumpForecastBuildOverlayProgress(overlay, 52);
     const txResult = await maybeCreateFirstTransactionFromDraft(draft, createdAccountId);
+    noteForecastGettingStarted(draft, accountResult && accountResult.familyId);
     try {
       await maybePatchForecastThresholdsFromDraft(draft);
     } catch (_) {}
@@ -3627,6 +3687,7 @@ async function doSignup() {
       maybeCreateFirstTransactionFromDraft(draft, createdAccountId),
       maybePatchForecastThresholdsFromDraft(draft),
     ]);
+    noteForecastGettingStarted(draft, accountResult && accountResult.familyId);
     if (thresholdResult && !thresholdResult.ok && !thresholdResult.skipped) {
       try {
         if (window.console && console.warn) console.warn("[signup] forecast threshold update failed", thresholdResult);
@@ -3934,7 +3995,10 @@ void (async () => {
       freshStart = params.get("fresh") === "1";
       if (freshStart) removeAccountSetupDraftStorage();
     } catch (_) {}
-    if (freshStart) await endSessionForFreshAccountSetup();
+    if (freshStart) {
+      const freshRoute = await endSessionForFreshAccountSetup();
+      if (freshRoute === "redirect") return;
+    }
     const accountSetupLoginBtn = document.getElementById("homeLoginLink");
     if (accountSetupLoginBtn && accountSetupLoginBtn.id !== "signupBtn") {
       accountSetupLoginBtn.addEventListener("click", () => {
