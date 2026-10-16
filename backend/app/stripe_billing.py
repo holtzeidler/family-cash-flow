@@ -182,7 +182,12 @@ def _origin_tuple(value: str) -> str:
 
 
 def allowed_billing_origins(settings: Any) -> set[str]:
-    """Site origins that may start a billing change. The API host is not included."""
+    """Configured BalanceWhiz site origins. A request Origin is never copied in.
+
+    APP_PUBLIC_BASE_URL is the canonical frontend. CORS_ORIGINS lists the same
+    site when the browser origin differs by host, such as staging versus the
+    apex domain. Wildcards and values that are not http(s) origins are ignored.
+    """
     raw_parts: list[str] = []
     public = (getattr(settings, "APP_PUBLIC_BASE_URL", None) or "").strip()
     cors = (getattr(settings, "CORS_ORIGINS", None) or "").strip()
@@ -538,6 +543,7 @@ def register_stripe_routes(
         target_lookup: str = Form(...),
     ):
         """Preview Stripe's monthly→annual invoice. Does not modify the subscription."""
+        require_billing_same_site(request, settings)
         _require_stripe()
         if session_factory is None:
             raise HTTPException(
@@ -1203,6 +1209,7 @@ def register_stripe_routes(
         return_url is always built server-side from APP_PUBLIC_BASE_URL → /settings/billing.
         Hosted portal link prominence / button copy (e.g. “Don’t cancel”) are Stripe-controlled.
         """
+        require_billing_same_site(request, settings)
         _require_stripe()
         domain = _require_public_base()
 
