@@ -3191,6 +3191,7 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   background: rgba(255,255,255,0.10);
   color: #fff;
   cursor: pointer;
+  text-decoration: none;
 }
 .top-nav__actions .top-nav__admin{
   display: inline-flex;
@@ -3204,11 +3205,13 @@ body.landing-page .landing-below-preview .landing-offer__bullets li::before{
   filter: none;
   background: rgba(255,255,255,0.16);
   border-color: rgba(255,255,255,0.34);
+  text-decoration: none;
 }
 .top-nav__logout:focus-visible,
 .top-nav__admin:focus-visible{
   outline: 2px solid rgba(255,255,255,0.85);
   outline-offset: 2px;
+  text-decoration: none;
 }
 .view-only-banner{
   margin: 0 12px 10px;
@@ -28367,13 +28370,16 @@ body.account-setup-page
   background: var(--accent);
   color: #fff;
   cursor: pointer;
+  text-decoration: none;
 }
 .bw-tour-tooltip__cta:hover{
   background: color-mix(in srgb, var(--accent) 92%, #000);
+  text-decoration: none;
 }
 .bw-tour-tooltip__cta:focus-visible{
   outline: 2px solid color-mix(in srgb, var(--accent) 55%, #fff);
   outline-offset: 2px;
+  text-decoration: none;
 }
 .bw-tour-restart-link{
   appearance: none;

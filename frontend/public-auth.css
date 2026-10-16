@@ -137,3 +137,8 @@ body.login-page:not(.signup-page):not(.invite-page) .top-nav__actions {
     min-height: 44px;
   }
 }
+a.top-nav__logout,
+a.top-nav__logout:hover,
+a.top-nav__logout:focus-visible{
+  text-decoration: none;
+}
