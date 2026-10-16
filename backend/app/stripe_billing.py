@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import stripe
 from fastapi import FastAPI, Form, HTTPException, Request, status
@@ -166,6 +167,45 @@ def _resume_scheduled_cancel(sid: str, live: Any) -> None:
         stripe.Subscription.modify(sid, cancel_at_period_end=False)
 
 
+# A cross-site form cannot set this header. The browser still sends the
+# session cookie, so the server checks the header itself instead of trusting CORS.
+BILLING_SAME_SITE_HEADER = "x-balancewhiz-request"
+BILLING_SAME_SITE_VALUE = "1"
+_BILLING_SAME_SITE_DETAIL = "This billing action must be sent from BalanceWhiz."
+
+
+def _origin_tuple(value: str) -> str:
+    parsed = urlparse((value or "").strip())
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme}://{parsed.netloc}".lower()
+
+
+def allowed_billing_origins(settings: Any) -> set[str]:
+    """Site origins that may start a billing change. The API host is not included."""
+    raw_parts: list[str] = []
+    public = (getattr(settings, "APP_PUBLIC_BASE_URL", None) or "").strip()
+    cors = (getattr(settings, "CORS_ORIGINS", None) or "").strip()
+    if public:
+        raw_parts.append(public)
+    if cors:
+        raw_parts.extend(cors.split(","))
+    return {origin for origin in (_origin_tuple(part) for part in raw_parts) if origin}
+
+
+def require_billing_same_site(request: Request, settings: Any) -> None:
+    """Reject a billing post that a foreign page could submit with the session cookie.
+
+    A real BalanceWhiz fetch sends both the custom header and its page Origin.
+    A cross-site form can send the cookie and an Origin, but not this header.
+    Missing either check is rejected. Stripe webhooks do not call this.
+    """
+    header = (request.headers.get(BILLING_SAME_SITE_HEADER) or "").strip()
+    origin = _origin_tuple(request.headers.get("origin") or "")
+    if header != BILLING_SAME_SITE_VALUE or origin not in allowed_billing_origins(settings):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_BILLING_SAME_SITE_DETAIL)
+
+
 def register_stripe_routes(
     app: FastAPI,
     settings: Any,
@@ -253,6 +293,7 @@ def register_stripe_routes(
 
         Accept: application/json → {"url": "..."}; otherwise 303 redirect.
         """
+        require_billing_same_site(request, settings)
         _require_stripe()
         domain = _require_public_base()
         if session_factory is None:
@@ -640,6 +681,7 @@ def register_stripe_routes(
         proration_date: Optional[str] = Form(None),
     ):
         """Switch monthly↔annual. Annual is immediate with proration; monthly is scheduled at period end."""
+        require_billing_same_site(request, settings)
         _require_stripe()
         if session_factory is None:
             raise HTTPException(
@@ -986,6 +1028,7 @@ def register_stripe_routes(
     @app.post("/schedule-subscription-cancel", include_in_schema=False)
     async def schedule_subscription_cancel(request: Request, family_id: int = Form(...)):
         """Stop renewal at the current paid period end. Never cancel immediately."""
+        require_billing_same_site(request, settings)
         _require_stripe()
         if session_factory is None:
             raise HTTPException(
@@ -1076,6 +1119,7 @@ def register_stripe_routes(
     @app.post("/resume-subscription", include_in_schema=False)
     async def resume_subscription(request: Request, family_id: int = Form(...)):
         """Clear a scheduled period-end cancel and restore automatic renewal."""
+        require_billing_same_site(request, settings)
         _require_stripe()
         if session_factory is None:
             raise HTTPException(

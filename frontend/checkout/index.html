@@ -634,7 +634,7 @@
             method: "POST",
             body: body,
             credentials: "include",
-            headers: authHeaders(),
+            headers: Object.assign({ "X-BalanceWhiz-Request": "1" }, authHeaders()),
           })
             .then(function (result) {
               if (attempt !== checkoutAttempt) return;
