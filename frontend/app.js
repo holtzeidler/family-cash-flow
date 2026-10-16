@@ -325,6 +325,18 @@ async function api(path, method = "GET", body) {
   }
 }
 
+function billingSameSiteHeaders(path) {
+  const target = String(path || "");
+  const guarded = [
+    "/create-checkout-session",
+    "/switch-billing-interval",
+    "/schedule-subscription-cancel",
+    "/resume-subscription",
+  ];
+  if (!guarded.some((item) => target.includes(item))) return {};
+  return { "X-BalanceWhiz-Request": "1" };
+}
+
 async function apiForm(path, formData, method = "POST") {
   throwIfBillingWriteLocked(path, method);
   const apiBase = apiBaseUrl();
@@ -333,6 +345,7 @@ async function apiForm(path, formData, method = "POST") {
     method,
     headers: {
       ...apiBearerAuthHeaders(),
+      ...billingSameSiteHeaders(path),
     },
     credentials: "include",
     body: formData,
@@ -12150,7 +12163,11 @@ async function startBillingSecureCheckout() {
       method: "POST",
       body,
       credentials: "include",
-      headers: { ...apiBearerAuthHeaders(), Accept: "application/json" },
+      headers: {
+        ...apiBearerAuthHeaders(),
+        ...billingSameSiteHeaders("/create-checkout-session"),
+        Accept: "application/json",
+      },
     });
     if (seq !== billingCheckoutRequestSeq) return;
     const data = await res.json().catch(() => ({}));
