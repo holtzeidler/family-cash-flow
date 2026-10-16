@@ -28,6 +28,8 @@
         min-height: 0;
       }
       body.preview-intro .app-footer {
+        position: relative;
+        z-index: 0;
         margin-top: 28px;
       }
       .preview-intro .top-nav__inner {
@@ -64,6 +66,15 @@
         margin: 2px 0 0;
         color: #3d5348;
         font-size: 0.92rem;
+      }
+      .preview-intro .preview-month-link {
+        display: inline-block;
+        margin-top: 4px;
+        color: #0b3d2e;
+        font-size: 0.88rem;
+        font-weight: 650;
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
       .preview-intro .preview-mode__actions {
         display: flex;
@@ -103,7 +114,35 @@
         padding: 12px;
       }
       .preview-intro .cal-cell {
-        min-height: 118px;
+        min-height: 128px;
+      }
+      .preview-intro .cal-balance-strip--has-status .cal-balance-strip__row {
+        flex-wrap: wrap;
+        align-items: center;
+        row-gap: 3px;
+      }
+      .preview-intro .cal-balance-strip--has-status .cal-balance-strip__amt,
+      .preview-intro .cal-balance-strip--has-status .cal-stat.cal-balance {
+        flex: 0 0 auto;
+        min-width: max-content;
+      }
+      .preview-intro .cal-balance-status-pill--starting {
+        cursor: default;
+      }
+      .preview-intro .cal-cell.bw-tour-target.bw-tour-target--strong {
+        box-shadow:
+          0 0 0 3px rgba(185, 28, 28, 0.82),
+          0 0 0 8px rgba(185, 28, 28, 0.22),
+          0 8px 28px -10px rgba(127, 29, 29, 0.42) !important;
+      }
+      .preview-intro .bw-tour-tooltip__close {
+        margin-left: auto;
+      }
+      .preview-intro .bw-tour-tooltip__actions {
+        justify-content: flex-end;
+      }
+      .preview-intro #previewTourBack {
+        margin-right: auto;
       }
       .preview-intro .cal-day-tx-line {
         grid-template-columns: minmax(0, 1fr);
@@ -200,6 +239,7 @@
           <div>
             <h1 class="preview-mode__title">Sample forecast</h1>
             <p class="preview-mode__text">Fictional finances. Nothing is saved.</p>
+            <a class="preview-month-link" id="previewMonthLink" href="/preview/month/">Explore a full month</a>
           </div>
           <div class="preview-mode__actions">
             <button type="button" class="preview-replay" id="previewReplay">Take a quick tour</button>
@@ -246,6 +286,6 @@
         </div>
       </footer>
     </div>
-    <script src="./intro.js?v=2"></script>
+    <script src="./intro.js?v=3"></script>
   </body>
 </html>

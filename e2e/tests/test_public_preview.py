@@ -659,6 +659,7 @@ def test_seven_day_sample_leads_to_the_month(page, guard):
     assert_route_ok(response, "/preview/")
     expect(page.locator(".preview-mode__text")).to_have_text("Fictional finances. Nothing is saved.")
     expect(page.locator("#preview-calendar .cal-cell")).to_have_count(7)
+    expect(page.locator("#preview-calendar .cal-balance-status-pill--starting")).to_have_text("Starting Point")
     expect(page.locator("#preview-calendar")).to_contain_text("$4,850")
     expect(page.locator("#preview-calendar")).to_contain_text("Mortgage")
     expect(page.locator("#preview-calendar")).to_contain_text("-$2,400")
@@ -666,42 +667,96 @@ def test_seven_day_sample_leads_to_the_month(page, guard):
     expect(page.locator("#preview-calendar")).to_contain_text("-$1,100")
     expect(page.locator("#preview-calendar")).to_contain_text("Vacation deposit")
     expect(page.locator("#preview-calendar")).to_contain_text("-$1,500")
+    expect(page.locator(".cal-cell--bal-warn")).to_contain_text("$1,350")
     expect(page.locator(".cal-cell--bal-risk")).to_contain_text("($150)")
+    expect(page.locator("#previewMonthLink")).to_have_attribute("href", "/preview/month/")
     expect(page.locator("#preview-calendar")).to_contain_text("Paycheck")
     expect(page.locator("#preview-calendar")).to_contain_text("+$3,200")
     expect(page.locator("#preview-calendar")).to_contain_text("$3,050")
     expect(page.get_by_role("dialog")).to_have_count(0)
 
+    shortage = date.today() + timedelta(days=3)
+    payday = date.today() + timedelta(days=4)
     page.locator("#previewReplay").click()
+    expect(page.locator("#previewTourSkip")).to_have_count(0)
     titles = [
-        "Start with your checking balance",
-        "See upcoming bills",
-        "Spot problems early",
-        "Look ahead to payday",
-        "Take control",
+        (
+            "Start with your checking balance",
+            "Here, we're starting with $4,850.",
+        ),
+        (
+            "See upcoming bills",
+            "Your $2,400 mortgage and $1,100 credit card payment bring your balance from $4,850 down to $1,350.",
+        ),
+        (
+            "Spot problems before they happen",
+            f"goes negative $150 on {shortage.strftime('%B')} {shortage.day}",
+        ),
+        (
+            "Look ahead to payday",
+            f"Your $3,200 paycheck arrives {payday.strftime('%B')} {payday.day}",
+        ),
+        (
+            "Know what's coming. Plan with confidence.",
+            "how much you'll have left",
+        ),
     ]
-    for index, title in enumerate(titles, start=1):
+    for index, (title, body) in enumerate(titles, start=1):
         expect(page.locator("#previewTourTitle")).to_have_text(title)
+        expect(page.locator("#previewTourBody")).to_contain_text(body)
         expect(page.locator("#previewTourCounter")).to_have_text(f"{index} of 5")
+        expect(page.locator("#previewTourSkip")).to_have_count(0)
         _assert_intro_popup_clear(page)
+        if index == 1:
+            expect(page.locator("#previewTourBack")).to_be_hidden()
+            expect(page.locator(".bw-tour-target .cal-balance-status-pill--starting")).to_be_visible()
+        if index == 2:
+            page.locator("#previewTourBack").click()
+            expect(page.locator("#previewTourTitle")).to_have_text(titles[0][0])
+            page.locator("#previewTourNext").click()
+        if index == 3:
+            expect(page.locator(".bw-tour-target--strong")).to_have_count(1)
+            expect(page.locator(".bw-tour-target--strong")).to_contain_text("($150)")
+            page.locator("#previewTourClose").click()
+            expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+            expect(page).to_have_url(re.compile(r"/preview/?$"))
+            page.locator("#previewReplay").click()
+            for _ in range(index - 1):
+                page.locator("#previewTourNext").click()
+        if index == 5:
+            expect(page.locator(".bw-tour-target")).to_have_count(0)
+            expect(page.locator("#previewTourNext")).to_have_text("Finish")
         if index < 5:
             page.locator("#previewTourNext").click()
-    expect(page.locator("#previewTourNext")).to_have_text("Finish")
     page.locator("#previewTourNext").click()
-    expect(page.locator("#previewTourTitle")).to_have_text("See what your money looks like a month from now.")
-    expect(page.locator("#previewTourBody")).to_contain_text("Want to explore more?")
+    expect(page.locator("#previewTourTitle")).to_have_text("Ready to see the bigger picture?")
+    expect(page.locator("#previewTourBody")).to_contain_text("Explore a full month of fictional finances")
+    expect(page.locator("#previewTourExplore")).to_have_text("Explore a full month")
     expect(page.locator("#previewTourExplore")).to_have_attribute("href", "/preview/month/")
     expect(page.locator("#previewTourSignup")).to_have_text("Start my free forecast")
     expect(page.locator("#previewTourSignup")).to_have_attribute("href", "/account-setup/?fresh=1")
+    expect(page.locator(".bw-tour-target")).to_have_count(0)
     expect(page).to_have_url(re.compile(r"/preview/?$"))
-    page.locator("#previewTourDismiss").click()
+    page.evaluate("() => document.documentElement.setAttribute('data-bw-home-auth', 'in')")
+    expect(page.locator("#previewTourSignup")).to_have_text("Go to my forecast")
+    expect(page.locator("#previewTourSignup")).to_have_attribute("href", "/calendar/")
+    expect(page.locator("#previewSignup")).to_have_text("Go to my forecast")
+    page.evaluate("() => document.documentElement.setAttribute('data-bw-home-auth', 'out')")
+    expect(page.locator("#previewTourSignup")).to_have_text("Start my free forecast")
+    page.locator("#previewTourClose").click()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    expect(page.locator("#previewReplay")).to_be_visible()
+    expect(page).to_have_url(re.compile(r"/preview/?$"))
+
+    page.locator("#previewReplay").click()
+    page.locator("#previewTourClose").click()
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
 
     page.locator("#previewReplay").click()
-    page.locator("#previewTourSkip").click()
+    for _ in range(5):
+        page.locator("#previewTourNext").click()
+    page.locator("#previewTourDismiss").click()
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
-    expect(page).to_have_url(re.compile(r"/preview/?$"))
-
     page.locator("#previewReplay").click()
     for _ in range(5):
         page.locator("#previewTourNext").click()

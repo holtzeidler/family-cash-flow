@@ -16,32 +16,55 @@
     { group: "rest", txns: [], end: 3050 },
   ];
 
+  var STARTING_POINT =
+    '<span class="cal-balance-status-pills"><span class="cal-balance-status-pill cal-balance-status-pill--starting"><span class="cal-balance-status-pill__icon" aria-hidden="true"><svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg></span> Starting Point</span></span>';
+
+  function longDate(offset) {
+    return addDays(today, offset).toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  }
+
+  function stepBody(step) {
+    return typeof step.body === "function" ? step.body() : step.body;
+  }
+
   var STEPS = [
     {
       title: "Start with your checking balance",
-      body: "Enter what you actually have in checking today.",
+      body: "Your forecast starts with what's actually in your checking account. Here, we're starting with $4,850.",
       spot: '[data-preview~="start"]',
     },
     {
       title: "See upcoming bills",
-      body: "Watch how scheduled expenses affect your balance.",
+      body: "Your $2,400 mortgage and $1,100 credit card payment bring your balance from $4,850 down to $1,350.",
       spot: '[data-preview~="upcoming"]',
     },
     {
-      title: "Spot problems early",
-      body: "See when your balance could fall below your safety cushion or become negative.",
+      title: "Spot problems before they happen",
+      body: function () {
+        return (
+          "Your balance drops below your $1,500 safety cushion, then goes negative $150 on " +
+          longDate(3) +
+          " — before your next paycheck."
+        );
+      },
       spot: '[data-preview~="problem"]',
+      emphasize: '[data-preview="problem"]',
     },
     {
       title: "Look ahead to payday",
-      body: "Understand when money comes in and how your balance recovers.",
+      body: function () {
+        return (
+          "Your $3,200 paycheck arrives " +
+          longDate(4) +
+          ", bringing your balance back to $3,050. But now you know about the shortage before it happens."
+        );
+      },
       spot: '[data-preview~="payday"]',
     },
     {
-      title: "Take control",
-      body: "Use BalanceWhiz to anticipate cash shortages before they happen.",
-      spot: "#preview-calendar",
-      spotNarrow: '[data-preview~="problem"]',
+      title: "Know what's coming. Plan with confidence.",
+      body: "BalanceWhiz shows you when money comes in, when bills are due, and how much you'll have left — before it happens.",
+      spot: "",
     },
   ];
 
@@ -129,6 +152,8 @@
     if (day.risk) balClass += " is-negative cal-balance--risk";
     else if (day.below) balClass += " cal-balance--below-floor";
     else balClass += " cal-balance--quiet";
+    var pill = day.today ? STARTING_POINT : "";
+    var stripClass = "cal-balance-strip" + (pill ? " cal-balance-strip--has-status" : "");
     return (
       '<div class="' +
       classes.join(" ") +
@@ -146,11 +171,15 @@
       day.day +
       '</span></div><div class="cal-cell-fill"></div><div class="cal-cell-stack"><div class="cal-day-txns">' +
       txns +
-      '</div><div class="cal-ledger-metrics"><div class="cal-balance-strip"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt"><span class="' +
+      '</div><div class="cal-ledger-metrics"><div class="' +
+      stripClass +
+      '"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt"><span class="' +
       balClass +
       '">' +
       money(day.end) +
-      "</span></span></div></div></div></div></div>"
+      "</span></span>" +
+      pill +
+      "</div></div></div></div></div>"
     );
   }
 
@@ -208,17 +237,15 @@
       '<p class="bw-tour-tooltip__body" id="previewTourBody"></p>' +
       '<div class="bw-tour-tooltip__actions" id="previewTourActions">' +
       '<button type="button" class="bw-tour-tooltip__skip preview-back" id="previewTourBack">Back</button>' +
-      '<button type="button" class="bw-tour-tooltip__skip" id="previewTourSkip">Skip</button>' +
       '<button type="button" class="bw-tour-tooltip__cta" id="previewTourNext">Next</button>' +
       "</div>" +
       '<div class="preview-intro-choices" id="previewTourChoices" hidden>' +
-      '<a class="bw-tour-tooltip__cta" id="previewTourExplore" href="/preview/month/">Explore the full forecast</a>' +
+      '<a class="bw-tour-tooltip__cta" id="previewTourExplore" href="/preview/month/">Explore a full month</a>' +
       '<a class="bw-tour-tooltip__cta preview-tour-link--quiet" id="previewTourSignup" href="/account-setup/?fresh=1">Start my free forecast</a>' +
       '<button type="button" class="bw-tour-tooltip__skip" id="previewTourDismiss">Not now</button>' +
       "</div>";
     document.body.appendChild(dialog);
     document.getElementById("previewTourClose").addEventListener("click", closeTour);
-    document.getElementById("previewTourSkip").addEventListener("click", closeTour);
     document.getElementById("previewTourDismiss").addEventListener("click", closeTour);
     document.getElementById("previewTourBack").addEventListener("click", function () {
       if (finale) showStep(STEPS.length - 1);
@@ -233,7 +260,7 @@
 
   function clearSpot() {
     document.querySelectorAll(".bw-tour-target").forEach(function (el) {
-      el.classList.remove("bw-tour-target");
+      el.classList.remove("bw-tour-target", "bw-tour-target--strong");
       if (el.dataset.previewZ === "__unset") el.style.removeProperty("z-index");
       else if (el.dataset.previewZ != null) el.style.zIndex = el.dataset.previewZ;
       if (el.dataset.previewPos === "__unset") el.style.removeProperty("position");
@@ -274,6 +301,12 @@
     return Math.max(12, nav.getBoundingClientRect().bottom + 8);
   }
 
+  function pointed(nodes) {
+    return (nodes || []).filter(function (el) {
+      return el.classList.contains("bw-tour-target");
+    });
+  }
+
   function placeDialog(nodes) {
     var card = ensureDialog();
     card.classList.add("bw-tour-tooltip--open");
@@ -283,25 +316,25 @@
     var margin = 12;
     var gap = 16;
     var available = Math.max(160, window.innerWidth - margin * 2);
-    var cap = Math.min(460, available);
-    var floor = Math.min(420, cap);
-    card.style.width = cap + "px";
-    var copy = document.getElementById("previewTourBody");
-    var natural = cap;
-    if (copy) {
-      var previous = copy.style.whiteSpace;
-      copy.style.whiteSpace = "nowrap";
-      natural = Math.ceil(copy.scrollWidth + 40);
-      copy.style.whiteSpace = previous;
-    }
-    var width = Math.max(floor, Math.min(cap, natural));
+    var width = Math.min(440, available);
     card.style.width = width + "px";
     var cardHeight = card.offsetHeight || 220;
     var minTop = stickyFloor();
     var maxTop = Math.max(minTop, window.innerHeight - cardHeight - margin);
     var maxLeft = Math.max(margin, window.innerWidth - width - margin);
+    var spots = pointed(nodes);
+    if (spots.length) {
+      var visible = unionRect(spots);
+      var reveal = 0;
+      if (visible.top < minTop) reveal = visible.top - minTop;
+      else if (visible.bottom > window.innerHeight - margin) reveal = visible.bottom - (window.innerHeight - margin);
+      var room = Math.max(0, visible.top - minTop);
+      if (reveal > room) reveal = room;
+      if (Math.abs(reveal) > 2) window.scrollBy(0, reveal);
+    }
     var target = nodes && nodes.length ? unionRect(nodes) : null;
     var arrow = card.querySelector(".bw-tour-tooltip__arrow");
+    var showArrow = spots.length > 0;
 
     function clamp(value, min, max) {
       if (max < min) return min;
@@ -312,17 +345,18 @@
     var left;
     var side = "";
     if (!target) {
-      top = finale ? maxTop : clamp((window.innerHeight - cardHeight) / 2, minTop, maxTop);
+      top = maxTop;
       left = clamp((window.innerWidth - width) / 2, margin, maxLeft);
     } else {
       var below = target.bottom + gap;
       var above = target.top - cardHeight - gap;
       var belowFits = below + cardHeight <= window.innerHeight - margin;
       var aboveFits = above >= minTop;
-      if (!belowFits && !aboveFits) {
-        var shift = Math.min(Math.max(0, target.top - minTop), cardHeight + gap);
+      if (!belowFits && !aboveFits && spots.length) {
+        var needed = target.bottom + gap + cardHeight - (window.innerHeight - margin);
+        var shift = Math.min(Math.max(0, needed), Math.max(0, target.top - minTop));
         if (shift > 2) {
-          window.scrollBy(0, target.bottom + gap + cardHeight - (window.innerHeight - margin));
+          window.scrollBy(0, shift);
           target = unionRect(nodes);
           below = target.bottom + gap;
           above = target.top - cardHeight - gap;
@@ -337,25 +371,32 @@
         top = clamp(above, minTop, maxTop);
         side = "bottom";
       }
-      var align = finale
-        ? target.left + (target.width - width) / 2
-        : target.left + Math.min(target.width / 2, 80) - 28;
+      var align = showArrow
+        ? target.left + Math.min(target.width / 2, 80) - 28
+        : target.left + (target.width - width) / 2;
       left = clamp(align, margin, maxLeft);
     }
     card.style.left = Math.round(left) + "px";
     card.style.top = Math.round(top) + "px";
     if (!arrow) return;
-    if (finale) {
-      arrow.hidden = true;
-      return;
-    }
-    arrow.hidden = !side;
+    arrow.hidden = !showArrow || !side || !target;
     arrow.style.top = "";
     arrow.style.left = "";
-    if (!side || !target) return;
+    if (arrow.hidden) return;
     arrow.dataset.side = side;
-    var anchorX = target.left + Math.min(Math.max(36, target.width / 2), target.width - 16);
+    var aimNodes = spots.filter(function (el) {
+      return el.classList.contains("bw-tour-target--strong");
+    });
+    var aim = aimNodes.length ? unionRect(aimNodes) : unionRect(spots);
+    var anchorX = aim.left + Math.min(Math.max(36, aim.width / 2), aim.width - 16);
     arrow.style.left = Math.round(clamp(anchorX - left, 22, width - 22)) + "px";
+  }
+
+  function tourAnchor(nodes) {
+    if (nodes && nodes.length) return nodes;
+    if (narrowLayout()) return [];
+    var calendar = document.getElementById("preview-calendar");
+    return calendar ? [calendar] : [];
   }
 
   function showStep(index) {
@@ -366,7 +407,13 @@
     document.getElementById("previewReplay").hidden = true;
     var step = STEPS[stepIndex];
     var selector = finale ? "" : narrowLayout() && step.spotNarrow ? step.spotNarrow : step.spot;
-    var nodes = finale ? [] : spot(selector);
+    var nodes = !finale && selector ? spot(selector) : [];
+    if (!nodes.length) clearSpot();
+    if (!finale && step.emphasize) {
+      document.querySelectorAll(step.emphasize).forEach(function (el) {
+        el.classList.add("bw-tour-target--strong");
+      });
+    }
     var counter = document.getElementById("previewTourCounter");
     var title = document.getElementById("previewTourTitle");
     var body = document.getElementById("previewTourBody");
@@ -374,33 +421,29 @@
     var choices = document.getElementById("previewTourChoices");
     var back = document.getElementById("previewTourBack");
     var next = document.getElementById("previewTourNext");
-    var skip = document.getElementById("previewTourSkip");
     if (finale) {
       clearSpot();
       counter.hidden = true;
-      title.textContent = "See what your money looks like a month from now.";
+      title.textContent = "Ready to see the bigger picture?";
       body.textContent =
-        "You've seen how BalanceWhiz helps you spot a cash shortage before it happens. Want to explore more?";
-      actions.hidden = false;
-      skip.hidden = true;
+        "You've seen how BalanceWhiz helps you spot a cash shortage before it happens. Explore a full month of fictional finances, or start forecasting your own money.";
+      actions.hidden = true;
       next.hidden = true;
-      back.hidden = false;
+      back.hidden = true;
       choices.hidden = false;
       applySampleSignupLinks();
     } else {
       counter.hidden = false;
       counter.textContent = index + 1 + " of " + STEPS.length;
       title.textContent = step.title;
-      body.textContent = step.body;
+      body.textContent = stepBody(step);
       actions.hidden = false;
-      skip.hidden = false;
       choices.hidden = true;
       next.hidden = false;
       next.textContent = index === STEPS.length - 1 ? "Finish" : "Next";
       back.hidden = index === 0;
     }
-    var calendar = document.getElementById("preview-calendar");
-    var anchor = finale ? (narrowLayout() || !calendar ? [] : [calendar]) : nodes;
+    var anchor = tourAnchor(nodes);
     placeDialog(anchor);
     window.setTimeout(function () {
       if (!open) return;
@@ -477,9 +520,14 @@
     if (!open) return;
     var step = STEPS[stepIndex];
     var selector = finale ? "" : narrowLayout() && step.spotNarrow ? step.spotNarrow : step.spot;
-    var calendar = document.getElementById("preview-calendar");
-    var nodes = finale ? (narrowLayout() || !calendar ? [] : [calendar]) : spot(selector);
-    placeDialog(nodes);
+    var nodes = !finale && selector ? spot(selector) : [];
+    if (!nodes.length) clearSpot();
+    if (!finale && step.emphasize) {
+      document.querySelectorAll(step.emphasize).forEach(function (el) {
+        el.classList.add("bw-tour-target--strong");
+      });
+    }
+    placeDialog(tourAnchor(nodes));
   });
   document.addEventListener("keydown", onKey);
   new MutationObserver(applySampleSignupLinks).observe(document.documentElement, {
