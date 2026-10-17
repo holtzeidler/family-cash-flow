@@ -119,6 +119,27 @@ services:
       - key: CORS_ORIGINS
         value: https://balancewhiz.com
 
+  # Nightly copy of production Neon into family-cash-flow-db-backup. Reads Neon only.
+  # Set SOURCE_DATABASE_URL in the dashboard to the production Neon URL (the same
+  # value as DATABASE_URL on family-cash-flow-api). See docs/DATABASE_BACKUPS.md.
+  - type: cron
+    name: family-cash-flow-db-backup
+    runtime: docker
+    dockerfilePath: ./backend/db_backup/Dockerfile
+    dockerContext: .
+    plan: starter
+    branch: main
+    schedule: "30 8 * * *"
+    envVars:
+      - key: SOURCE_DATABASE_URL
+        sync: false
+      - key: EXPECTED_SOURCE_HOST
+        value: ep-ancient-union-and21kx9
+      - key: BACKUP_DATABASE_URL
+        fromDatabase:
+          name: family-cash-flow-db-backup
+          property: connectionString
+
   - type: web
     name: family-cash-flow-web-staging
     runtime: static
@@ -133,3 +154,10 @@ databases:
   - name: family-cash-flow-db-staging
     databaseName: family_cash_flow_staging
     plan: free
+
+  - name: family-cash-flow-db-backup
+    databaseName: balancewhiz_backup
+    plan: 0.1c-256mb
+    diskSizeGB: 5
+    postgresMajorVersion: "17"
+    ipAllowList: []
