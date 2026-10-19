@@ -17,7 +17,9 @@ BOT_EMAIL = re.compile(r"^bw-smoke-[a-z0-9]+@example\.com$")
 
 _FORBIDDEN_BITS = (
     "ep-ancient-union",
+    # Retired staging branch that held a copy of production data. Keep refusing it.
     "ep-polished-boat",
+    "ep-polished-morning",
     "neon.tech",
     "render.com",
     "balancewhiz.com",
@@ -135,7 +137,15 @@ def assert_loaded_settings(
     if not url.startswith("sqlite") or db_filename not in url:
         raise SystemExit("Smoke test refused to start: the app is not using the local smoke database.")
     low = url.lower()
-    for bit in ("neon.tech", "ep-ancient-union", "ep-polished-boat", "balancewhiz.com", "render.com", "postgres"):
+    for bit in (
+        "neon.tech",
+        "ep-ancient-union",
+        "ep-polished-boat",
+        "ep-polished-morning",
+        "balancewhiz.com",
+        "render.com",
+        "postgres",
+    ):
         if bit in low:
             raise SystemExit("Smoke test refused to start: the app database looks hosted.")
     if env == "production":
