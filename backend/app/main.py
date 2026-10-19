@@ -883,6 +883,8 @@ def get_current_user_id(access_token: Optional[str]) -> int:
     user_id = _decode_user_id_from_token_optional(access_token)
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    if _is_staging_deployment():
+        _require_staging_session_allowed(user_id)
     return user_id
 
 
@@ -968,7 +970,16 @@ def _staging_auth_email_allowlist() -> set[str]:
 
 
 def _staging_auth_allowlist_enforced() -> bool:
-    return bool(_staging_auth_email_allowlist())
+    return _is_staging_deployment() or bool(_staging_auth_email_allowlist())
+
+
+def _staging_auth_email_allowed(email: str) -> bool:
+    """Staging fails closed: an empty allowlist admits no one. Elsewhere an empty list admits everyone."""
+    allow = _staging_auth_email_allowlist()
+    key = _email_lookup_key(email)
+    if _is_staging_deployment():
+        return key in allow
+    return not allow or key in allow
 
 
 _STAGING_AUTH_DENIED_DETAIL = (
@@ -978,12 +989,16 @@ _STAGING_AUTH_DENIED_DETAIL = (
 
 
 def _require_staging_auth_email_allowed(email: str) -> None:
-    allow = _staging_auth_email_allowlist()
-    if not allow:
-        return
-    key = _email_lookup_key(email)
-    if key not in allow:
+    if not _staging_auth_email_allowed(email):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_STAGING_AUTH_DENIED_DETAIL)
+
+
+def _require_staging_session_allowed(user_id: int) -> None:
+    """Sessions issued before an address left the allowlist stop working on staging."""
+    with SessionLocal() as db:
+        email = db.execute(select(User.email).where(User.id == int(user_id))).scalar_one_or_none()
+    if email is None or not _staging_auth_email_allowed(str(email)):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_STAGING_AUTH_DENIED_DETAIL)
 
 
 def _is_staging_deployment() -> bool:
@@ -1567,6 +1582,9 @@ def _send_signup_welcome_email(*, user: User, family: Family) -> None:
 
     if not (settings.RESEND_API_KEY or "").strip():
         logger.warning("Welcome email skipped: RESEND_API_KEY is not set")
+        return
+    if _is_staging_deployment() and not _staging_auth_email_allowed(str(user.email)):
+        logger.info("Welcome email skipped; staging allowlist user id=%s", getattr(user, "id", None))
         return
     trial_end = trial_ends_at(getattr(family, "created_at", None))
     if trial_end is None:
@@ -2650,6 +2668,7 @@ def public_debug_config():
         "billing_product_code": PRODUCT_CODE,
         "billing_trial_days": TRIAL_DAYS,
         "staging_auth_restricted": _staging_auth_allowlist_enforced(),
+        "staging_auth_allowlist_configured": bool(_staging_auth_email_allowlist()),
         "deployment": "staging" if _is_staging_deployment() else settings.ENV,
         "database_name": _database_identity().get("database") or "",
         "database_host_kind": _database_identity().get("host_kind") or "",
@@ -4406,6 +4425,8 @@ def _email_lookup_key(email: str) -> str:
 def check_email_registered(payload: CheckEmailIn, db=Depends(get_db)):
     """Return whether an account already uses this email (case-insensitive). Used before signup."""
     key = _email_lookup_key(payload.email)
+    if _is_staging_deployment() and not _staging_auth_email_allowed(key):
+        return EmailExistsOut(exists=False)
     existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
     return EmailExistsOut(exists=existing is not None)
 
@@ -4529,7 +4550,7 @@ def password_reset_request(payload: PasswordResetRequestIn, request: Request, db
     if user is None:
         verify_password("not-the-password", _pw_reset_dummy_hash())
         return {"ok": True}
-    if _staging_auth_allowlist_enforced() and email_key not in _staging_auth_email_allowlist():
+    if not _staging_auth_email_allowed(email_key):
         verify_password("not-the-password", _pw_reset_dummy_hash())
         return {"ok": True}
     db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == int(user.id)))
