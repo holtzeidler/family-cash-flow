@@ -1,0 +1,50 @@
+name: Staging — backend database checks
+
+on:
+  push:
+    branches: ["staging"]
+  pull_request:
+    branches: ["staging"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-backend-database-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: balancewhiz_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d balancewhiz_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install backend
+        run: pip install -r backend/requirements.txt pytest==8.4.2 httpx==0.28.1 pyyaml==6.0.3
+
+      - name: Staging database guard
+        run: python -m pytest backend/tests/test_staging_database_guard.py -q
+
+      - name: Empty Postgres startup
+        env:
+          TEST_POSTGRES_URL: postgresql://ci:ci@localhost:5432/balancewhiz_ci
+        run: python -m pytest backend/tests/test_empty_postgres_startup.py -q

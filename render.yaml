@@ -4,7 +4,7 @@
 # Production API (branch main): set DATABASE_URL, JWT_SECRET, CORS_ORIGINS, ENV=production
 # in the dashboard — do not reuse production DATABASE_URL for staging.
 #
-# Staging (branch staging): Neon staging branch + API + static frontend. See docs/STAGING.md.
+# Staging (branch staging): separate Neon staging project + API + static frontend. See docs/STAGING.md.
 # Trial reminders run twice a day. The staging cron never sets
 # TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION and only emails the staging allowlist.
 # The production cron is a separate service on branch main. Set its DATABASE_URL
@@ -12,12 +12,14 @@
 # STRIPE_SECRET_KEY, in the Render dashboard. Do not copy the staging allowlist
 # onto it. A second run the same day does not send the 3-day or trial-expired
 # note again: lifecycle_email_sends is unique per family, kind, and trial end.
-# DATABASE_URL on family-cash-flow-api-staging must be the Neon staging endpoint
-# (ep-polished-boat-…), never production (ep-ancient-union-…).
+# DATABASE_URL on family-cash-flow-api-staging and the staging cron must be the
+# separate staging Neon project, never production (ep-ancient-union-…) or the
+# retired staging branch (ep-polished-boat-…). Both staging services refuse to
+# start on anything else.
 #
 # Host labels below must match the real Neon endpoints wired in Render:
 #   production API → ep-ancient-union-…
-#   staging API    → ep-polished-boat-…
+#   staging API    → staging Neon project endpoint ID (no -pooler)
 
 services:
   - type: web
@@ -45,7 +47,7 @@ services:
       - key: PRODUCTION_DATABASE_HOST
         value: ep-ancient-union-and21kx9-pooler
       - key: STAGING_DATABASE_HOST
-        value: ep-polished-boat-ando6x8y-pooler
+        value: ep-polished-morning-b5pd52j4
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
@@ -82,7 +84,7 @@ services:
       - key: PRODUCTION_DATABASE_HOST
         value: ep-ancient-union-and21kx9-pooler
       - key: STAGING_DATABASE_HOST
-        value: ep-polished-boat-ando6x8y-pooler
+        value: ep-polished-morning-b5pd52j4
       - key: APP_PUBLIC_BASE_URL
         value: https://staging.balancewhiz.com
       - key: CORS_ORIGINS
