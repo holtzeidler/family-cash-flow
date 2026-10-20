@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sys
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from jose import jwt
@@ -63,9 +64,22 @@ def _register(client: TestClient) -> str:
     return email
 
 
+def _utc_clock(timestamp: int) -> datetime:
+    """UTC clock reading stored by the server's naive utcnow().timestamp().
+
+    Python treats a naive datetime as local time, so the raw exp-iat difference
+    gains or loses an hour when that window crosses a daylight-saving change.
+    fromtimestamp() returns the clock reading the server passed in. Marking
+    that reading as UTC measures the lifetime the server added.
+    """
+    return datetime.fromtimestamp(int(timestamp)).replace(tzinfo=timezone.utc)
+
+
 def _lifetime_seconds(token: str) -> int:
     payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-    return int(payload["exp"]) - int(payload["iat"])
+    issued = _utc_clock(payload["iat"])
+    expires = _utc_clock(payload["exp"])
+    return int((expires - issued).total_seconds())
 
 
 def _set_cookie(res) -> str:
