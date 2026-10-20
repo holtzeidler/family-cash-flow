@@ -22,6 +22,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 _DB = smoke_db_path("balancewhiz-smoke-csrf.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
@@ -65,11 +66,8 @@ def _site_headers(*, origin: str | None = None, header: bool = True, bearer: str
 
 def _register_and_login(client: TestClient, *, keep: bool) -> tuple[str, int]:
     email = f"bw-smoke-csrf-{uuid.uuid4().hex[:10]}@example.com"
-    created = client.post(
-        "/api/auth/register",
-        json={"email": email, "password": _PASSWORD, "first_name": "Csrf", "last_name": "Tester"},
-    )
-    assert created.status_code == 201, created.text
+    created = signup_verified(client, email=email, password=_PASSWORD, first_name="Csrf", last_name="Tester")
+    assert created.status_code == 200
     client.post("/api/auth/logout")
     logged = client.post(
         "/api/auth/login",

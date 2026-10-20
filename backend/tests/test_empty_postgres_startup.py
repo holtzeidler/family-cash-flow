@@ -25,6 +25,7 @@ if urlparse(_URL).hostname not in ("localhost", "127.0.0.1"):
 
 sys.path.insert(0, str(ROOT / "e2e"))
 from smoke_guard import apply_safe_environment, smoke_db_path  # noqa: E402
+from verified_signup import signup_verified  # noqa: E402
 
 apply_safe_environment(smoke_db_path("balancewhiz-smoke-postgres-unused.db"))
 os.environ["DATABASE_URL"] = _URL
@@ -77,7 +78,16 @@ def test_every_model_table_and_column_exists(started):
 def test_startup_migrations_and_indexes_exist(started):
     (_, columns, indexes), _ = started
     assert {"pending_lookup_key", "pending_change_on"} <= columns["billing_subscriptions"]
-    assert {"platform_role", "complimentary_access", "first_name", "onboarding_goals", "session_version"} <= columns["users"]
+    assert {
+        "platform_role",
+        "complimentary_access",
+        "first_name",
+        "onboarding_goals",
+        "session_version",
+        "email_verified_at",
+        "welcome_email_sent_at",
+        "onboarding_completed_at",
+    } <= columns["users"]
     for table, expected in _RAW_SQL_INDEXES.items():
         assert expected <= indexes[table], (table, expected - indexes[table])
 
@@ -106,11 +116,14 @@ def test_a_new_account_can_register_and_sign_in(started):
     email = f"bw-smoke-{uuid.uuid4().hex[:10]}@example.com"
     password = "SmokeOnly1!"
     with TestClient(main.app) as client:
-        reg = client.post(
-            "/api/auth/register",
-            json={"email": email, "password": password, "first_name": "Empty", "last_name": "Postgres"},
+        reg = signup_verified(
+            client,
+            email=email,
+            password=password,
+            first_name="Empty",
+            last_name="Postgres",
         )
-        assert reg.status_code == 201, reg.text
+        assert reg.status_code == 200
         login = client.post("/api/auth/login", json={"email": email, "password": password})
         assert login.status_code == 200, login.text
     with main.SessionLocal() as db:

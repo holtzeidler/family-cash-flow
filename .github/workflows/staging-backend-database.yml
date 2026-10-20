@@ -48,3 +48,6 @@ jobs:
         env:
           TEST_POSTGRES_URL: postgresql://ci:ci@localhost:5432/balancewhiz_ci
         run: python -m pytest backend/tests/test_empty_postgres_startup.py -q
+
+      - name: Email verification
+        run: python -m pytest backend/tests/test_email_verification.py -q

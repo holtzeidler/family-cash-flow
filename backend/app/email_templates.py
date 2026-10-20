@@ -140,6 +140,47 @@ def build_welcome_email_content(
     )
 
 
+def build_email_verification_content(
+    *,
+    confirm_url: str,
+    first_name: str = "",
+) -> TransactionalEmailContent:
+    """One confirmation link. The link is single-use and expires in 60 minutes."""
+    name = normalize_first_name(first_name)
+    heading = f"Confirm your email, {name}." if name else "Confirm your email."
+    return TransactionalEmailContent(
+        subject="Confirm your email for BalanceWhiz",
+        preheader="This link expires in 60 minutes.",
+        heading=heading,
+        body=(
+            "Use the button below to confirm your email and continue setting up BalanceWhiz.\n\n"
+            "This link expires in 60 minutes and can only be used once."
+        ),
+        cta_label="Confirm my email",
+        cta_url=_safe_http_url(confirm_url),
+        support_line="If you did not start creating a BalanceWhiz account, you can ignore this email.",
+    )
+
+
+def build_existing_account_notice_content(*, app_url: str) -> TransactionalEmailContent:
+    """Sent when a signup is attempted for an address that already has an account."""
+    site = _safe_http_url(app_url).rstrip("/")
+    return TransactionalEmailContent(
+        subject="Sign in to BalanceWhiz",
+        preheader="This email already has a BalanceWhiz account.",
+        heading="You already have an account.",
+        body=(
+            "A new BalanceWhiz signup was started with this email address. "
+            "Sign in to continue with the account you already have.\n\n"
+            "If you did not try to create an account, you can ignore this email. "
+            "Your password was not changed."
+        ),
+        cta_label="Sign in",
+        cta_url=f"{site}/login.html" if site else "",
+        support_line="Your password was not changed.",
+    )
+
+
 def build_trial_ending_email_content(
     *,
     app_url: str,

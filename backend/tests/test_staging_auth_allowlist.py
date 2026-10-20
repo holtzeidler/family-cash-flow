@@ -22,6 +22,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 # "staging" in the filename lets the staging write guard treat this database as staging.
 _DB = smoke_db_path("balancewhiz-smoke-staging-auth.db")
@@ -67,10 +68,7 @@ def _email() -> str:
 
 
 def _register(client: TestClient, email: str):
-    return client.post(
-        "/api/auth/register",
-        json={"email": email, "password": _PASSWORD, "first_name": "Staging", "last_name": "Tester"},
-    )
+    return signup_verified(client, email=email, password=_PASSWORD, first_name="Staging", last_name="Tester")
 
 
 def _login(client: TestClient, email: str):
@@ -81,7 +79,7 @@ def _existing_user(email: str) -> str:
     """Create the account outside staging mode and return its access token."""
     with TestClient(app) as client:
         res = _register(client, email)
-        assert res.status_code == 201, res.text
+        assert res.status_code == 200
         return res.json()["access_token"]
 
 
@@ -108,7 +106,7 @@ def test_listed_tester_can_register_log_in_and_keep_a_session(monkeypatch, welco
     _as_staging(monkeypatch, f"other@example.com, {tester.upper()}")
     with TestClient(app) as client:
         created = _register(client, tester)
-        assert created.status_code == 201, created.text
+        assert created.status_code == 200
         assert client.get("/api/families").status_code == 200
         token = created.json()["access_token"]
         client.post("/api/auth/logout")
@@ -123,7 +121,7 @@ def test_listed_tester_can_register_log_in_and_keep_a_session(monkeypatch, welco
 def test_existing_cookie_session_for_unlisted_user_is_refused(monkeypatch):
     outsider = _email()
     with TestClient(app) as client:
-        assert _register(client, outsider).status_code == 201
+        assert _register(client, outsider).status_code == 200
         assert client.get("/api/families").status_code == 200
         _as_staging(monkeypatch, _email())
         for path in ("/api/families", "/api/auth/me"):
@@ -231,7 +229,7 @@ def test_production_behavior_is_unchanged_without_an_allowlist(monkeypatch, welc
     monkeypatch.setattr(settings, "STAGING_AUTH_EMAIL_ALLOWLIST", "")
     email = _email()
     with TestClient(app) as client:
-        assert _register(client, email).status_code == 201
+        assert _register(client, email).status_code == 200
         assert client.post("/api/auth/check-email", json={"email": email}).json() == {"exists": True}
         token = client.post("/api/auth/login", json={"email": email, "password": _PASSWORD}).json()["access_token"]
     with TestClient(app) as bearer_only:

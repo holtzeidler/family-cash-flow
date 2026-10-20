@@ -18,6 +18,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 _DB = smoke_db_path("balancewhiz-smoke-one-trial.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
@@ -44,16 +45,8 @@ assert_loaded_settings(
 
 
 def _register(client: TestClient, email: str) -> None:
-    res = client.post(
-        "/api/auth/register",
-        json={
-            "email": email,
-            "password": "SmokeOnly1!",
-            "first_name": "Trial",
-            "last_name": "Owner",
-        },
-    )
-    assert res.status_code == 201, res.text
+    res = signup_verified(client, email=email, password="SmokeOnly1!", first_name="Trial", last_name="Owner")
+    assert res.status_code == 200
 
 
 def _family_ids(client: TestClient) -> list[int]:
