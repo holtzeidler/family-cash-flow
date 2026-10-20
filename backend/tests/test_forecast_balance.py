@@ -20,6 +20,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 _DB = smoke_db_path("balancewhiz-smoke-pytest.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
@@ -50,16 +51,14 @@ def _money(value) -> Decimal:
 
 def test_projected_balance_includes_starting_balance_income_and_expense():
     with TestClient(app) as client:
-        created = client.post(
-            "/api/auth/register",
-            json={
-                "email": "bw-smoke-math@example.com",
-                "password": "SmokeOnly1!",
-                "first_name": "Smoke",
-                "last_name": "Math",
-            },
+        created = signup_verified(
+            client,
+            email="bw-smoke-math@example.com",
+            password="SmokeOnly1!",
+            first_name="Smoke",
+            last_name="Math",
         )
-        assert created.status_code == 201, created.text
+        assert created.status_code == 200
 
         families = client.get("/api/families")
         assert families.status_code == 200, families.text
@@ -107,16 +106,14 @@ def test_moved_expected_occurrence_updates_earlier_month_balance():
     because the original occurrence sits in the next month.
     """
     with TestClient(app) as client:
-        created = client.post(
-            "/api/auth/register",
-            json={
-                "email": "bw-smoke-move@example.com",
-                "password": "SmokeOnly1!",
-                "first_name": "Smoke",
-                "last_name": "Move",
-            },
+        created = signup_verified(
+            client,
+            email="bw-smoke-move@example.com",
+            password="SmokeOnly1!",
+            first_name="Smoke",
+            last_name="Move",
         )
-        assert created.status_code == 201, created.text
+        assert created.status_code == 200
 
         families = client.get("/api/families")
         assert families.status_code == 200, families.text
@@ -198,16 +195,14 @@ def test_identical_taxes_on_the_same_day_are_not_counted_twice():
     balance should subtract it once.
     """
     with TestClient(app) as client:
-        created = client.post(
-            "/api/auth/register",
-            json={
-                "email": "bw-smoke-taxes@example.com",
-                "password": "SmokeOnly1!",
-                "first_name": "Smoke",
-                "last_name": "Taxes",
-            },
+        created = signup_verified(
+            client,
+            email="bw-smoke-taxes@example.com",
+            password="SmokeOnly1!",
+            first_name="Smoke",
+            last_name="Taxes",
         )
-        assert created.status_code == 201, created.text
+        assert created.status_code == 200
 
         families = client.get("/api/families")
         assert families.status_code == 200, families.text
@@ -271,16 +266,14 @@ def test_identical_taxes_on_the_same_day_are_not_counted_twice():
 
 
 def _taxes_series(client, email: str):
-    created = client.post(
-        "/api/auth/register",
-        json={
-            "email": email,
-            "password": "SmokeOnly1!",
-            "first_name": "Smoke",
-            "last_name": "Taxes",
-        },
+    created = signup_verified(
+        client,
+        email=email,
+        password="SmokeOnly1!",
+        first_name="Smoke",
+        last_name="Taxes",
     )
-    assert created.status_code == 201, created.text
+    assert created.status_code == 200
     families = client.get("/api/families")
     assert families.status_code == 200, families.text
     family_id = families.json()[0]["id"]
@@ -486,16 +479,14 @@ def test_moving_twice_yearly_taxes_replaces_that_date():
     old October 3, so a naive save used to schedule both days.
     """
     with TestClient(app) as client:
-        created = client.post(
-            "/api/auth/register",
-            json={
-                "email": "bw-smoke-taxes-semiannual@example.com",
-                "password": "SmokeOnly1!",
-                "first_name": "Smoke",
-                "last_name": "Taxes",
-            },
+        created = signup_verified(
+            client,
+            email="bw-smoke-taxes-semiannual@example.com",
+            password="SmokeOnly1!",
+            first_name="Smoke",
+            last_name="Taxes",
         )
-        assert created.status_code == 201, created.text
+        assert created.status_code == 200
         family_id = client.get("/api/families").json()[0]["id"]
         account_id = client.post(
             f"/api/families/{family_id}/accounts",
@@ -548,16 +539,14 @@ def test_moving_twice_yearly_taxes_replaces_that_date():
 
 
 def _april_october_taxes(client, email: str, start_date: str):
-    created = client.post(
-        "/api/auth/register",
-        json={
-            "email": email,
-            "password": "SmokeOnly1!",
-            "first_name": "Smoke",
-            "last_name": "Taxes",
-        },
+    created = signup_verified(
+        client,
+        email=email,
+        password="SmokeOnly1!",
+        first_name="Smoke",
+        last_name="Taxes",
     )
-    assert created.status_code == 201, created.text
+    assert created.status_code == 200
     family_id = client.get("/api/families").json()[0]["id"]
     account_id = client.post(
         f"/api/families/{family_id}/accounts",

@@ -21,6 +21,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 _DB = smoke_db_path("balancewhiz-smoke-confidence.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
@@ -50,16 +51,14 @@ def _today():
 
 
 def _family(client: TestClient, email: str) -> int:
-    created = client.post(
-        "/api/auth/register",
-        json={
-            "email": email,
-            "password": "SmokeOnly1!",
-            "first_name": "Smoke",
-            "last_name": "Confidence",
-        },
+    created = signup_verified(
+        client,
+        email=email,
+        password="SmokeOnly1!",
+        first_name="Smoke",
+        last_name="Confidence",
     )
-    assert created.status_code == 201, created.text
+    assert created.status_code == 200
     families = client.get("/api/families")
     assert families.status_code == 200, families.text
     return families.json()[0]["id"]

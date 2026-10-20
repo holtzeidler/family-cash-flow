@@ -19,6 +19,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 _DB = smoke_db_path("balancewhiz-smoke-ga-purchase.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
@@ -238,16 +239,14 @@ def test_complimentary_access_is_not_reported_as_a_paid_subscription():
 
 def test_register_reports_trial_started_without_adding_it_to_analytics():
     with TestClient(app) as client:
-        res = client.post(
-            "/api/auth/register",
-            json={
-                "email": f"bw-smoke-ga-{uuid.uuid4().hex[:10]}@example.com",
-                "password": "SmokeOnly1!",
-                "first_name": "Trial",
-                "last_name": "Starter",
-            },
+        res = signup_verified(
+            client,
+            email=f"bw-smoke-ga-{uuid.uuid4().hex[:10]}@example.com",
+            password="SmokeOnly1!",
+            first_name="Trial",
+            last_name="Starter",
         )
-    assert res.status_code == 201, res.text
+    assert res.status_code == 200
     body = res.json()
     assert body["trial_started"] is True
     assert "analytics_purchase" not in body
