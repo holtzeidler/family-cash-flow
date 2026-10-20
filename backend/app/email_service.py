@@ -28,6 +28,8 @@ from .email_templates import (
     PRODUCTION_APP_URL,
     TransactionalEmailContent,
     build_annual_renewal_email_content,
+    build_email_verification_content,
+    build_existing_account_notice_content,
     build_payment_failed_email_content,
     build_payment_method_updated_email_content,
     build_plan_selection_email_content,
@@ -179,6 +181,48 @@ def send_welcome_email(
         trial_days=days,
         trial_ends_on=trial_ends_on,
     )
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
+def send_email_verification_email(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    confirm_url: str,
+    first_name: str = "",
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Send the signup confirmation link. The caller stores only a hash of the token."""
+    content = build_email_verification_content(confirm_url=confirm_url, first_name=first_name)
+    return send_templated_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        content=content,
+        app_url=app_url,
+        from_addr=from_addr,
+        reply_to=reply_to,
+    )
+
+
+def send_existing_account_notice(
+    *,
+    api_key: str,
+    to_addr: str,
+    app_url: str,
+    from_addr: str = DEFAULT_FROM,
+    reply_to: Optional[str] = DEFAULT_REPLY_TO,
+) -> str:
+    """Tell the address to sign in. Does not include a verification or reset token."""
+    content = build_existing_account_notice_content(app_url=app_url)
     return send_templated_email(
         api_key=api_key,
         to_addr=to_addr,

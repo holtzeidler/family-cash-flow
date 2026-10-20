@@ -80,6 +80,30 @@
         </div>
         <div id="signupCallout" class="callout" style="display:none" role="status"></div>
 
+        <div id="accountSetupEmailCheck" class="card auth-section auth-section--open" hidden>
+          <h1 class="account-setup-wizard__eyebrow">Check your email</h1>
+          <p class="account-setup-wizard__subeyebrow">
+            We sent a confirmation link to <strong id="accountSetupEmailCheckAddress"></strong>.
+          </p>
+          <p>
+            The link expires in 60 minutes and can only be used once. Open it to continue setup.
+            You can use this device or another one.
+          </p>
+          <div class="account-setup-actions">
+            <button type="button" id="accountSetupResendBtn" class="secondary">Resend email</button>
+            <button type="button" id="accountSetupChangeEmailBtn" class="secondary">Use a different email</button>
+          </div>
+          <p id="accountSetupEmailCheckNote" role="status"></p>
+        </div>
+        <div id="accountSetupVerifyRecovery" class="card auth-section auth-section--open" hidden>
+          <h1 class="account-setup-wizard__eyebrow">Confirm your email</h1>
+          <p id="accountSetupVerifyRecoveryMessage" role="status"></p>
+          <div class="account-setup-actions">
+            <a class="top-nav__logout" href="/login.html">Sign in</a>
+            <button type="button" id="accountSetupVerifyRecoveryRetry" class="secondary">Request a new link</button>
+          </div>
+        </div>
+
         <div id="accountSetupWizard" class="account-setup-wizard" data-step="0" aria-label="Account setup">
           <div class="account-setup-wizard__stepHead">
             <p class="account-setup-wizard__stepLabel" id="accountSetupWizardStepLabel" aria-live="polite">Step 1 of 4</p>
@@ -809,6 +833,6 @@
       </div>
     </div>
 
-    <script src="../signup/signup.js?v=140"></script>
+    <script src="../signup/signup.js?v=143"></script>
   </body>
 </html>

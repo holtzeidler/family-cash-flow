@@ -17,6 +17,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 _DB = smoke_db_path("balancewhiz-smoke-goals.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
@@ -42,15 +43,20 @@ assert_loaded_settings(
 
 
 def _register(client: TestClient, email: str, **extra):
-    body = {
-        "email": email,
-        "password": "SmokeOnly1!",
-        "first_name": "Goal",
-        "last_name": "Tester",
-    }
-    body.update(extra)
-    res = client.post("/api/auth/register", json=body)
-    assert res.status_code == 201, res.text
+    kwargs = {}
+    if "onboarding_goals" in extra:
+        kwargs["onboarding_goals"] = extra["onboarding_goals"]
+    if "onboarding_goal_other" in extra:
+        kwargs["onboarding_goal_other"] = extra["onboarding_goal_other"]
+    res = signup_verified(
+        client,
+        email=email,
+        password="SmokeOnly1!",
+        first_name="Goal",
+        last_name="Tester",
+        **kwargs,
+    )
+    assert res.status_code == 200
     return res.json()
 
 

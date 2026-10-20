@@ -362,6 +362,12 @@ class User(Base):
     # A token with no "sv" is generation 0, so sessions already issued stay
     # valid until the next password change. Existing rows default to 0.
     session_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # Set when the address is confirmed. Existing accounts are backfilled at startup.
+    # A null value cannot pass get_current_user_id. Signup inserts this with the timestamp.
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Set in the same transaction as the starter family so the Welcome email is sent once.
+    welcome_email_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    onboarding_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     # Platform user type: subscriber (app) | admin (operator console). Family roles are on FamilyMember.
     platform_role: Mapped[str] = mapped_column(String(20), nullable=False, default="subscriber")
@@ -513,6 +519,23 @@ class PasswordResetToken(Base):
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class EmailVerification(Base):
+    """Pending signup. The raw confirmation token and change token are never stored."""
+
+    __tablename__ = "email_verifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email_normalized: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    first_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    change_token_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    consumed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 class FamilyInvite(Base):
@@ -738,7 +761,10 @@ class Feedback(Base):
     admin_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
-engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {})
+engine = create_engine(
+    settings.DATABASE_URL,
+    connect_args={"check_same_thread": False, "timeout": 5} if settings.DATABASE_URL.startswith("sqlite") else {},
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
@@ -783,6 +809,53 @@ def _allow_password_reset_request(*, ip: str, email_key: str) -> bool:
         lip.append(now)
         lem.append(now)
         return True
+
+
+_VERIFY_MAX_PER_IP_PER_HOUR = 20
+_VERIFY_MAX_PER_EMAIL_PER_HOUR = 5
+_VERIFY_WINDOW_S = 60 * 60
+_VERIFY_RESEND_COOLDOWN_S = 60
+_VERIFY_TOKEN_MINUTES = 60
+_verify_rate_lock = threading.Lock()
+_verify_hits_by_ip: dict[str, list[float]] = defaultdict(list)
+_verify_hits_by_email: dict[str, list[float]] = defaultdict(list)
+_verify_last_send_at: dict[str, float] = {}
+
+
+def _reset_verification_rate_limits() -> None:
+    """Clear in-memory signup limits. Tests call this. It is not an HTTP route."""
+    with _verify_rate_lock:
+        _verify_hits_by_ip.clear()
+        _verify_hits_by_email.clear()
+        _verify_last_send_at.clear()
+
+
+def _allow_verification_request(*, ip: str, email_key: str) -> bool:
+    now = time.time()
+    with _verify_rate_lock:
+        by_ip = _verify_hits_by_ip[ip]
+        by_ip[:] = [stamp for stamp in by_ip if now - stamp < _VERIFY_WINDOW_S]
+        if len(by_ip) >= _VERIFY_MAX_PER_IP_PER_HOUR:
+            return False
+        by_email = _verify_hits_by_email[email_key]
+        by_email[:] = [stamp for stamp in by_email if now - stamp < _VERIFY_WINDOW_S]
+        if len(by_email) >= _VERIFY_MAX_PER_EMAIL_PER_HOUR:
+            return False
+        by_ip.append(now)
+        by_email.append(now)
+        return True
+
+
+def _verification_send_on_cooldown(email_key: str) -> bool:
+    now = time.time()
+    with _verify_rate_lock:
+        last = _verify_last_send_at.get(email_key, 0.0)
+    return (now - last) < _VERIFY_RESEND_COOLDOWN_S
+
+
+def _mark_verification_sent(email_key: str) -> None:
+    with _verify_rate_lock:
+        _verify_last_send_at[email_key] = time.time()
 
 
 def create_access_token(*, user_id: int, session_version: int, minutes: Optional[int] = None) -> str:
@@ -895,8 +968,10 @@ def _session_version_from_claims(payload: dict) -> Optional[int]:
 def _require_token_session_current(user_id: int, token_version: int) -> None:
     """Reject a token issued before this user's latest password change."""
     with SessionLocal() as db:
-        current = db.execute(select(User.session_version).where(User.id == int(user_id))).scalar_one_or_none()
-    if current is None or int(current) != int(token_version):
+        row = db.execute(
+            select(User.session_version, User.email_verified_at).where(User.id == int(user_id))
+        ).one_or_none()
+    if row is None or int(row[0]) != int(token_version) or row[1] is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
 
 
@@ -1581,7 +1656,7 @@ def _login_password_reset_url(*, token: str, request: Optional[Request]) -> str:
 
 
 def _send_signup_welcome_email(*, user: User, family: Family) -> None:
-    """One Welcome email when an account and its trial start. Never a second trial email."""
+    """One Welcome email when the starter family and its trial are created."""
     from .billing_entitlement import trial_ends_at
     from .email_service import send_welcome_email
     from .email_templates import resolve_app_url
@@ -3066,6 +3141,7 @@ def startup_populate_schema():
     _ensure_family_invites_table()
     _ensure_user_platform_columns()
     _ensure_user_session_version_column()
+    _ensure_user_email_verification_columns()
     _migrate_platform_roles_subscriber_admin()
     _ensure_user_complimentary_columns()
     _ensure_user_name_part_columns()
@@ -3681,6 +3757,69 @@ def _ensure_user_session_version_column() -> None:
             )
 
 
+_EMAIL_VERIFIED_BACKFILL_KEY = "users.email_verified_at.backfill_v1"
+
+
+def _user_column_names(conn) -> set[str]:
+    if settings.DATABASE_URL.startswith("sqlite"):
+        cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+        return {str(row[1]) for row in cols}
+    rows = conn.execute(
+        text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'users' AND table_schema = current_schema()"
+        )
+    ).fetchall()
+    return {str(row[0]) for row in rows}
+
+
+def _ensure_user_email_verification_columns() -> None:
+    """Add verification timestamps and confirm accounts that already exist, once.
+
+    The backfill runs only while its marker is missing. A later startup leaves
+    a null email_verified_at null, so a restart cannot confirm an account that
+    has not used its link. The update does not change session_version.
+    """
+    with engine.begin() as conn:
+        names = _user_column_names(conn)
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(text("CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"))
+            if "email_verified_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN email_verified_at DATETIME"))
+            if "welcome_email_sent_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN welcome_email_sent_at DATETIME"))
+            if "onboarding_completed_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_completed_at DATETIME"))
+            remember = "INSERT OR IGNORE INTO app_meta (key, value) VALUES (:key, :value)"
+        else:
+            conn.execute(
+                text("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(128) PRIMARY KEY, value TEXT NOT NULL)")
+            )
+            if "email_verified_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN email_verified_at TIMESTAMP"))
+            if "welcome_email_sent_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN welcome_email_sent_at TIMESTAMP"))
+            if "onboarding_completed_at" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_completed_at TIMESTAMP"))
+            remember = "INSERT INTO app_meta (key, value) VALUES (:key, :value) ON CONFLICT (key) DO NOTHING"
+        pending = conn.execute(
+            text("SELECT 1 FROM app_meta WHERE key = :key"),
+            {"key": _EMAIL_VERIFIED_BACKFILL_KEY},
+        ).first()
+        if pending is not None:
+            return
+        conn.execute(
+            text(
+                "UPDATE users SET email_verified_at = COALESCE(created_at, CURRENT_TIMESTAMP) "
+                "WHERE email_verified_at IS NULL"
+            )
+        )
+        conn.execute(
+            text(remember),
+            {"key": _EMAIL_VERIFIED_BACKFILL_KEY, "value": "1"},
+        )
+
+
 def _ensure_user_complimentary_columns() -> None:
     """Internal complimentary Cash Forecast access on users (not a Stripe plan)."""
     with engine.begin() as conn:
@@ -4210,79 +4349,434 @@ def check_email_registered(payload: CheckEmailIn, db=Depends(get_db)):
     return EmailExistsOut(exists=existing is not None)
 
 
-@app.post("/api/auth/register", status_code=status.HTTP_201_CREATED, response_model=RegisterOut)
-def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
+_VERIFY_SEND_FAILED = "We couldn't send the confirmation email. Please try again. No account was created."
+_VERIFY_INVALID = "This confirmation link is not valid. Request a new one."
+_VERIFY_EXPIRED = "This confirmation link has expired. Request a new one."
+_VERIFY_USED = "This confirmation link has already been used. Sign in to continue."
+_VERIFY_EXISTS = "This email already has an account. Sign in to continue."
+
+
+class VerificationStartIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+    first_name: str = Field(min_length=1, max_length=80)
+    last_name: str = Field(min_length=1, max_length=80)
+    previous_email: Optional[EmailStr] = None
+    change_token: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def _clean_person_name(cls, v: object) -> object:
+        return RegisterIn._clean_person_name(v)
+
+
+class VerificationStartOut(BaseModel):
+    ok: bool = True
+    change_token: str
+
+
+class VerificationResendIn(BaseModel):
+    email: EmailStr
+    change_token: str = Field(min_length=1, max_length=500)
+
+
+class VerifyEmailIn(BaseModel):
+    token: str = Field(min_length=20, max_length=500)
+
+
+class OnboardingCompleteIn(BaseModel):
+    onboarding_goals: Optional[list[str]] = None
+    onboarding_goal_other: Optional[str] = Field(default=None, max_length=80)
+
+    @field_validator("onboarding_goals")
+    @classmethod
+    def _normalize_goals(cls, v: object) -> object:
+        return RegisterIn._normalize_goals(v)
+
+    @field_validator("onboarding_goal_other", mode="before")
+    @classmethod
+    def _clean_goal_other(cls, v: object) -> object:
+        return RegisterIn._clean_goal_other(v)
+
+
+def _verification_link(*, token: str, request: Optional[Request]) -> str:
+    base = _public_app_base_url(request=request)
+    path = "account-setup/?verify=" + quote(token, safe="")
+    if base:
+        return f"{base}/{path}"
+    return f"./{path}"
+
+
+def _deliver_account_email(*, to_addr: str, kind: str, confirm_url: str, first_name: str) -> str:
+    """Send one signup email. Failures raise so the caller can roll the pending row back."""
+    from .email_service import send_email_verification_email, send_existing_account_notice
+    from .email_templates import resolve_app_url
+
+    api_key = (settings.RESEND_API_KEY or "").strip()
+    if not api_key:
+        raise RuntimeError("confirmation email is not configured")
+    app_url = resolve_app_url(
+        is_staging_deployment=_is_staging_deployment(),
+        app_public_base_url=settings.APP_PUBLIC_BASE_URL,
+    )
+    reply_to = (settings.TRANSACTIONAL_REPLY_TO or "").strip() or None
+    if kind == "existing":
+        return send_existing_account_notice(
+            api_key=api_key,
+            to_addr=to_addr,
+            app_url=app_url,
+            reply_to=reply_to,
+        )
+    return send_email_verification_email(
+        api_key=api_key,
+        to_addr=to_addr,
+        app_url=app_url,
+        confirm_url=confirm_url,
+        first_name=first_name,
+        reply_to=reply_to,
+    )
+
+
+def _verification_row_is_recent(created_at: Optional[datetime]) -> bool:
+    created = _as_utc_naive(created_at)
+    if created is None:
+        return False
+    return datetime.utcnow() - created < timedelta(seconds=_VERIFY_RESEND_COOLDOWN_S)
+
+
+def _pending_verification(db, email_key: str) -> Optional[EmailVerification]:
+    return db.execute(
+        select(EmailVerification)
+        .where(
+            EmailVerification.email_normalized == email_key,
+            EmailVerification.consumed_at.is_(None),
+        )
+        .order_by(EmailVerification.id.desc())
+    ).scalars().first()
+
+
+def _consume_changed_email(db, previous_email: Optional[str], change_token: Optional[str], now: datetime) -> None:
+    """Retire the previous pending signup only when this browser presents its change token."""
+    raw = (change_token or "").strip()
+    if not previous_email or len(raw) < 20:
+        return
+    db.execute(
+        update(EmailVerification)
+        .where(
+            EmailVerification.email_normalized == _email_lookup_key(previous_email),
+            EmailVerification.change_token_hash == _hash_invite_token(raw),
+            EmailVerification.consumed_at.is_(None),
+        )
+        .values(consumed_at=now, password_hash="")
+    )
+
+
+def _verification_failure_for_hash(db, token_hash: str) -> HTTPException:
+    row = db.execute(select(EmailVerification).where(EmailVerification.token_hash == token_hash)).scalar_one_or_none()
+    if row is not None and row.consumed_at is not None:
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_VERIFY_USED)
+    if row is not None and _as_utc_naive(row.expires_at) <= datetime.utcnow():
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_VERIFY_EXPIRED)
+    if row is None:
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_VERIFY_INVALID)
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_VERIFY_USED)
+
+
+def _earliest_owned_family(db, user_id: int) -> Optional[Family]:
+    return db.execute(
+        select(Family)
+        .join(FamilyMember, FamilyMember.family_id == Family.id)
+        .where(FamilyMember.user_id == int(user_id), FamilyMember.is_family_owner.is_(True))
+        .order_by(Family.created_at.asc(), Family.id.asc())
+    ).scalars().first()
+
+
+def _apply_onboarding_goals(user: User, payload: OnboardingCompleteIn) -> None:
+    if payload.onboarding_goals is None:
+        return
+    user.onboarding_goals = json.dumps(payload.onboarding_goals)
+    user.onboarding_goal_other = payload.onboarding_goal_other if "other" in payload.onboarding_goals else None
+
+
+def _onboarding_session(response: Response, user: User, *, trial_started: bool) -> dict:
+    token = create_access_token(user_id=int(user.id), session_version=int(user.session_version or 0))
+    _set_access_cookie(response, token, persistent=False)
+    return {"user": _user_out(user), "access_token": token, "trial_started": trial_started}
+
+
+@app.post("/api/auth/verification/start", response_model=VerificationStartOut)
+def start_email_verification(payload: VerificationStartIn, request: Request, db=Depends(get_db)):
+    """Start signup. The response is the same whether or not the address already has an account."""
     _require_staging_auth_email_allowed(payload.email)
     key = _email_lookup_key(payload.email)
+    if not _allow_verification_request(ip=_client_ip_for_rate_limit(request), email_key=key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Please try again later.",
+        )
+    now = datetime.utcnow()
+    pending = _pending_verification(db, key)
+    if _verification_send_on_cooldown(key) or (
+        pending is not None and _verification_row_is_recent(pending.created_at)
+    ):
+        echoed = (payload.change_token or "").strip()
+        if (
+            pending is not None
+            and len(echoed) >= 20
+            and _hash_invite_token(echoed) == pending.change_token_hash
+        ):
+            return {"ok": True, "change_token": echoed}
+        return {"ok": True, "change_token": secrets.token_urlsafe(32)}
+
     existing = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
-    if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-    first_name = payload.first_name
-    last_name = payload.last_name
+    _consume_changed_email(db, str(payload.previous_email) if payload.previous_email else None, payload.change_token, now)
+    if existing is not None:
+        try:
+            _deliver_account_email(to_addr=key, kind="existing", confirm_url="", first_name=payload.first_name)
+        except Exception:
+            db.rollback()
+            logger.error("Confirmation email was not sent")
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_VERIFY_SEND_FAILED)
+        db.commit()
+        _mark_verification_sent(key)
+        return {"ok": True, "change_token": secrets.token_urlsafe(32)}
+
+    db.execute(
+        update(EmailVerification)
+        .where(EmailVerification.email_normalized == key, EmailVerification.consumed_at.is_(None))
+        .values(consumed_at=now, password_hash="")
+    )
+    raw_token = secrets.token_urlsafe(32)
+    change_token = secrets.token_urlsafe(32)
+    db.add(
+        EmailVerification(
+            email_normalized=key,
+            password_hash=hash_password(payload.password),
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            token_hash=_hash_invite_token(raw_token),
+            change_token_hash=_hash_invite_token(change_token),
+            created_at=now,
+            expires_at=now + timedelta(minutes=_VERIFY_TOKEN_MINUTES),
+        )
+    )
+    try:
+        db.flush()
+        _deliver_account_email(
+            to_addr=key,
+            kind="confirm",
+            confirm_url=_verification_link(token=raw_token, request=request),
+            first_name=payload.first_name,
+        )
+    except Exception:
+        db.rollback()
+        logger.error("Confirmation email was not sent")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_VERIFY_SEND_FAILED)
+    db.commit()
+    _mark_verification_sent(key)
+    return {"ok": True, "change_token": change_token}
+
+
+@app.post("/api/auth/verification/resend")
+def resend_email_verification(payload: VerificationResendIn, request: Request, db=Depends(get_db)):
+    """Send a fresh link when this browser still holds the change token. Same response otherwise."""
+    _require_staging_auth_email_allowed(payload.email)
+    key = _email_lookup_key(payload.email)
+    if not _allow_verification_request(ip=_client_ip_for_rate_limit(request), email_key=key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Please try again later.",
+        )
+    if _verification_send_on_cooldown(key):
+        return {"ok": True}
+    now = datetime.utcnow()
+    raw_change = payload.change_token.strip()
+    row = None
+    if len(raw_change) >= 20:
+        row = db.execute(
+            select(EmailVerification)
+            .where(
+                EmailVerification.email_normalized == key,
+                EmailVerification.change_token_hash == _hash_invite_token(raw_change),
+                EmailVerification.consumed_at.is_(None),
+            )
+            .order_by(EmailVerification.id.desc())
+        ).scalars().first()
+    if row is None or _verification_row_is_recent(row.created_at):
+        return {"ok": True}
+    raw_token = secrets.token_urlsafe(32)
+    row.token_hash = _hash_invite_token(raw_token)
+    row.created_at = now
+    row.expires_at = now + timedelta(minutes=_VERIFY_TOKEN_MINUTES)
+    try:
+        db.flush()
+        _deliver_account_email(
+            to_addr=key,
+            kind="confirm",
+            confirm_url=_verification_link(token=raw_token, request=request),
+            first_name=row.first_name,
+        )
+    except Exception:
+        db.rollback()
+        logger.error("Confirmation email was not sent")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_VERIFY_SEND_FAILED)
+    db.commit()
+    _mark_verification_sent(key)
+    return {"ok": True}
+
+
+@app.post("/api/auth/verify-email", response_model=RegisterOut)
+def verify_email(payload: VerifyEmailIn, response: Response, db=Depends(get_db)):
+    """Create the user and session from a single-use link. The family and trial come later."""
+    from sqlalchemy.exc import IntegrityError
+
+    now = datetime.utcnow()
+    token_hash = _hash_invite_token(payload.token.strip())
+    row = db.execute(select(EmailVerification).where(EmailVerification.token_hash == token_hash)).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_VERIFY_INVALID)
+    if row.consumed_at is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_VERIFY_USED)
+    if _as_utc_naive(row.expires_at) <= now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_VERIFY_EXPIRED)
+    password_hash = row.password_hash
+    email = row.email_normalized
+    first_name = row.first_name
+    last_name = row.last_name
+    if not password_hash:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_VERIFY_INVALID)
+    consumed = db.execute(
+        update(EmailVerification)
+        .where(
+            EmailVerification.id == int(row.id),
+            EmailVerification.consumed_at.is_(None),
+            EmailVerification.expires_at > now,
+        )
+        .values(consumed_at=now, password_hash="")
+    )
+    if int(consumed.rowcount or 0) != 1:
+        db.rollback()
+        raise _verification_failure_for_hash(db, token_hash)
+    existing = db.execute(select(User).where(func.lower(User.email) == email)).scalar_one_or_none()
+    if existing is not None:
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=_VERIFY_EXISTS)
     user = User(
-        email=key,
+        email=email,
         name=_account_display_name(first_name, last_name),
         first_name=first_name,
         last_name=last_name,
-        password_hash=hash_password(payload.password),
+        password_hash=password_hash,
         platform_role="subscriber",
+        email_verified_at=now,
+        session_version=0,
+        last_login_at=now,
+        last_seen_at=now,
     )
-    if payload.onboarding_goals is not None:
-        user.onboarding_goals = json.dumps(payload.onboarding_goals)
-        note = payload.onboarding_goal_other if "other" in payload.onboarding_goals else None
-        user.onboarding_goal_other = note
-    now = datetime.utcnow()
-    user.last_login_at = now
-    user.last_seen_at = now
     db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    # Create a starter family for new users so the app can be used immediately.
-    # The app trial starts from this family's created_at.
-    fam = None
     try:
-        fam = Family(name="My Family", balance_threshold_min=DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN)
-        db.add(fam)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=_VERIFY_EXISTS)
+    db.refresh(user)
+    token = create_access_token(user_id=int(user.id), session_version=int(user.session_version or 0))
+    _set_access_cookie(response, token, persistent=False)
+    return {"user": _user_out(user), "access_token": token, "trial_started": False}
+
+
+@app.post("/api/auth/onboarding/complete", response_model=RegisterOut)
+def complete_onboarding(
+    response: Response,
+    payload: OnboardingCompleteIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Create the starter family, start the one trial, and send the Welcome email once."""
+    user_id = get_current_user_id(access_token)
+    now = datetime.utcnow()
+    user = db.get(User, int(user_id))
+    if user is None or user.email_verified_at is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    owned = _earliest_owned_family(db, user_id)
+    if owned is not None:
+        _apply_onboarding_goals(user, payload)
+        if user.onboarding_completed_at is None:
+            user.onboarding_completed_at = now
+        db.commit()
+        db.refresh(user)
+        return _onboarding_session(response, user, trial_started=False)
+
+    claimed = db.execute(
+        update(User)
+        .where(User.id == int(user_id), User.onboarding_completed_at.is_(None))
+        .values(onboarding_completed_at=now)
+    )
+    if int(claimed.rowcount or 0) != 1:
+        db.rollback()
+        owned = None
+        for _ in range(20):
+            owned = _earliest_owned_family(db, user_id)
+            if owned is not None:
+                break
+            time.sleep(0.05)
+        if owned is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Onboarding is already finishing. Please try again.",
+            )
+        user = db.get(User, int(user_id))
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+        _apply_onboarding_goals(user, payload)
+        db.commit()
+        db.refresh(user)
+        return _onboarding_session(response, user, trial_started=False)
+
+    fam = Family(name="My Family", balance_threshold_min=DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN)
+    db.add(fam)
+    try:
         db.flush()
         db.add(
             FamilyMember(
                 family_id=int(fam.id),
-                user_id=int(user.id),
+                user_id=int(user_id),
                 role="member",
                 is_family_owner=True,
                 access_mode="edit",
             )
         )
+        user.welcome_email_sent_at = now
+        _apply_onboarding_goals(user, payload)
         db.commit()
-        try:
-            db.refresh(fam)
-        except Exception:
-            pass
-        # Seed default category groups/categories for the starter family.
-        try:
-            apply_default_category_seed(db=db, family_id=int(fam.id), force=False)
-        except Exception:
-            pass
     except Exception:
-        fam = None
-        try:
-            db.rollback()
-        except Exception:
-            pass
+        db.rollback()
+        logger.error("Starter family was not created for user id=%s", int(user_id))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="We couldn't finish setup. Please try again.")
+    try:
+        db.refresh(fam)
+        db.refresh(user)
+    except Exception:
+        pass
+    try:
+        apply_default_category_seed(db=db, family_id=int(fam.id), force=False)
+    except Exception:
+        pass
+    try:
+        _send_signup_welcome_email(user=user, family=fam)
+    except Exception:
+        logger.error("Welcome email was not sent for user id=%s", int(user_id))
+    return _onboarding_session(response, user, trial_started=True)
 
-    token = create_access_token(user_id=user.id, session_version=int(user.session_version or 0))
-    _set_access_cookie(response, token, persistent=False)
-    if fam is not None:
-        try:
-            _send_signup_welcome_email(user=user, family=fam)
-        except Exception:
-            logger.exception("Welcome email failed for user id=%s", getattr(user, "id", None))
-    return {
-        "user": _user_out(user),
-        "access_token": token,
-        "trial_started": fam is not None,
-    }
+
+@app.post("/api/auth/register")
+def register(payload: RegisterIn):
+    """Registration no longer creates an account. Confirm the email first."""
+    del payload
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Confirm your email before creating an account.",
+    )
 
 
 @app.post("/api/auth/login")
@@ -4290,7 +4784,7 @@ def login(payload: LoginIn, db=Depends(get_db)):
     _require_staging_auth_email_allowed(payload.email)
     key = _email_lookup_key(payload.email)
     user = db.execute(select(User).where(func.lower(User.email) == key)).scalar_one_or_none()
-    if not user or not verify_password(payload.password, user.password_hash):
+    if not user or not verify_password(payload.password, user.password_hash) or user.email_verified_at is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     now = datetime.utcnow()
     user.last_login_at = now

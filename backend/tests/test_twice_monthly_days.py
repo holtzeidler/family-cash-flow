@@ -20,6 +20,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 _DB = smoke_db_path("balancewhiz-smoke-twice-monthly.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
@@ -84,11 +85,8 @@ def test_february_clamps_30_and_31_without_a_duplicate_and_without_rewriting_inp
 
 def _family(client):
     email = f"bw-smoke-twice{uuid.uuid4().hex[:8]}@example.com"
-    created = client.post(
-        "/api/auth/register",
-        json={"email": email, "password": "SmokeOnly1!", "first_name": "Smoke", "last_name": "Twice"},
-    )
-    assert created.status_code == 201, created.text
+    created = signup_verified(client, email=email, password="SmokeOnly1!", first_name="Smoke", last_name="Twice")
+    assert created.status_code == 200
     families = client.get("/api/families")
     assert families.status_code == 200, families.text
     family_id = families.json()[0]["id"]

@@ -355,6 +355,12 @@ function persistAccountSetupDraftObject(obj) {
   const lastName = readAccountSetupPersonName("lastName");
   if (firstName) next.firstName = firstName;
   if (lastName) next.lastName = lastName;
+  delete next.password;
+  delete next.password2;
+  delete next.changeToken;
+  delete next.change_token;
+  delete next.access_token;
+  delete next.verify;
   writeAccountSetupDraftStorage(JSON.stringify(next));
 }
 
@@ -3553,7 +3559,6 @@ async function doSignup() {
     setCallout(signupCalloutEl, "Creating your account...", "pending");
   }
   try {
-    clearStoredApiAccessToken();
     const draft = readAccountSetupDraft();
     if (!draft) {
       if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
@@ -3562,32 +3567,21 @@ async function doSignup() {
       window.location.assign("/account-setup" + q);
       return;
     }
-    const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
-    const password = document.getElementById("password")?.value || "";
-    const password2 = document.getElementById("password2")?.value || "";
-    const firstName = readAccountSetupPersonName("firstName");
-    const lastName = readAccountSetupPersonName("lastName");
-
-    const nameError = accountSetupStep0NameError();
-    if (nameError) throw new Error(nameError.message);
-    if (!email) throw new Error("Email is required.");
-    if (!password || password.length < 8) throw new Error("Password must be at least 8 characters.");
-    if (password !== password2) throw new Error("Passwords do not match.");
+    const email = (document.getElementById("email")?.value || draft.signupEmail || "").trim().toLowerCase();
+    if (!readStoredApiAccessToken()) {
+      if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
+      setCallout(signupCalloutEl, "Confirm your email before creating an account.", "error");
+      setAccountSetupEmailGate("wizard");
+      setAccountSetupWizardStep(0);
+      return;
+    }
 
     if (isAccountSetup && overlay) {
       setForecastBuildOverlayMessage(overlay, "Putting everything together…");
       bumpForecastBuildOverlayProgress(overlay, 28);
     }
 
-    const dupCheck = await precheckEmailExistsFresh(email);
-    if (dupCheck && dupCheck.ok && dupCheck.exists === true) {
-      if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
-      setCallout(signupCalloutEl, "", "");
-      openAccountSetupDuplicateEmailModal();
-      return;
-    }
-
-    const regBody = { first_name: firstName, last_name: lastName, email, password };
+    const regBody = {};
     try {
       const rawGoals = readAccountSetupDraftRaw();
       if (rawGoals && Array.isArray(rawGoals.surveyHelpWith)) {
@@ -3601,28 +3595,20 @@ async function doSignup() {
     } catch (_) {}
 
     const reg = await requestWithRetry(
-      "/api/auth/register",
+      "/api/auth/onboarding/complete",
       "POST",
       regBody,
       { maxMs: 14000 }
     );
     if (!reg.ok) {
       if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
-      if (reg.status === 409 && isAccountSetup) {
-        try {
-          bwEmailCheckCache = { email, checkedAt: Date.now(), exists: true, pending: null };
-        } catch (_) {}
-        setCallout(signupCalloutEl, "", "");
-        openAccountSetupDuplicateEmailModal();
-        return;
-      }
-      setCallout(signupCalloutEl, messageFromFailure(reg, "Signup failed."), "error");
+      const detail = formatApiDetail(reg.data && reg.data.detail);
+      setCallout(signupCalloutEl, detail || messageFromFailure(reg, "Signup failed."), "error");
       return;
     }
     try {
       const createdUserId = reg.data && reg.data.user ? reg.data.user.id : null;
-      if (window.bwGa && typeof window.bwGa.noteSignUp === "function") window.bwGa.noteSignUp(createdUserId);
-      if (reg.data && reg.data.trial_started === true && typeof window.bwGa.noteTrialStarted === "function") {
+      if (reg.data && reg.data.trial_started === true && window.bwGa && typeof window.bwGa.noteTrialStarted === "function") {
         window.bwGa.noteTrialStarted(createdUserId);
       }
     } catch (_) {}
@@ -3993,7 +3979,10 @@ void (async () => {
     try {
       const params = new URLSearchParams(String(window.location.search || ""));
       freshStart = params.get("fresh") === "1";
-      if (freshStart) removeAccountSetupDraftStorage();
+      if (freshStart) {
+        removeAccountSetupDraftStorage();
+        clearEmailVerifyPending();
+      }
     } catch (_) {}
     if (freshStart) {
       const freshRoute = await endSessionForFreshAccountSetup();
@@ -4011,6 +4000,9 @@ void (async () => {
   try {
     const resumed = await maybeEnterAccountSetupResume();
     if (resumed === "redirect") return;
+  } catch (_) {}
+  try {
+    await bootAccountSetupEmailGate();
   } catch (_) {}
   try {
     initAccountSetupMoneyFields();
@@ -4048,6 +4040,267 @@ void (async () => {
   } catch (_) {}
   initAccountSetupWizardShell();
 })();
+
+const BW_EMAIL_VERIFY_PENDING_KEY = "bw_email_verify_pending";
+const BW_EMAIL_VERIFY_RESEND_MS = 60000;
+let bwEmailVerifyStarting = false;
+let bwEmailVerifyResendTimer = 0;
+let bwEmailVerifyGateBound = false;
+
+function readEmailVerifyPending() {
+  try {
+    const raw = sessionStorage.getItem(BW_EMAIL_VERIFY_PENDING_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const email = String(parsed && parsed.email ? parsed.email : "").trim().toLowerCase();
+    const changeToken = String(parsed && parsed.changeToken ? parsed.changeToken : "").trim();
+    const requestedAt = Number(parsed && parsed.requestedAt);
+    if (!email || !changeToken || !Number.isFinite(requestedAt)) return null;
+    return { email, changeToken, requestedAt };
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeEmailVerifyPending(pending) {
+  const safe = {
+    email: String(pending.email || "").trim().toLowerCase(),
+    changeToken: String(pending.changeToken || "").trim(),
+    requestedAt: Number(pending.requestedAt) || Date.now(),
+  };
+  try {
+    sessionStorage.setItem(BW_EMAIL_VERIFY_PENDING_KEY, JSON.stringify(safe));
+  } catch (_) {}
+}
+
+function clearEmailVerifyPending() {
+  try {
+    sessionStorage.removeItem(BW_EMAIL_VERIFY_PENDING_KEY);
+  } catch (_) {}
+}
+
+function setAccountSetupEmailGate(mode) {
+  const wizard = document.getElementById("accountSetupWizard");
+  const check = document.getElementById("accountSetupEmailCheck");
+  const recovery = document.getElementById("accountSetupVerifyRecovery");
+  if (check) check.hidden = mode !== "check";
+  if (recovery) recovery.hidden = mode !== "recovery";
+  if (wizard) wizard.hidden = mode !== "wizard";
+  if (mode !== "check" && bwEmailVerifyResendTimer) {
+    window.clearInterval(bwEmailVerifyResendTimer);
+    bwEmailVerifyResendTimer = 0;
+  }
+  if (mode === "check") syncAccountSetupResendButton();
+}
+
+function syncAccountSetupResendButton() {
+  const button = document.getElementById("accountSetupResendBtn");
+  const pending = readEmailVerifyPending();
+  if (!button || !pending) return;
+  const remain = Math.ceil((pending.requestedAt + BW_EMAIL_VERIFY_RESEND_MS - Date.now()) / 1000);
+  if (remain > 0) {
+    button.disabled = true;
+    button.textContent = `Resend email (${remain}s)`;
+    return;
+  }
+  button.disabled = false;
+  button.textContent = "Resend email";
+}
+
+function showAccountSetupCheckEmail(email) {
+  const address = document.getElementById("accountSetupEmailCheckAddress");
+  if (address) address.textContent = email;
+  const note = document.getElementById("accountSetupEmailCheckNote");
+  if (note) note.textContent = "";
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("fresh")) {
+      url.searchParams.delete("fresh");
+      const query = url.searchParams.toString();
+      window.history.replaceState({}, "", url.pathname + (query ? `?${query}` : "") + url.hash);
+    }
+  } catch (_) {}
+  setAccountSetupEmailGate("check");
+  if (bwEmailVerifyResendTimer) window.clearInterval(bwEmailVerifyResendTimer);
+  bwEmailVerifyResendTimer = window.setInterval(syncAccountSetupResendButton, 1000);
+  syncAccountSetupResendButton();
+}
+
+function showAccountSetupVerifyRecovery(message) {
+  const el = document.getElementById("accountSetupVerifyRecoveryMessage");
+  if (el) el.textContent = message || "This confirmation link is not valid. Request a new one.";
+  setAccountSetupEmailGate("recovery");
+}
+
+function stripAccountSetupVerifyQuery() {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("verify")) return;
+    url.searchParams.delete("verify");
+    const query = url.searchParams.toString();
+    window.history.replaceState({}, "", url.pathname + (query ? `?${query}` : "") + url.hash);
+  } catch (_) {}
+}
+
+function verificationDetail(res, fallback) {
+  const detail = formatApiDetail(res && res.data ? res.data.detail : "");
+  return detail || fallback;
+}
+
+async function beginAccountSetupEmailVerification(fields) {
+  if (bwEmailVerifyStarting) return;
+  bwEmailVerifyStarting = true;
+  const button = document.getElementById("signupBtn");
+  const previousLabel = button ? button.textContent : "";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Sending...";
+  }
+  try {
+    const cached = await precheckEmailExistsFresh(fields.email);
+    if (cached && cached.ok && cached.exists === true) {
+      showAccountSetupStep0Error("That email is already registered. Log in or use a different email.", "email");
+      openAccountSetupDuplicateEmailModal();
+      return;
+    }
+    const pending = readEmailVerifyPending();
+    const body = {
+      email: fields.email,
+      password: fields.password,
+      first_name: fields.firstName,
+      last_name: fields.lastName,
+    };
+    if (pending && pending.changeToken && pending.email) {
+      body.previous_email = pending.email;
+      body.change_token = pending.changeToken;
+    }
+    try {
+      persistAccountSetupDraftObject(readAccountSetupDraftRaw() || {});
+    } catch (_) {}
+    const res = await request("/api/auth/verification/start", "POST", body);
+    if (!res.ok) {
+      setCallout(signupCalloutEl, verificationDetail(res, "We couldn't send the confirmation email. Please try again. No account was created."), "error");
+      return;
+    }
+    const changeToken = res.data && res.data.change_token ? String(res.data.change_token).trim() : "";
+    if (!changeToken) {
+      setCallout(signupCalloutEl, "We couldn't send the confirmation email. Please try again.", "error");
+      return;
+    }
+    writeEmailVerifyPending({ email: fields.email, changeToken, requestedAt: Date.now() });
+    clearStoredApiAccessToken();
+    const password = document.getElementById("password");
+    const password2 = document.getElementById("password2");
+    if (password) password.value = "";
+    if (password2) password2.value = "";
+    showAccountSetupCheckEmail(fields.email);
+  } finally {
+    bwEmailVerifyStarting = false;
+    if (button) {
+      button.disabled = false;
+      button.textContent = previousLabel || "Create my account";
+    }
+  }
+}
+
+async function resendAccountSetupVerification() {
+  const pending = readEmailVerifyPending();
+  const note = document.getElementById("accountSetupEmailCheckNote");
+  if (!pending) {
+    setAccountSetupEmailGate("wizard");
+    return;
+  }
+  const remain = pending.requestedAt + BW_EMAIL_VERIFY_RESEND_MS - Date.now();
+  if (remain > 0) {
+    syncAccountSetupResendButton();
+    return;
+  }
+  const button = document.getElementById("accountSetupResendBtn");
+  if (button) button.disabled = true;
+  const res = await request("/api/auth/verification/resend", "POST", {
+    email: pending.email,
+    change_token: pending.changeToken,
+  });
+  if (!res.ok) {
+    if (note) {
+      note.textContent = "We couldn't send a new email. Please try again. Your current link still works until it expires.";
+    }
+    syncAccountSetupResendButton();
+    return;
+  }
+  writeEmailVerifyPending({ email: pending.email, changeToken: pending.changeToken, requestedAt: Date.now() });
+  if (note) note.textContent = "Check your inbox for the newest link.";
+  syncAccountSetupResendButton();
+}
+
+async function redeemAccountSetupVerificationLink() {
+  const params = new URLSearchParams(String(window.location.search || ""));
+  const token = String(params.get("verify") || "").trim();
+  if (!token) return false;
+  const res = await request("/api/auth/verify-email", "POST", { token });
+  if (res.networkError) {
+    setCallout(signupCalloutEl, res.networkError, "error");
+    return true;
+  }
+  stripAccountSetupVerifyQuery();
+  if (!res.ok) {
+    const detail = verificationDetail(res, "This confirmation link is not valid. Request a new one.");
+    if (res.status === 400 && /already been used/i.test(detail) && readStoredApiAccessToken()) {
+      clearEmailVerifyPending();
+      setAccountSetupEmailGate("wizard");
+      const draft = readAccountSetupDraft();
+      const savedStep = draft && Number(draft.wizardStep);
+      setAccountSetupWizardStep(Number.isFinite(savedStep) && savedStep > 0 ? savedStep : 1);
+      return true;
+    }
+    showAccountSetupVerifyRecovery(detail);
+    return true;
+  }
+  const accessToken = res.data && res.data.access_token != null ? String(res.data.access_token).trim() : "";
+  if (accessToken) {
+    try {
+      sessionStorage.setItem(BW_API_ACCESS_TOKEN_KEY, accessToken);
+    } catch (_) {}
+  }
+  clearEmailVerifyPending();
+  try {
+    const createdUserId = res.data && res.data.user ? res.data.user.id : null;
+    if (window.bwGa && typeof window.bwGa.noteSignUp === "function") window.bwGa.noteSignUp(createdUserId);
+  } catch (_) {}
+  setAccountSetupEmailGate("wizard");
+  setAccountSetupWizardStep(1);
+  return true;
+}
+
+function bindAccountSetupEmailGate() {
+  if (bwEmailVerifyGateBound) return;
+  bwEmailVerifyGateBound = true;
+  document.getElementById("accountSetupResendBtn")?.addEventListener("click", () => {
+    void resendAccountSetupVerification();
+  });
+  document.getElementById("accountSetupChangeEmailBtn")?.addEventListener("click", () => {
+    setAccountSetupEmailGate("wizard");
+    setAccountSetupWizardStep(0, { skipPersist: true });
+    document.getElementById("email")?.focus();
+  });
+  document.getElementById("accountSetupVerifyRecoveryRetry")?.addEventListener("click", () => {
+    setAccountSetupEmailGate("wizard");
+    setAccountSetupWizardStep(0, { skipPersist: true });
+    document.getElementById("email")?.focus();
+  });
+}
+
+async function bootAccountSetupEmailGate() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  bindAccountSetupEmailGate();
+  const params = new URLSearchParams(String(window.location.search || ""));
+  if (params.get("verify")) {
+    await redeemAccountSetupVerificationLink();
+    return;
+  }
+  const pending = readEmailVerifyPending();
+  if (pending && !readStoredApiAccessToken()) showAccountSetupCheckEmail(pending.email);
+}
 
 let signupPrimaryHandling = false;
 
@@ -4100,30 +4353,12 @@ function onSignupPrimaryClickInner() {
           return;
         }
         setCallout(signupCalloutEl, "", "");
-        const step0PrecheckGen = bwEmailPrecheckStep0Generation;
-        const p = precheckEmailExists(email);
-        lockAccountSetupWizardStepTransition();
-        setAccountSetupWizardStep(1);
-        focusAccountSetupAccountNameInput();
-        Promise.resolve(p)
-          .then((cached) => {
-            if (step0PrecheckGen !== bwEmailPrecheckStep0Generation) return;
-            if (!shouldShowDuplicateEmailModalFromPrecheck()) return;
-            const emNow = String(document.getElementById("email")?.value || "").trim().toLowerCase();
-            if (emNow !== emailChecked) return;
-            if (!cached || !cached.ok) {
-              setCallout(signupCalloutEl, "", "");
-              return;
-            }
-            if (cached.exists === true) {
-              showAccountSetupStep0Error("That email is already registered. Log in or use a different email.", "email");
-              setAccountSetupWizardStep(0, { skipPersist: true });
-              openAccountSetupDuplicateEmailModal();
-              return;
-            }
-            setCallout(signupCalloutEl, "", "");
-          })
-          .catch(() => setCallout(signupCalloutEl, "", ""));
+        void beginAccountSetupEmailVerification({
+          email,
+          password,
+          firstName: readAccountSetupPersonName("firstName"),
+          lastName: readAccountSetupPersonName("lastName"),
+        });
         return;
       }
       if (st === 1) {
