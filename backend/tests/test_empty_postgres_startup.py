@@ -77,7 +77,7 @@ def test_every_model_table_and_column_exists(started):
 def test_startup_migrations_and_indexes_exist(started):
     (_, columns, indexes), _ = started
     assert {"pending_lookup_key", "pending_change_on"} <= columns["billing_subscriptions"]
-    assert {"platform_role", "complimentary_access", "first_name", "onboarding_goals"} <= columns["users"]
+    assert {"platform_role", "complimentary_access", "first_name", "onboarding_goals", "session_version"} <= columns["users"]
     for table, expected in _RAW_SQL_INDEXES.items():
         assert expected <= indexes[table], (table, expected - indexes[table])
 

@@ -372,6 +372,10 @@ class User(Base):
     first_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     last_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    # Bumped on every password change. New tokens carry this as "sv".
+    # A token with no "sv" is generation 0, so sessions already issued stay
+    # valid until the next password change. Existing rows default to 0.
+    session_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     # Platform user type: subscriber (app) | admin (operator console). Family roles are on FamilyMember.
     platform_role: Mapped[str] = mapped_column(String(20), nullable=False, default="subscriber")
@@ -832,12 +836,22 @@ def _allow_password_reset_request(*, ip: str, email_key: str) -> bool:
         return True
 
 
-def create_access_token(*, user_id: int, minutes: Optional[int] = None) -> str:
+def create_access_token(*, user_id: int, session_version: int, minutes: Optional[int] = None) -> str:
     now = datetime.utcnow()
     lifetime = settings.ACCESS_TOKEN_MINUTES if minutes is None else int(minutes)
     exp = now + timedelta(minutes=lifetime)
-    payload = {"sub": str(user_id), "iat": int(now.timestamp()), "exp": int(exp.timestamp())}
+    payload = {
+        "sub": str(user_id),
+        "iat": int(now.timestamp()),
+        "exp": int(exp.timestamp()),
+        "sv": int(session_version),
+    }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def _invalidate_user_sessions(user: User) -> None:
+    """End this user's outstanding sessions. Other users are left unchanged."""
+    user.session_version = int(getattr(user, "session_version", 0) or 0) + 1
 
 
 def _auth_cookie_flags() -> dict:
@@ -882,25 +896,81 @@ def _read_access_token_from_cookie_or_authorization(
 def get_current_user_id(access_token: Optional[str]) -> int:
     if not access_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    user_id = _decode_user_id_from_token_optional(access_token)
-    if user_id is None:
+    claims = _access_token_claims(access_token)
+    if claims is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    user_id = _user_id_from_claims(claims)
+    token_version = _session_version_from_claims(claims)
+    if user_id is None or token_version is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    _require_token_session_current(user_id, token_version)
     if _is_staging_deployment():
         _require_staging_session_allowed(user_id)
     return user_id
 
 
-def _decode_user_id_from_token_optional(access_token: Optional[str]) -> Optional[int]:
+def _access_token_claims(access_token: Optional[str]) -> Optional[dict]:
     if not access_token:
         return None
     try:
         payload = jwt.decode(access_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        sub = payload.get("sub")
-        if sub is None:
-            return None
-        return int(sub)
     except Exception:
         return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def _user_id_from_claims(payload: dict) -> Optional[int]:
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+    try:
+        return int(sub)
+    except (TypeError, ValueError):
+        return None
+
+
+def _session_version_from_claims(payload: dict) -> Optional[int]:
+    """Session generation carried by the token.
+
+    Tokens issued before "sv" existed are generation 0. A present but unreadable
+    value is rejected so an old token cannot skip the check.
+    """
+    if "sv" not in payload or payload.get("sv") is None:
+        return 0
+    try:
+        return int(payload.get("sv"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _require_token_session_current(user_id: int, token_version: int) -> None:
+    """Reject a token issued before this user's latest password change."""
+    with SessionLocal() as db:
+        current = db.execute(select(User.session_version).where(User.id == int(user_id))).scalar_one_or_none()
+    if current is None or int(current) != int(token_version):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+
+
+def _decode_user_id_from_token_optional(access_token: Optional[str]) -> Optional[int]:
+    """User id for activity tracking when the token's session is still current.
+
+    A missing, expired, or revoked token returns None. This does not authorize
+    the request, and a lookup failure must not block it.
+    """
+    claims = _access_token_claims(access_token)
+    if claims is None:
+        return None
+    user_id = _user_id_from_claims(claims)
+    token_version = _session_version_from_claims(claims)
+    if user_id is None or token_version is None:
+        return None
+    try:
+        _require_token_session_current(user_id, token_version)
+    except Exception:
+        return None
+    return user_id
 
 
 def _read_access_token_from_request(request: Request) -> Optional[str]:
@@ -3205,6 +3275,7 @@ def startup_populate_schema():
     _backfill_family_member_owners()
     _ensure_family_invites_table()
     _ensure_user_platform_columns()
+    _ensure_user_session_version_column()
     _migrate_platform_roles_subscriber_admin()
     _ensure_user_complimentary_columns()
     _ensure_user_name_part_columns()
@@ -3802,6 +3873,24 @@ def _ensure_user_platform_columns() -> None:
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ"))
             conn.execute(text("UPDATE users SET platform_role = COALESCE(NULLIF(TRIM(platform_role), ''), 'subscriber')"))
+
+
+def _ensure_user_session_version_column() -> None:
+    """Add users.session_version on databases created before session invalidation.
+
+    Default 0 matches tokens that have no "sv" claim, so this does not sign
+    existing accounts out. A later password change moves that user to 1.
+    """
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            cols = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            names = {str(row[1]) for row in cols}
+            if "session_version" not in names:
+                conn.execute(text("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0"))
+        else:
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0")
+            )
 
 
 def _ensure_user_complimentary_columns() -> None:
@@ -4530,7 +4619,7 @@ def register(payload: RegisterIn, response: Response, db=Depends(get_db)):
         except Exception:
             pass
 
-    token = create_access_token(user_id=user.id)
+    token = create_access_token(user_id=user.id, session_version=int(user.session_version or 0))
     _set_access_cookie(response, token, persistent=False)
     if fam is not None:
         try:
@@ -4558,6 +4647,7 @@ def login(payload: LoginIn, db=Depends(get_db)):
     persistent = bool(payload.keep_me_logged_in)
     token = create_access_token(
         user_id=user.id,
+        session_version=int(user.session_version or 0),
         minutes=int(settings.KEEP_ME_LOGGED_IN_DAYS) * 24 * 60 if persistent else None,
     )
     resp = JSONResponse(content={"ok": True, "access_token": token}, status_code=status.HTTP_200_OK)
@@ -4640,6 +4730,7 @@ def password_reset_complete(payload: PasswordResetCompleteIn, db=Depends(get_db)
     if user is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=_INVALID_PW_RESET_MSG)
     user.password_hash = hash_password(payload.new_password)
+    _invalidate_user_sessions(user)
     db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == int(user.id)))
     db.add(user)
     db.commit()
@@ -5530,6 +5621,7 @@ def platform_set_user_password(
     if u is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     u.password_hash = hash_password(payload.new_password)
+    _invalidate_user_sessions(u)
     _platform_audit_log(
         db=db,
         actor_user_id=actor_id,
