@@ -38,6 +38,7 @@ assert_process_is_safe(_DB)
 
 sys.path.insert(0, str(ROOT / "backend"))
 from app.main import (  # noqa: E402
+    Account,
     EmailVerification,
     Family,
     FamilyMember,
@@ -164,14 +165,83 @@ def test_finishing_onboarding_creates_one_family_and_one_welcome_email(monkeypat
             onboarding_goals=["keep_in_savings"],
         )
         assert created.status_code == 200
-        assert created.json()["trial_started"] is True
-        assert len(client.get("/api/families").json()) == 1
+        created_body = created.json()
+        assert created_body["trial_started"] is True
+        families = client.get("/api/families").json()
+        assert len(families) == 1
+        assert created_body["family_id"] == families[0]["id"]
+        with SessionLocal() as db:
+            user = db.execute(select(User).where(User.email == email)).scalar_one()
+            fam = db.execute(
+                select(Family)
+                .join(FamilyMember, FamilyMember.family_id == Family.id)
+                .where(FamilyMember.user_id == int(user.id), FamilyMember.is_family_owner.is_(True))
+            ).scalar_one()
+            trial_started_at = fam.created_at
+            welcome_at = user.welcome_email_sent_at
+            assert welcome_at is not None
         again = client.post("/api/auth/onboarding/complete", json={})
         assert again.status_code == 200
         assert again.json()["trial_started"] is False
+        assert again.json()["family_id"] == created_body["family_id"]
         assert len(client.get("/api/families").json()) == 1
         assert again.json()["user"]["onboarding_goals"] == ["keep_in_savings"]
+        with SessionLocal() as db:
+            user = db.execute(select(User).where(User.email == email)).scalar_one()
+            fam = db.execute(
+                select(Family)
+                .join(FamilyMember, FamilyMember.family_id == Family.id)
+                .where(FamilyMember.user_id == int(user.id), FamilyMember.is_family_owner.is_(True))
+            ).scalar_one()
+            assert fam.created_at == trial_started_at
+            assert user.welcome_email_sent_at == welcome_at
     assert sent == [email]
+
+
+def test_account_setup_uses_the_completed_family_without_creating_another(monkeypatch):
+    """A failed or empty family list must not lead to a second family or a new trial."""
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_local_not_sent")
+    monkeypatch.setattr("app.email_service.send_welcome_email", lambda **kwargs: "local")
+    email = _email()
+    with TestClient(app) as client:
+        created = signup_verified(client, email=email, password=_PASSWORD)
+        assert created.status_code == 200
+        body = created.json()
+        family_id = int(body["family_id"])
+        assert body["trial_started"] is True
+        account = client.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "1000.00",
+                "starting_balance_date": "2026-10-01",
+            },
+        )
+        assert account.status_code == 200, account.text
+        with SessionLocal() as db:
+            user = db.execute(select(User).where(User.email == email)).scalar_one()
+            owned = db.execute(
+                select(Family)
+                .join(FamilyMember, FamilyMember.family_id == Family.id)
+                .where(FamilyMember.user_id == int(user.id), FamilyMember.is_family_owner.is_(True))
+            ).scalars().all()
+            assert [int(row.id) for row in owned] == [family_id]
+            trial_started_at = owned[0].created_at
+        again = client.post("/api/auth/onboarding/complete", json={})
+        assert again.status_code == 200
+        assert again.json()["trial_started"] is False
+        assert int(again.json()["family_id"]) == family_id
+        with SessionLocal() as db:
+            user = db.execute(select(User).where(User.email == email)).scalar_one()
+            owned = db.execute(
+                select(Family)
+                .join(FamilyMember, FamilyMember.family_id == Family.id)
+                .where(FamilyMember.user_id == int(user.id), FamilyMember.is_family_owner.is_(True))
+            ).scalars().all()
+            assert [int(row.id) for row in owned] == [family_id]
+            assert owned[0].created_at == trial_started_at
+            assert int(db.get(Account, account.json()["id"]).family_id) == family_id
 
 
 def test_register_endpoint_does_not_create_an_account():
