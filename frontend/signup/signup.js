@@ -1148,12 +1148,13 @@ function setAccountSetupExpenseAfterSave(on) {
 }
 
 let accountSetupResumeMode = false;
+let accountSetupVerifiedNoFamily = false;
 
 function syncAccountSetupBackButtonVisibility() {
   if (!accountSetupBackBtn) return;
   if (!document.getElementById("accountSetupWizard")) return;
   const s = getAccountSetupWizardStep();
-  if (s <= 0 || (accountSetupResumeMode && s <= 1)) {
+  if (s <= 0 || ((accountSetupResumeMode || accountSetupVerifiedNoFamily) && s <= 1)) {
     accountSetupBackBtn.style.display = "none";
     return;
   }
@@ -2995,6 +2996,10 @@ function hydrateAccountSetupDraft() {
     }
     if (document.getElementById("accountSetupWizard")) {
       let target = normalizePersistedAccountSetupWizardStep(o);
+      if (readStoredApiAccessToken() && typeof accountSetupVerifiedResumeStep === "function") {
+        accountSetupVerifiedNoFamily = true;
+        target = accountSetupVerifiedResumeStep(o);
+      }
       const wsRaw = o.wizardStep;
       if (
         (!Number.isFinite(Number(wsRaw)) || wsRaw === "" || wsRaw === undefined || wsRaw === null) &&
@@ -3111,31 +3116,23 @@ function readAccountSetupDraft() {
  * extra seconds than lose the user's onboarding data. The calendar page has a fallback that
  * retries from the draft if anything was missed.
  */
-async function ensureFamilyIdForSignupDraft() {
+async function ensureFamilyIdForSignupDraft(knownFamilyId) {
+  const explicit = Number(knownFamilyId);
+  if (Number.isFinite(explicit) && explicit > 0) return { ok: true, familyId: explicit };
   const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });
   if (fams.ok && Array.isArray(fams.data) && fams.data.length > 0 && fams.data[0]?.id) {
     return { ok: true, familyId: fams.data[0].id };
   }
-  // Register usually creates "My Family"; if that failed, create one so setup can finish.
-  const created = await requestWithRetry(
-    "/api/families",
-    "POST",
-    { name: "My Family" },
-    { maxMs: 12000 }
-  );
-  if (created && created.ok && created.data && created.data.id) {
-    return { ok: true, familyId: Number(created.data.id) };
-  }
   return { ok: false, familyId: null, error: "no_family" };
 }
 
-async function maybeCreateFirstAccountFromDraft(draft) {
+async function maybeCreateFirstAccountFromDraft(draft, knownFamilyId) {
   if (!draft || !draft.account) {
     return { ok: true, accountId: null, skipped: true };
   }
   let familyId = null;
   try {
-    const fam = await ensureFamilyIdForSignupDraft();
+    const fam = await ensureFamilyIdForSignupDraft(knownFamilyId);
     if (!fam.ok || !fam.familyId) {
       return { ok: false, accountId: null, error: fam.error || "no_family" };
     }
@@ -3222,11 +3219,11 @@ async function ensureOnboardingCategoryId(familyId, byKey, label) {
  *   { ok: true,  createdCount, totalCount }   — every applicable item created
  *   { ok: false, createdCount, totalCount, error }
  */
-async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId) {
+async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, knownFamilyId) {
   if (!draft) return { ok: true, createdCount: 0, totalCount: 0 };
   let familyId = null;
   try {
-    const fam = await ensureFamilyIdForSignupDraft();
+    const fam = await ensureFamilyIdForSignupDraft(knownFamilyId);
     if (!fam.ok || !fam.familyId) {
       return { ok: false, createdCount: 0, totalCount: 0, error: fam.error || "no_family" };
     }
@@ -3337,16 +3334,13 @@ function noteForecastGettingStarted(draft, familyId) {
   } catch (_) {}
 }
 
-async function maybePatchForecastThresholdsFromDraft(draft) {
+async function maybePatchForecastThresholdsFromDraft(draft, knownFamilyId) {
   const minNum = resolveMinBalanceThresholdFromSignupDraft(draft);
   let familyId = null;
   try {
-    const fams = await requestWithRetry("/api/families", "GET", null, { maxMs: 12000 });
-    if (!fams.ok || !Array.isArray(fams.data) || fams.data.length === 0) {
-      return { ok: false, error: "no_family" };
-    }
-    familyId = fams.data[0]?.id;
-    if (!familyId) return { ok: false, error: "no_family" };
+    const fam = await ensureFamilyIdForSignupDraft(knownFamilyId);
+    if (!fam.ok || !fam.familyId) return { ok: false, error: fam.error || "no_family" };
+    familyId = fam.familyId;
   } catch (e) {
     return { ok: false, error: (e && e.message) || "families_fetch_failed" };
   }
@@ -3457,28 +3451,10 @@ async function maybeEnterAccountSetupResume() {
     }
   } catch (_) {}
   if (familyId) {
-    const accounts = await request(`/api/families/${encodeURIComponent(String(familyId))}/accounts`, "GET");
-    if (accounts.ok && Array.isArray(accounts.data) && accounts.data.length > 0) {
-      window.location.replace("/calendar");
-      return "redirect";
-    }
-  }
-  try {
-    ensureAccountStartingBalanceDateDefault();
-  } catch (_) {}
-  try {
-    captureVisibleCheckingAccountIntoDraft();
-  } catch (_) {}
-  const ready = readAccountSetupDraft();
-  if (ready && ready.account && ready.account.name) {
-    try {
-      sessionStorage.setItem(BW_FORECAST_READY_POPUP_KEY, "1");
-    } catch (_) {}
-    await finishResumeAccountSetup();
+    window.location.replace("/calendar/");
     return "redirect";
   }
-  window.location.replace("/calendar");
-  return "redirect";
+  return "";
 }
 
 async function finishResumeAccountSetup() {
@@ -3569,11 +3545,20 @@ async function doSignup() {
     }
     const email = (document.getElementById("email")?.value || draft.signupEmail || "").trim().toLowerCase();
     if (!readStoredApiAccessToken()) {
-      if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
-      setCallout(signupCalloutEl, "Confirm your email before creating an account.", "error");
-      setAccountSetupEmailGate("wizard");
-      setAccountSetupWizardStep(0);
-      return;
+      let signedIn = false;
+      try {
+        const me = await request("/api/auth/me", "GET");
+        signedIn = !!(me.ok && me.data && me.data.user);
+      } catch (_) {}
+      if (!signedIn) {
+        if (isAccountSetup && overlay) hideForecastBuildOverlay(overlay);
+        if (isAccountSetup && document.getElementById("accountSetupVerifyRecovery")) {
+          showAccountSetupVerifyRecovery("Sign in to finish setting up your account.");
+        } else {
+          setCallout(signupCalloutEl, "Sign in to finish setting up your account.", "error");
+        }
+        return;
+      }
     }
 
     if (isAccountSetup && overlay) {
@@ -3667,11 +3652,12 @@ async function doSignup() {
     // If the user entered a starter account during setup, create it now.
     // We deliberately wait for both helpers to finish (with cold-start-tolerant timeouts)
     // before redirecting — otherwise the user lands on /calendar with no data.
-    const accountResult = await maybeCreateFirstAccountFromDraft(draft);
+    const familyId = accountSetupFamilyIdAfterComplete(reg.data);
+    const accountResult = await maybeCreateFirstAccountFromDraft(draft, familyId);
     const createdAccountId = accountResult && accountResult.accountId ? accountResult.accountId : null;
     const [txResult, thresholdResult] = await Promise.all([
-      maybeCreateFirstTransactionFromDraft(draft, createdAccountId),
-      maybePatchForecastThresholdsFromDraft(draft),
+      maybeCreateFirstTransactionFromDraft(draft, createdAccountId, familyId),
+      maybePatchForecastThresholdsFromDraft(draft, familyId),
     ]);
     noteForecastGettingStarted(draft, accountResult && accountResult.familyId);
     if (thresholdResult && !thresholdResult.ok && !thresholdResult.skipped) {
@@ -4001,9 +3987,16 @@ void (async () => {
     const resumed = await maybeEnterAccountSetupResume();
     if (resumed === "redirect") return;
   } catch (_) {}
+  let emailGate = "";
   try {
-    await bootAccountSetupEmailGate();
+    emailGate = await bootAccountSetupEmailGate();
   } catch (_) {}
+  if (emailGate !== "verify" && emailGate !== "check") {
+    try {
+      const placed = await placeVerifiedAccountSetup();
+      if (placed === "redirect") return;
+    } catch (_) {}
+  }
   try {
     initAccountSetupMoneyFields();
   } catch (_) {}
@@ -4247,6 +4240,7 @@ async function redeemAccountSetupVerificationLink() {
     const detail = verificationDetail(res, "This confirmation link is not valid. Request a new one.");
     if (res.status === 400 && /already been used/i.test(detail) && readStoredApiAccessToken()) {
       clearEmailVerifyPending();
+      accountSetupVerifiedNoFamily = true;
       setAccountSetupEmailGate("wizard");
       const draft = readAccountSetupDraft();
       const savedStep = draft && Number(draft.wizardStep);
@@ -4263,6 +4257,7 @@ async function redeemAccountSetupVerificationLink() {
     } catch (_) {}
   }
   clearEmailVerifyPending();
+  accountSetupVerifiedNoFamily = true;
   try {
     const createdUserId = res.data && res.data.user ? res.data.user.id : null;
     if (window.bwGa && typeof window.bwGa.noteSignUp === "function") window.bwGa.noteSignUp(createdUserId);
@@ -4291,15 +4286,81 @@ function bindAccountSetupEmailGate() {
 }
 
 async function bootAccountSetupEmailGate() {
-  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return "";
   bindAccountSetupEmailGate();
   const params = new URLSearchParams(String(window.location.search || ""));
   if (params.get("verify")) {
     await redeemAccountSetupVerificationLink();
-    return;
+    return "verify";
   }
   const pending = readEmailVerifyPending();
-  if (pending && !readStoredApiAccessToken()) showAccountSetupCheckEmail(pending.email);
+  if (pending && !readStoredApiAccessToken()) {
+    showAccountSetupCheckEmail(pending.email);
+    return "check";
+  }
+  return "";
+}
+
+async function verifiedAccountSetupSession() {
+  try {
+    const me = await request("/api/auth/me", "GET");
+    return !!(me.ok && me.data && me.data.user);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function accountSetupFamilyList() {
+  try {
+    const fams = await request("/api/families", "GET");
+    if (fams.ok && Array.isArray(fams.data)) return fams.data;
+  } catch (_) {}
+  return null;
+}
+
+/** Finish setup only for a verified session, through onboarding completion. */
+async function completeVerifiedAccountSetup() {
+  if (bwSignupInFlight) return;
+  const verified = await verifiedAccountSetupSession();
+  if (accountSetupFinishDecision(verified) !== "complete-onboarding") {
+    showAccountSetupVerifyRecovery("Sign in to finish setting up your account.");
+    return;
+  }
+  const families = await accountSetupFamilyList();
+  if (families == null) {
+    setCallout(signupCalloutEl, "We couldn't confirm your account. Please try again.", "error");
+    return;
+  }
+  if (families.length) {
+    window.location.replace("/calendar/");
+    return;
+  }
+  void doSignup();
+}
+
+/** A verified user with no family continues setup. An existing family opens the forecast. */
+async function placeVerifiedAccountSetup() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return "";
+  const check = document.getElementById("accountSetupEmailCheck");
+  const recovery = document.getElementById("accountSetupVerifyRecovery");
+  if ((check && !check.hidden) || (recovery && !recovery.hidden)) return "";
+  if (!(await verifiedAccountSetupSession())) return "";
+  const families = await accountSetupFamilyList();
+  if (families == null) return "";
+  if (families.length) {
+    window.location.replace("/calendar/");
+    return "redirect";
+  }
+  accountSetupVerifiedNoFamily = true;
+  const draft = readAccountSetupDraftRaw() || {};
+  const step = accountSetupVerifiedResumeStep(draft);
+  setAccountSetupWizardStep(step);
+  if (step === 4) {
+    try {
+      hydrateAccountSetupSurveyFromDraft(draft);
+    } catch (_) {}
+  }
+  return "";
 }
 
 let signupPrimaryHandling = false;
@@ -4429,17 +4490,7 @@ function onSignupPrimaryClickInner() {
 
         } catch (_) {}
         if (bwSignupInFlight) return;
-        if (accountSetupResumeMode) {
-          void finishResumeAccountSetup();
-          return;
-        }
-        const resumePassword = document.getElementById("password")?.value || "";
-        if (!resumePassword || resumePassword.length < 8) {
-          setAccountSetupWizardStep(0);
-          showAccountSetupStep0Error("Enter your password to finish creating your account.", "password");
-          return;
-        }
-        void doSignup();
+        void completeVerifiedAccountSetup();
         return;
       }
     }
@@ -4605,7 +4656,7 @@ function handleAccountSetupBack(e) {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
   const s = getAccountSetupWizardStep();
   if (s <= 0) return;
-  if (accountSetupResumeMode && s <= 1) return;
+  if ((accountSetupResumeMode || accountSetupVerifiedNoFamily) && s <= 1) return;
   setCallout(signupCalloutEl, "", "");
   if (s === 2 && getAccountSetupStep3Phase() === "form") {
     // From the transaction form (pre-save), Back should return to the Step 3 intro hub.

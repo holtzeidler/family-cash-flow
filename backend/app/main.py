@@ -1941,6 +1941,8 @@ class RegisterOut(BaseModel):
     access_token: str
     # True only when the starter family was created. That family's created_at is the trial start.
     trial_started: bool = False
+    # The one family for this onboarding. Setup must save into this id.
+    family_id: Optional[int] = None
 
 
 class FamilyCreateIn(BaseModel):
@@ -4846,10 +4848,15 @@ def _apply_onboarding_goals(user: User, payload: OnboardingCompleteIn) -> None:
     user.onboarding_goal_other = payload.onboarding_goal_other if "other" in payload.onboarding_goals else None
 
 
-def _onboarding_session(response: Response, user: User, *, trial_started: bool) -> dict:
+def _onboarding_session(response: Response, user: User, *, trial_started: bool, family_id: int) -> dict:
     token = create_access_token(user_id=int(user.id), session_version=int(user.session_version or 0))
     _set_access_cookie(response, token, persistent=False)
-    return {"user": _user_out(user), "access_token": token, "trial_started": trial_started}
+    return {
+        "user": _user_out(user),
+        "access_token": token,
+        "trial_started": trial_started,
+        "family_id": int(family_id),
+    }
 
 
 @app.post("/api/auth/verification/start", response_model=VerificationStartOut)
@@ -5053,7 +5060,7 @@ def complete_onboarding(
             user.onboarding_completed_at = now
         db.commit()
         db.refresh(user)
-        return _onboarding_session(response, user, trial_started=False)
+        return _onboarding_session(response, user, trial_started=False, family_id=int(owned.id))
 
     claimed = db.execute(
         update(User)
@@ -5079,7 +5086,7 @@ def complete_onboarding(
         _apply_onboarding_goals(user, payload)
         db.commit()
         db.refresh(user)
-        return _onboarding_session(response, user, trial_started=False)
+        return _onboarding_session(response, user, trial_started=False, family_id=int(owned.id))
 
     fam = Family(name="My Family", balance_threshold_min=DEFAULT_FAMILY_BALANCE_THRESHOLD_MIN)
     db.add(fam)
@@ -5114,7 +5121,7 @@ def complete_onboarding(
         _send_signup_welcome_email(user=user, family=fam)
     except Exception:
         logger.error("Welcome email was not sent for user id=%s", int(user_id))
-    return _onboarding_session(response, user, trial_started=True)
+    return _onboarding_session(response, user, trial_started=True, family_id=int(fam.id))
 
 
 @app.post("/api/auth/register")
