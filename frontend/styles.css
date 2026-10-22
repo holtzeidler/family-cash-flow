@@ -217,6 +217,8 @@ body.account-setup-page{
   --as-ultra-soft-tile-shadow:
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 5px 18px rgba(0, 0, 0, 0.042);
+  /* Gap between the sticky/fixed header and the first heading. One value for every setup step. */
+  --as-below-nav: clamp(20px, 3.2vh, 36px);
   /* Slightly warmer neutral than global --bg while staying quiet */
   background:
     radial-gradient(120% 70% at 50% -8%, rgba(11, 61, 46, 0.055), transparent 58%),
@@ -239,14 +241,201 @@ body.account-setup-page .container > .grid{
   justify-content: flex-start;
   margin-left: auto;
   margin-right: auto;
-  margin-top: clamp(-56px, calc(4vh - 52px), -40px);
+  margin-top: 0;
   margin-bottom: 0;
-  padding: clamp(4px, 0.8vh, 10px) 0 14px;
+  padding: var(--as-below-nav) 0 14px;
+}
+/* Confirmation card uses the same header gap, in a narrower column. */
+body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])){
+  width: min(550px, 100%);
+  max-width: 550px;
+  margin-top: 0;
+  padding: clamp(20px, 4.5vh, 56px) 0 clamp(20px, 4vh, 40px);
+  justify-content: flex-start;
+  align-items: stretch;
+}
+body.account-setup-page #accountSetupEmailCheck.email-check{
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: clamp(28px, 4vh, 40px) clamp(22px, 4vw, 40px) clamp(22px, 3vh, 32px);
+  overflow: visible;
+  text-align: center;
+  background: #fff;
+  border: 1px solid rgba(11, 61, 46, 0.16);
+  border-radius: 17px;
+  box-shadow: var(--as-ultra-soft-card-shadow);
+}
+body.account-setup-page .email-check__icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+}
+body.account-setup-page .email-check__title{
+  margin: 0;
+  color: var(--accent);
+  font-size: clamp(1.45rem, 2.4vw, 1.7rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+body.account-setup-page .email-check__lead{
+  margin: 14px 0 0;
+  color: rgba(17, 24, 39, 0.62);
+  font-size: 0.98rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+body.account-setup-page .email-check__address{
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: clamp(1.02rem, 2vw, 1.12rem);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+body.account-setup-page .email-check__next{
+  margin: 16px 0 0;
+  color: #24312c;
+  font-size: 0.98rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+body.account-setup-page .email-check__expire{
+  margin: 8px 0 0;
+  color: rgba(17, 24, 39, 0.52);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+body.account-setup-page .email-check__actions{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  margin-top: 22px;
+}
+body.account-setup-page .email-check__resend{
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 18px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.12);
+}
+body.account-setup-page .email-check__resend:hover:not(:disabled){
+  filter: none;
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+}
+body.account-setup-page .email-check__resend:disabled,
+body.account-setup-page .email-check__resend:disabled:hover{
+  opacity: 1;
+  cursor: not-allowed;
+  filter: none;
+  background: #fff;
+  color: rgba(11, 61, 46, 0.58);
+  border-color: rgba(11, 61, 46, 0.28);
+  box-shadow: none;
+  font-weight: 600;
+}
+body.account-setup-page .email-check__change{
+  appearance: none;
+  -webkit-appearance: none;
+  align-self: center;
+  min-height: 44px;
+  margin-top: 2px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+body.account-setup-page .email-check__change:hover{
+  filter: none;
+  color: color-mix(in srgb, var(--accent) 80%, #000);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+body.account-setup-page .email-check__resend:focus-visible,
+body.account-setup-page .email-check__change:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+body.account-setup-page .email-check__note{
+  margin: 14px 0 0;
+  color: #24312c;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+body.account-setup-page .email-check__note:empty{
+  display: none;
+  margin: 0;
+}
+body.account-setup-page .email-check__spam{
+  margin: 14px 0 0;
+  color: rgba(17, 24, 39, 0.48);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+@media (max-width: 640px){
+  body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])){
+    padding-top: 16px;
+    padding-bottom: 20px;
+  }
+  body.account-setup-page #accountSetupEmailCheck.email-check{
+    padding: 24px 18px 20px;
+  }
+}
+@media (max-height: 700px){
+  body.account-setup-page{
+    --as-below-nav: 16px;
+  }
+  body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])){
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  body.account-setup-page .email-check__icon{
+    width: 48px;
+    height: 48px;
+    margin-bottom: 10px;
+  }
+  body.account-setup-page .email-check__actions{
+    margin-top: 16px;
+  }
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
   width: min(580px, 92vw);
   max-width: 580px;
-  padding: clamp(10px, 2.5vh, 22px) 0 clamp(28px, 5vh, 48px);
+  padding: var(--as-below-nav) 0 clamp(28px, 5vh, 48px);
   margin-top: 0;
   margin-bottom: 0;
   flex: 1 1 auto;
@@ -277,8 +466,8 @@ body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .account-setup-w
 body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active){
   width: min(760px, 92vw);
   max-width: 760px;
-  margin-top: clamp(-28px, calc(2vh - 18px), 8px);
-  padding-top: clamp(8px, 1.5vh, 18px);
+  margin-top: 0;
+  padding-top: var(--as-below-nav);
   padding-bottom: clamp(24px, 4vh, 40px);
 }
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-wizard{
@@ -313,8 +502,8 @@ body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]
 /* Transaction form: balanced hero → card rhythm */
 body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="form"].account-setup-wizard__panel--active),
 body.account-setup-page:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .container > .grid:has(#accountSetupWizard){
-  margin-top: clamp(10px, 1.6vh, 18px);
-  padding-top: 0;
+  margin-top: 0;
+  padding-top: var(--as-below-nav);
   padding-bottom: clamp(40px, 6vh, 64px);
 }
 body.account-setup-page:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-wizard,

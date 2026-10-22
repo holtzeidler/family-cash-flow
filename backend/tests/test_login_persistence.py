@@ -21,6 +21,7 @@ from smoke_guard import (  # noqa: E402
     assert_process_is_safe,
     smoke_db_path,
 )
+from verified_signup import signup_verified  # noqa: E402
 
 _DB = smoke_db_path("balancewhiz-smoke-login.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
@@ -50,16 +51,14 @@ _DAY = 24 * 60 * 60
 
 def _register(client: TestClient) -> str:
     email = f"bw-smoke-login-{uuid.uuid4().hex[:10]}@example.com"
-    res = client.post(
-        "/api/auth/register",
-        json={
-            "email": email,
-            "password": _PASSWORD,
-            "first_name": "Login",
-            "last_name": "Tester",
-        },
+    res = signup_verified(
+        client,
+        email=email,
+        password=_PASSWORD,
+        first_name="Login",
+        last_name="Tester",
     )
-    assert res.status_code == 201, res.text
+    assert res.status_code == 200
     client.post("/api/auth/logout")
     return email
 
