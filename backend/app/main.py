@@ -3760,6 +3760,8 @@ def _ensure_user_session_version_column() -> None:
 
 
 _EMAIL_VERIFIED_BACKFILL_KEY = "users.email_verified_at.backfill_v1"
+# Stable lock so two API processes cannot run this migration at the same time.
+_EMAIL_VERIFIED_BACKFILL_LOCK = 872431501
 
 
 def _user_column_names(conn) -> set[str]:
@@ -3778,32 +3780,42 @@ def _user_column_names(conn) -> set[str]:
 def _ensure_user_email_verification_columns() -> None:
     """Add verification timestamps and confirm accounts that already exist, once.
 
-    The backfill runs only while its marker is missing. A later startup leaves
-    a null email_verified_at null, so a restart cannot confirm an account that
-    has not used its link. The update does not change session_version.
+    The column changes, the one-time update, and the app_meta marker commit
+    together. A second process waits, then sees the marker and does not update
+    anyone again. The marker is never removed.
+
+    After the marker exists, an insert that omits email_verified_at — the old
+    registration statement — receives the column default instead of NULL.
+    A later startup still leaves an explicit NULL alone, so a restart cannot
+    confirm an account that has not used its link. session_version is unchanged.
     """
     with engine.begin() as conn:
-        names = _user_column_names(conn)
-        if settings.DATABASE_URL.startswith("sqlite"):
+        sqlite = settings.DATABASE_URL.startswith("sqlite")
+        if not sqlite:
+            conn.execute(text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": _EMAIL_VERIFIED_BACKFILL_LOCK})
+        if sqlite:
             conn.execute(text("CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"))
+            remember = "INSERT OR IGNORE INTO app_meta (key, value) VALUES (:key, :value)"
+        else:
+            conn.execute(
+                text("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(128) PRIMARY KEY, value TEXT NOT NULL)")
+            )
+            remember = "INSERT INTO app_meta (key, value) VALUES (:key, :value) ON CONFLICT (key) DO NOTHING"
+        names = _user_column_names(conn)
+        if sqlite:
             if "email_verified_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN email_verified_at DATETIME"))
             if "welcome_email_sent_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN welcome_email_sent_at DATETIME"))
             if "onboarding_completed_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_completed_at DATETIME"))
-            remember = "INSERT OR IGNORE INTO app_meta (key, value) VALUES (:key, :value)"
         else:
-            conn.execute(
-                text("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(128) PRIMARY KEY, value TEXT NOT NULL)")
-            )
-            if "email_verified_at" not in names:
-                conn.execute(text("ALTER TABLE users ADD COLUMN email_verified_at TIMESTAMP"))
-            if "welcome_email_sent_at" not in names:
-                conn.execute(text("ALTER TABLE users ADD COLUMN welcome_email_sent_at TIMESTAMP"))
-            if "onboarding_completed_at" not in names:
-                conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_completed_at TIMESTAMP"))
-            remember = "INSERT INTO app_meta (key, value) VALUES (:key, :value) ON CONFLICT (key) DO NOTHING"
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_email_sent_at TIMESTAMP"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMP"))
+            # Hold off inserts until this transaction commits, then the default covers them.
+            conn.execute(text("LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN email_verified_at SET DEFAULT CURRENT_TIMESTAMP"))
         pending = conn.execute(
             text("SELECT 1 FROM app_meta WHERE key = :key"),
             {"key": _EMAIL_VERIFIED_BACKFILL_KEY},

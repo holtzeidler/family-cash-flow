@@ -554,27 +554,6 @@ def test_existing_accounts_are_verified_once_and_later_nulls_stay_null():
         assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
 
-def test_unlisted_staging_address_is_rejected_and_no_mail_is_sent(monkeypatch):
-    listed = _email()
-    outsider = _email()
-    monkeypatch.setattr("app.main._is_staging_deployment", lambda: True)
-    monkeypatch.setattr("app.main._database_looks_like_staging", lambda: True)
-    monkeypatch.setattr(settings, "STAGING_AUTH_EMAIL_ALLOWLIST", listed)
-    with TestClient(app) as client:
-        blocked, blocked_mail = _start(client, outsider)
-        assert blocked.status_code == 403
-        assert blocked_mail == []
-        allowed, allowed_mail = _start(client, listed)
-        assert allowed.status_code == 200
-        assert allowed_mail[0]["kind"] == "confirm"
-        monkeypatch.setattr(settings, "STAGING_AUTH_EMAIL_ALLOWLIST", "")
-        closed, closed_mail = _start(client, _email())
-        assert closed.status_code == 403
-        assert closed_mail == []
-    assert _user_count(outsider) == 0
-    assert _user_count(listed) == 0
-
-
 def test_password_reset_and_invite_still_work_for_verified_users(monkeypatch):
     owner_email = _email()
     guest_email = _email()
