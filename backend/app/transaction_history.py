@@ -122,6 +122,7 @@ class TransactionHistoryEventOut(BaseModel):
 class TransactionHistoryOut(BaseModel):
     events: list[TransactionHistoryEventOut]
     occurrence_events: list[TransactionHistoryEventOut]
+    other_occurrence_events: list[TransactionHistoryEventOut] = []
     series_events: list[TransactionHistoryEventOut]
     earlier_edits_note: Optional[str] = None
 
@@ -652,6 +653,7 @@ def load_history(
         return {
             "events": events,
             "occurrence_events": [],
+            "other_occurrence_events": [],
             "series_events": [],
             "earlier_edits_note": None,
         }
@@ -722,32 +724,37 @@ def load_history(
     series_events.extend(synthetic)
     series_events = _sort_events(series_events)
 
-    occurrence_events: list[dict] = []
-    if subject_type == "expected_occurrence" and occurrence_date is not None:
-        occ_rows = list(
-            db.execute(
-                select(TransactionHistory)
-                .where(
-                    TransactionHistory.family_id == family_id,
-                    TransactionHistory.subject_type == "expected_occurrence",
-                    TransactionHistory.subject_id.in_(related_ids),
-                    TransactionHistory.occurrence_date == occurrence_date,
-                )
-                .order_by(TransactionHistory.id.asc())
+    occ_rows = list(
+        db.execute(
+            select(TransactionHistory)
+            .where(
+                TransactionHistory.family_id == family_id,
+                TransactionHistory.subject_type == "expected_occurrence",
+                TransactionHistory.subject_id.in_(related_ids),
             )
-            .scalars()
-            .all()
+            .order_by(TransactionHistory.id.asc())
         )
-        occurrence_events = _sort_events([_event_from_row(row, "occurrence") for row in occ_rows])
+        .scalars()
+        .all()
+    )
+    occurrence_events: list[dict] = []
+    other_occurrence_events: list[dict] = []
+    selected_date = occurrence_date if subject_type == "expected_occurrence" else None
+    for row in occ_rows:
+        event = _event_from_row(row, "occurrence")
+        if selected_date is not None and row.occurrence_date == selected_date:
+            occurrence_events.append(event)
+        else:
+            other_occurrence_events.append(event)
+    occurrence_events = _sort_events(occurrence_events)
+    other_occurrence_events = _sort_events(other_occurrence_events)
 
     note = EARLIER_EDITS_NOTE if synthetic else None
-    if subject_type == "expected_occurrence":
-        combined = _sort_events(occurrence_events + series_events)
-    else:
-        combined = series_events
+    combined = _sort_events(occurrence_events + other_occurrence_events + series_events)
     return {
         "events": combined,
         "occurrence_events": occurrence_events,
+        "other_occurrence_events": other_occurrence_events,
         "series_events": series_events,
         "earlier_edits_note": note,
     }

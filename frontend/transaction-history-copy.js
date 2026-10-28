@@ -70,12 +70,14 @@ function transactionHistoryValueLabel(field, value) {
   return String(value);
 }
 
-function transactionHistoryChangeSentence(change) {
+function transactionHistoryChangeSentence(change, options) {
   if (change && change.field === "cancelled") {
     var skipped = change.after === true || change.after === "true";
     var wasSkipped = change.before === true || change.before === "true";
-    if (skipped && !wasSkipped) return "This date was skipped";
-    if (wasSkipped && !skipped) return "This date was restored";
+    var namedDate = options && options.nameTheDate ? transactionHistoryValueLabel("date", options.occurrenceDate) : "";
+    if (namedDate === "none") namedDate = "";
+    if (skipped && !wasSkipped) return namedDate ? namedDate + " was skipped" : "This date was skipped";
+    if (wasSkipped && !skipped) return namedDate ? namedDate + " was restored" : "This date was restored";
   }
   var label = transactionHistoryFieldLabel(change && change.field);
   if (!label) return "";
@@ -96,16 +98,21 @@ function transactionHistoryVisibleChanges(changes) {
   return visible;
 }
 
-function transactionHistoryEventHeading(event) {
+function transactionHistoryEventHeading(event, options) {
   var recorded = !event || event.recorded !== false;
   var action = event && event.action ? String(event.action) : "";
   var system = event && event.actor_kind === "system";
   var occurrence = event && event.subject_type === "expected_occurrence";
+  var namedDate = "";
+  if (options && options.nameTheDate && occurrence && event.occurrence_date) {
+    namedDate = transactionHistoryValueLabel("date", event.occurrence_date);
+    if (namedDate === "none") namedDate = "";
+  }
   if (!recorded && action === "created") return "Added";
-  if (system && action === "skipped") return "Skipped this date automatically";
-  if (occurrence && action === "skipped") return "Skipped this date";
-  if (occurrence && action === "restored") return "Restored this date";
-  if (occurrence) return "Changed this date";
+  if (system && action === "skipped") return namedDate ? "Skipped " + namedDate + " automatically" : "Skipped this date automatically";
+  if (occurrence && action === "skipped") return namedDate ? "Skipped " + namedDate : "Skipped this date";
+  if (occurrence && action === "restored") return namedDate ? "Restored " + namedDate : "Restored this date";
+  if (occurrence) return namedDate ? "Changed " + namedDate : "Changed this date";
   var oneTime = event && (event.subject_type === "transaction" || event.scope === "transaction");
   if (oneTime && action === "deleted") return "Deleted";
   if (oneTime && action === "created") return "Added";
@@ -125,8 +132,8 @@ function transactionHistoryEscape(value) {
     .replace(/"/g, "&quot;");
 }
 
-function transactionHistoryEventHtml(event, whenText) {
-  var heading = transactionHistoryEventHeading(event);
+function transactionHistoryEventHtml(event, whenText, options) {
+  var heading = transactionHistoryEventHeading(event, options);
   var actor = event && event.actor_kind === "system" ? "Automatic" : (event && event.actor_label) || "Family member";
   var when = whenText || "";
   var summary =
@@ -134,9 +141,11 @@ function transactionHistoryEventHtml(event, whenText) {
       ? "Added " + when + " by " + actor + "."
       : heading + " · " + when + " · " + actor;
   var changes = event && event.recorded === false ? [] : transactionHistoryVisibleChanges(event && event.changes);
+  var sentenceOptions =
+    options && options.nameTheDate ? { nameTheDate: true, occurrenceDate: event && event.occurrence_date } : null;
   var lines = "";
   for (var i = 0; i < changes.length; i++) {
-    var sentence = transactionHistoryChangeSentence(changes[i]);
+    var sentence = transactionHistoryChangeSentence(changes[i], sentenceOptions);
     if (sentence) lines += "<li>" + transactionHistoryEscape(sentence) + "</li>";
   }
   return (

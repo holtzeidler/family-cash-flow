@@ -574,3 +574,126 @@ def test_history_does_not_change_forecast_billing_or_trial_date():
         history = _history(client, family_id, "transaction", expense.json()["id"])
         assert history.status_code == 200, history.text
         assert history.json()["events"][0]["action"] == "created"
+
+
+def _section_keys(events: list[dict]) -> set[tuple]:
+    return {
+        (event["id"], event["subject_type"], event["subject_id"], event.get("occurrence_date"), event["action"])
+        for event in events
+    }
+
+
+def _assert_history_sections_do_not_overlap(body: dict) -> None:
+    this_date = _section_keys(body["occurrence_events"])
+    other_dates = _section_keys(body["other_occurrence_events"])
+    series = _section_keys(body["series_events"])
+    assert this_date.isdisjoint(other_dates)
+    assert this_date.isdisjoint(series)
+    assert other_dates.isdisjoint(series)
+    assert all(event["subject_type"] == "expected_occurrence" for event in body["occurrence_events"])
+    assert all(event["subject_type"] == "expected_occurrence" for event in body["other_occurrence_events"])
+    assert all(event["subject_type"] == "expected_series" for event in body["series_events"])
+
+
+def test_selected_date_history_keeps_other_dates_in_their_own_section():
+    with TestClient(app) as client:
+        family_id, _user_id = _signup(client, "bw-smoke-histsections@example.com")
+        account_id = _account(client, family_id)
+        series = _series(client, family_id, account_id, start_date="2026-11-15", amount="12.00", description="Gas")
+        edited = client.put(
+            f"/api/families/{family_id}/expected-transactions/{series['id']}",
+            json={
+                "account_id": account_id,
+                "start_date": "2026-11-15",
+                "recurrence": "monthly",
+                "kind": "expense",
+                "amount": "15.00",
+                "description": "Gas",
+            },
+        )
+        assert edited.status_code == 200, edited.text
+        skipped = client.post(
+            f"/api/families/{family_id}/expected-transactions/{series['id']}/instances/2026-12-15",
+            json={"action": "cancel"},
+        )
+        assert skipped.status_code == 200, skipped.text
+        november = client.post(
+            f"/api/families/{family_id}/expected-transactions/{series['id']}/instances/2026-11-15",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "expense",
+                "amount": "18.00",
+                "description": "Gas",
+            },
+        )
+        assert november.status_code == 200, november.text
+
+        january = _history(client, family_id, "expected_occurrence", series["id"], "2027-01-15")
+        assert january.status_code == 200, january.text
+        opened = january.json()
+        assert opened["occurrence_events"] == []
+        assert [event["occurrence_date"] for event in opened["other_occurrence_events"]] == ["2026-11-15", "2026-12-15"]
+        assert [event["action"] for event in opened["other_occurrence_events"]] == ["updated", "skipped"]
+        assert _change(opened["series_events"], "amount", "updated")["before"] == "12.00"
+        assert _change(opened["series_events"], "amount", "updated")["after"] == "15.00"
+        assert "skipped" not in {event["action"] for event in opened["series_events"]}
+        _assert_history_sections_do_not_overlap(opened)
+
+        december = _history(client, family_id, "expected_occurrence", series["id"], "2026-12-15")
+        on_december = december.json()
+        assert [event["action"] for event in on_december["occurrence_events"]] == ["skipped"]
+        assert [event["occurrence_date"] for event in on_december["other_occurrence_events"]] == ["2026-11-15"]
+        _assert_history_sections_do_not_overlap(on_december)
+
+        whole_series = _history(client, family_id, "expected_series", series["id"])
+        series_body = whole_series.json()
+        assert series_body["occurrence_events"] == []
+        assert [event["occurrence_date"] for event in series_body["other_occurrence_events"]] == ["2026-11-15", "2026-12-15"]
+        assert {event["action"] for event in series_body["series_events"]} == {"created", "updated"}
+        _assert_history_sections_do_not_overlap(series_body)
+
+
+def test_linked_series_keeps_occurrence_history_with_the_other_dates():
+    with TestClient(app) as client:
+        family_id, _user_id = _signup(client, "bw-smoke-histlink@example.com")
+        account_id = _account(client, family_id, on="2026-01-01")
+        series = _series(client, family_id, account_id, start_date="2026-01-10", description="Rent")
+        skipped = client.post(
+            f"/api/families/{family_id}/expected-transactions/{series['id']}/instances/2026-02-10",
+            json={"action": "cancel"},
+        )
+        assert skipped.status_code == 200, skipped.text
+        split = client.post(
+            f"/api/families/{family_id}/expected-transactions/{series['id']}/apply-from-occurrence/2026-03-10",
+            json={"account_id": account_id, "kind": "expense", "amount": "50.00", "description": "Rent"},
+        )
+        assert split.status_code == 200, split.text
+        assert split.json()["mode"] == "split"
+        new_id = split.json()["future_series_id"]
+
+        later = _history(client, family_id, "expected_occurrence", new_id, "2026-04-10")
+        assert later.status_code == 200, later.text
+        body = later.json()
+        assert body["occurrence_events"] == []
+        assert [(event["occurrence_date"], event["action"], event["subject_id"]) for event in body["other_occurrence_events"]] == [
+            ("2026-02-10", "skipped", series["id"])
+        ]
+        assert "split" in {event["action"] for event in body["series_events"]}
+        assert "created" in {event["action"] for event in body["series_events"]}
+        assert "skipped" not in {event["action"] for event in body["series_events"]}
+        _assert_history_sections_do_not_overlap(body)
+
+        on_skipped_date = _history(client, family_id, "expected_occurrence", series["id"], "2026-02-10")
+        skipped_body = on_skipped_date.json()
+        assert [(event["occurrence_date"], event["action"]) for event in skipped_body["occurrence_events"]] == [
+            ("2026-02-10", "skipped")
+        ]
+        assert all(event["occurrence_date"] != "2026-02-10" for event in skipped_body["other_occurrence_events"])
+        _assert_history_sections_do_not_overlap(skipped_body)
+
+        future_series = _history(client, family_id, "expected_series", new_id)
+        future_body = future_series.json()
+        assert future_body["occurrence_events"] == []
+        assert [event["occurrence_date"] for event in future_body["other_occurrence_events"]] == ["2026-02-10"]
+        _assert_history_sections_do_not_overlap(future_body)
