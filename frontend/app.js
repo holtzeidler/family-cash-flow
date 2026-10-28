@@ -23336,3 +23336,177 @@ main().catch((e) => {
     renderCalendar();
   } catch (_) {}
 });
+
+function escapeHistoryText(value) {
+  if (typeof transactionHistoryEscape === "function") return transactionHistoryEscape(value);
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatHistoryStamp(value) {
+  if (!value) return "";
+  const raw = String(value);
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!match) return raw;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[Number(match[2]) - 1] || match[2];
+  let hour = Number(match[4]);
+  const minute = match[5];
+  const suffix = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return month + " " + Number(match[3]) + ", " + match[1] + ", " + hour + ":" + minute + " " + suffix;
+}
+
+function transactionHistoryRequest() {
+  const familyId = state && state.activeFamilyId;
+  if (!familyId) return null;
+  if (
+    selectedExpectedInstance &&
+    selectedExpectedInstance.expected_transaction_id &&
+    selectedExpectedInstance.occurrence_date
+  ) {
+    return {
+      familyId,
+      subject_type: "expected_occurrence",
+      subject_id: selectedExpectedInstance.expected_transaction_id,
+      occurrence_date: selectedExpectedInstance.occurrence_date,
+    };
+  }
+  const seriesId = expectedEditId && String(expectedEditId.value || "").trim();
+  if (seriesId) {
+    return { familyId, subject_type: "expected_series", subject_id: seriesId };
+  }
+  const oneTimeId = txEditId && String(txEditId.value || "").trim();
+  if (oneTimeId) {
+    return { familyId, subject_type: "transaction", subject_id: oneTimeId };
+  }
+  return null;
+}
+
+function renderHistoryEventList(events) {
+  if (!events || !events.length) {
+    return "<p class=\"tx-history-empty\">Changes from now on will appear here.</p>";
+  }
+  if (typeof transactionHistoryEventHtml !== "function") {
+    return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
+  }
+  return events
+    .map((event) => transactionHistoryEventHtml(event, formatHistoryStamp(event.created_at)))
+    .join("");
+}
+
+function renderTransactionHistory(payload, request) {
+  if (!payload) return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
+  if (request.subject_type === "expected_occurrence") {
+    const note = payload.earlier_edits_note
+      ? "<p class=\"tx-history-note\">" + escapeHistoryText(payload.earlier_edits_note) + "</p>"
+      : "";
+    return (
+      "<h3>This date</h3>" +
+      renderHistoryEventList(payload.occurrence_events) +
+      "<h3>The series</h3>" +
+      renderHistoryEventList(payload.series_events) +
+      note
+    );
+  }
+  const events = payload.events && payload.events.length ? payload.events : payload.series_events;
+  const note = payload.earlier_edits_note
+    ? "<p class=\"tx-history-note\">" + escapeHistoryText(payload.earlier_edits_note) + "</p>"
+    : "";
+  return renderHistoryEventList(events) + note;
+}
+
+function closeTransactionHistory() {
+  const modal = document.getElementById("txHistoryModal");
+  if (!modal) return;
+  modal.classList.remove("modal-overlay--open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function openTransactionHistory() {
+  const modal = document.getElementById("txHistoryModal");
+  const body = document.getElementById("txHistoryBody");
+  if (!modal || !body) return;
+  modal.classList.add("modal-overlay--open");
+  modal.setAttribute("aria-hidden", "false");
+  const request = transactionHistoryRequest();
+  if (!request) {
+    body.innerHTML = "<p class=\"tx-history-empty\">Save this transaction before its history can be shown.</p>";
+    return;
+  }
+  body.innerHTML = "<p class=\"tx-history-empty\">Loading history…</p>";
+  const params = new URLSearchParams({
+    subject_type: request.subject_type,
+    subject_id: String(request.subject_id),
+  });
+  if (request.occurrence_date) params.set("occurrence_date", request.occurrence_date);
+  try {
+    const payload = await api("/api/families/" + request.familyId + "/transaction-history?" + params.toString());
+    body.innerHTML = renderTransactionHistory(payload, request);
+  } catch (_) {
+    body.innerHTML = "<p class=\"tx-history-empty\">History could not be loaded.</p>";
+  }
+}
+
+function ensureTxHistoryUi() {
+  if (document.getElementById("txHistoryOpen") || typeof document === "undefined") return;
+  const foot = document.querySelector("#txEditModal .modal-actions--tx-edit-foot");
+  if (foot && foot.parentNode) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = "txHistoryOpen";
+    button.className = "tx-history-open";
+    button.textContent = "View history";
+    foot.parentNode.insertBefore(button, foot);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      void openTransactionHistory();
+    });
+  }
+  if (!document.getElementById("txHistoryStyle")) {
+    const style = document.createElement("style");
+    style.id = "txHistoryStyle";
+    style.textContent =
+      ".tx-history-open{display:block;margin:0 0 .4rem;padding:0;border:0;background:none;color:#5c6570;font:inherit;font-size:.82rem;text-decoration:underline;cursor:pointer;text-align:left}" +
+      ".tx-history-panel{background:#fff;color:#1c2430;width:min(32rem,100%);max-height:min(70vh,36rem);overflow:auto;border-radius:12px;padding:1rem 1.1rem 1.2rem}" +
+      ".tx-history-panel h2{margin:0 0 .75rem;font-size:1.15rem}" +
+      ".tx-history-panel h3{margin:1rem 0 .35rem;font-size:.95rem}" +
+      ".tx-history-event{margin:0 0 .8rem}" +
+      ".tx-history-event p{margin:0 0 .25rem}" +
+      ".tx-history-event ul{margin:.15rem 0 0;padding-left:1.1rem}" +
+      ".tx-history-empty,.tx-history-note{margin:.35rem 0;color:#5c6570}" +
+      ".tx-history-close{margin-top:.8rem}";
+    document.head.appendChild(style);
+  }
+  if (!document.getElementById("txHistoryModal")) {
+    const modal = document.createElement("div");
+    modal.id = "txHistoryModal";
+    modal.className = "modal-overlay modal-overlay--nested";
+    modal.setAttribute("aria-hidden", "true");
+    modal.innerHTML =
+      "<div class=\"tx-history-panel\" role=\"dialog\" aria-labelledby=\"txHistoryTitle\">" +
+      "<h2 id=\"txHistoryTitle\">History</h2>" +
+      "<div id=\"txHistoryBody\"></div>" +
+      "<button type=\"button\" class=\"tx-history-close\" id=\"txHistoryClose\">Close</button>" +
+      "</div>";
+    document.body.appendChild(modal);
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeTransactionHistory();
+    });
+    const close = document.getElementById("txHistoryClose");
+    if (close) close.addEventListener("click", closeTransactionHistory);
+  }
+  if (!window.__bwHistoryEscapeBound) {
+    window.__bwHistoryEscapeBound = true;
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const modal = document.getElementById("txHistoryModal");
+      if (modal && modal.classList.contains("modal-overlay--open")) closeTransactionHistory();
+    });
+  }
+}
+
+ensureTxHistoryUi();
