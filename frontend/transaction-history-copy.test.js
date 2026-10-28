@@ -53,6 +53,23 @@ check(
   transactionHistoryChangeSentence({ field: "cancelled", before: false, after: true }) === "This date was skipped"
 );
 
+var hostile = transactionHistoryEventHtml(
+  {
+    recorded: true,
+    action: "updated",
+    actor_kind: "user",
+    actor_label: '<img src=x onerror="alert(1)">',
+    subject_type: "transaction",
+    changes: [{ field: "notes", before: "ok", after: '<script>alert(1)</script> & "quoted"' }],
+  },
+  "Oct 28, 2026, 4:00 PM"
+);
+check("actor markup is not raw html", hostile.indexOf("<img") === -1);
+check("note markup is not raw html", hostile.indexOf("<script>") === -1);
+check("note markup is escaped", hostile.indexOf("&lt;script&gt;alert(1)&lt;/script&gt;") !== -1);
+check("quotes in notes are escaped", hostile.indexOf("&quot;quoted&quot;") !== -1);
+check("ampersand in notes is escaped", hostile.indexOf("&amp;") !== -1);
+
 var visible = transactionHistoryVisibleChanges([
   { field: "account_id", before: 1, after: 2 },
   { field: "account_name", before: "Checking", after: "Savings" },

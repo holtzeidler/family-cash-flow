@@ -23338,6 +23338,7 @@ main().catch((e) => {
 });
 
 function escapeHistoryText(value) {
+  if (typeof transactionHistoryEscape === "function") return transactionHistoryEscape(value);
   return String(value == null ? "" : value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -23389,34 +23390,11 @@ function renderHistoryEventList(events) {
   if (!events || !events.length) {
     return "<p class=\"tx-history-empty\">Changes from now on will appear here.</p>";
   }
+  if (typeof transactionHistoryEventHtml !== "function") {
+    return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
+  }
   return events
-    .map((event) => {
-      const heading =
-        typeof transactionHistoryEventHeading === "function" ? transactionHistoryEventHeading(event) : event.action;
-      const when = formatHistoryStamp(event.created_at);
-      const actor = event.actor_kind === "system" ? "Automatic" : event.actor_label || "Family member";
-      const summary =
-        event.recorded === false
-          ? "Added " + when + " by " + actor + "."
-          : heading + " · " + when + " · " + actor;
-      const changes =
-        event.recorded === false || typeof transactionHistoryVisibleChanges !== "function"
-          ? []
-          : transactionHistoryVisibleChanges(event.changes);
-      const lines = changes
-        .map((change) => {
-          const sentence = transactionHistoryChangeSentence(change);
-          return sentence ? "<li>" + escapeHistoryText(sentence) + "</li>" : "";
-        })
-        .join("");
-      return (
-        "<article class=\"tx-history-event\"><p>" +
-        escapeHistoryText(summary) +
-        "</p>" +
-        (lines ? "<ul>" + lines + "</ul>" : "") +
-        "</article>"
-      );
-    })
+    .map((event) => transactionHistoryEventHtml(event, formatHistoryStamp(event.created_at)))
     .join("");
 }
 

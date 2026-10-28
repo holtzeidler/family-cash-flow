@@ -398,6 +398,151 @@ def test_history_failure_rolls_back_the_financial_change():
         assert history_rows == 0
 
 
+def _history_count(family_id: int) -> int:
+    db = SessionLocal()
+    try:
+        return db.execute(
+            select(func.count()).select_from(TransactionHistory).where(TransactionHistory.family_id == family_id)
+        ).scalar_one()
+    finally:
+        db.close()
+
+
+def test_in_place_future_edit_and_series_deletion_stay_connected():
+    with TestClient(app) as client:
+        family_id, _user_id = _signup(client, "bw-smoke-histinplace@example.com", last="Inplace")
+        account_id = _account(client, family_id)
+        series = _series(client, family_id, account_id, start_date="2026-09-10", description="Rent")
+        updated = client.post(
+            f"/api/families/{family_id}/expected-transactions/{series['id']}/apply-from-occurrence/2026-09-10",
+            json={"account_id": account_id, "kind": "expense", "amount": "50.00", "description": "Rent"},
+        )
+        assert updated.status_code == 200, updated.text
+        assert updated.json()["mode"] == "updated_in_place"
+        assert updated.json()["future_series_id"] == series["id"]
+        listed = client.get(f"/api/families/{family_id}/expected-transactions")
+        assert [item["id"] for item in listed.json()] == [series["id"]]
+        history = _history(client, family_id, "expected_series", series["id"])
+        amount = _change(history.json()["events"], "amount", "updated")
+        assert amount["before"] == "200.00"
+        assert amount["after"] == "50.00"
+        assert "split" not in {event["action"] for event in history.json()["events"]}
+
+        removed = client.delete(f"/api/families/{family_id}/expected-transactions/{series['id']}")
+        assert removed.status_code == 200, removed.text
+        listed = client.get(f"/api/families/{family_id}/expected-transactions")
+        assert listed.json() == []
+        after_delete = _history(client, family_id, "expected_series", series["id"])
+        assert after_delete.status_code == 200, after_delete.text
+        actions = [event["action"] for event in after_delete.json()["events"]]
+        assert actions[0] == "deleted"
+        assert "created" in actions
+        assert "updated" in actions
+
+        db = SessionLocal()
+        try:
+            rows = list(
+                db.execute(
+                    select(TransactionHistory).where(
+                        TransactionHistory.family_id == family_id,
+                        TransactionHistory.subject_id == series["id"],
+                    )
+                ).scalars()
+            )
+            lineages = {row.lineage_id for row in rows}
+            assert len(lineages) == 1
+            assert {row.action for row in rows} >= {"created", "updated", "deleted"}
+        finally:
+            db.close()
+
+        fresh = _series(client, family_id, account_id, start_date="2026-10-10", description="Utilities")
+        ended = client.post(
+            f"/api/families/{family_id}/expected-transactions/{fresh['id']}/end-from-occurrence/2026-10-10"
+        )
+        assert ended.status_code == 200, ended.text
+        assert ended.json()["mode"] == "deleted"
+        surviving = _history(client, family_id, "expected_series", fresh["id"])
+        assert surviving.status_code == 200, surviving.text
+        assert surviving.json()["events"][0]["action"] == "deleted"
+        assert _change(surviving.json()["events"], "description", "deleted")["before"] == "Utilities"
+
+
+def test_validation_failure_and_unchanged_save_write_no_history():
+    with TestClient(app) as client:
+        family_id, _user_id = _signup(client, "bw-smoke-histnoop@example.com", last="Noop")
+        account_id = _account(client, family_id)
+        rejected = client.post(
+            f"/api/families/{family_id}/expected-transactions",
+            json={
+                "account_id": account_id,
+                "start_date": "2026-09-10",
+                "end_date": "2026-09-01",
+                "recurrence": "monthly",
+                "kind": "expense",
+                "amount": "200.00",
+                "description": "Should not save",
+            },
+        )
+        assert rejected.status_code == 400, rejected.text
+        assert _history_count(family_id) == 0
+        listed = client.get(f"/api/families/{family_id}/expected-transactions")
+        assert listed.json() == []
+
+        series = _series(client, family_id, account_id, description="Rent")
+        before = _history_count(family_id)
+        same = client.put(
+            f"/api/families/{family_id}/expected-transactions/{series['id']}",
+            json={
+                "account_id": account_id,
+                "start_date": "2026-09-10",
+                "recurrence": "monthly",
+                "kind": "expense",
+                "amount": "200.00",
+                "description": "Rent",
+            },
+        )
+        assert same.status_code == 200, same.text
+        assert _history_count(family_id) == before
+        history = _history(client, family_id, "expected_series", series["id"])
+        assert [event["action"] for event in history.json()["events"]] == ["created"]
+
+        missed = client.post(
+            f"/api/families/{family_id}/expected-transactions/{series['id']}/apply-from-occurrence/2026-09-11",
+            json={"account_id": account_id, "kind": "expense", "amount": "40.00", "description": "Rent"},
+        )
+        assert missed.status_code == 400, missed.text
+        assert _history_count(family_id) == before
+        assert client.get(f"/api/families/{family_id}/expected-transactions").json()[0]["amount"] == "200.00"
+
+
+def test_history_reads_are_limited_to_the_family_and_do_not_write():
+    with TestClient(app) as owner, TestClient(app) as stranger:
+        family_id, _owner_id = _signup(owner, "bw-smoke-histread@example.com", last="Reader")
+        account_id = _account(owner, family_id)
+        series = _series(owner, family_id, account_id, description="PrivateLedger")
+        _other_family, _other_id = _signup(stranger, "bw-smoke-histother@example.com", last="Other")
+        before = _history_count(family_id)
+        anonymous = TestClient(app)
+        hidden = anonymous.get(
+            f"/api/families/{family_id}/transaction-history",
+            params={"subject_type": "expected_series", "subject_id": series["id"]},
+        )
+        assert hidden.status_code == 401, hidden.text
+        blocked = _history(stranger, family_id, "expected_series", series["id"])
+        assert blocked.status_code == 403, blocked.text
+        families = stranger.get("/api/families")
+        own_family = families.json()[0]["id"]
+        missed = _history(stranger, own_family, "expected_series", series["id"])
+        assert missed.status_code == 404, missed.text
+        assert "PrivateLedger" not in missed.text
+        posted = stranger.post(
+            f"/api/families/{own_family}/transaction-history",
+            params={"subject_type": "expected_series", "subject_id": series["id"]},
+        )
+        assert posted.status_code == 405, posted.text
+        assert _history_count(family_id) == before
+
+
 def test_history_does_not_change_forecast_billing_or_trial_date():
     with TestClient(app) as client:
         family_id, _user_id = _signup(client, "bw-smoke-histcast@example.com", last="Forecast")

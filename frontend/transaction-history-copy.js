@@ -116,3 +116,34 @@ function transactionHistoryEventHeading(event) {
   if (action === "deleted") return "Deleted";
   return "Changed the series";
 }
+
+function transactionHistoryEscape(value) {
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function transactionHistoryEventHtml(event, whenText) {
+  var heading = transactionHistoryEventHeading(event);
+  var actor = event && event.actor_kind === "system" ? "Automatic" : (event && event.actor_label) || "Family member";
+  var when = whenText || "";
+  var summary =
+    event && event.recorded === false
+      ? "Added " + when + " by " + actor + "."
+      : heading + " · " + when + " · " + actor;
+  var changes = event && event.recorded === false ? [] : transactionHistoryVisibleChanges(event && event.changes);
+  var lines = "";
+  for (var i = 0; i < changes.length; i++) {
+    var sentence = transactionHistoryChangeSentence(changes[i]);
+    if (sentence) lines += "<li>" + transactionHistoryEscape(sentence) + "</li>";
+  }
+  return (
+    "<article class=\"tx-history-event\"><p>" +
+    transactionHistoryEscape(summary) +
+    "</p>" +
+    (lines ? "<ul>" + lines + "</ul>" : "") +
+    "</article>"
+  );
+}
