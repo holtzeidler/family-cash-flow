@@ -554,40 +554,75 @@ def test_existing_accounts_are_verified_once_and_later_nulls_stay_null():
         assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
 
-def test_password_reset_and_invite_still_work_for_verified_users(monkeypatch):
+def test_password_reset_still_works_for_verified_users(monkeypatch):
     owner_email = _email()
-    guest_email = _email()
     sent: dict[str, str] = {}
 
     def capture(**kwargs):
         sent.update(kwargs)
 
-    monkeypatch.setattr("app.main._invite_email_delivery_configured", lambda: True)
     monkeypatch.setattr("app.main._send_password_reset_email_sync", capture)
-    monkeypatch.setattr("app.main._send_family_invite_email_sync", lambda **kwargs: None)
     with TestClient(app) as owner:
         created = signup_verified(owner, email=owner_email, finish=True)
         assert created.status_code == 200
-        family_id = owner.get("/api/families").json()[0]["id"]
-        invited = owner.post(
-            f"/api/families/{family_id}/invites",
-            json={"email": guest_email, "access_mode": "view"},
-        )
-        assert invited.status_code == 200
-        assert _user_count(guest_email) == 0
-        invite_token = parse_qs(urlparse(invited.json()["accept_url"]).query).get("token", [""])[0]
         requested = owner.post("/api/public/password-reset/request", json={"email": owner_email})
         assert requested.status_code == 200
     with SessionLocal() as db:
         user_id = db.execute(select(User.id).where(User.email == owner_email)).scalar_one()
         assert db.execute(select(PasswordResetToken.id).where(PasswordResetToken.user_id == user_id)).first() is not None
-    with TestClient(app) as guest:
-        joined = signup_verified(guest, email=guest_email, finish=False)
-        assert joined.status_code == 200
-        accepted = guest.post("/api/invites/accept", json={"token": invite_token})
-        assert accepted.status_code == 200
-        families = guest.get("/api/families").json()
-        assert any(int(row["id"]) == int(family_id) for row in families)
+
+
+def test_customer_sharing_is_unavailable_and_forecast_access_remains():
+    """Member and admin owners keep their own forecast. Customer sharing routes stay closed."""
+    email = _email()
+    with TestClient(app) as owner:
+        created = signup_verified(owner, email=email, finish=True)
+        assert created.status_code == 200
+        family_id = owner.get("/api/families").json()[0]["id"]
+        account = owner.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "25.00",
+                "starting_balance_date": "2026-10-01",
+            },
+        )
+        assert account.status_code == 200, account.text
+        assert owner.get(f"/api/families/{family_id}/accounts").status_code == 200
+        closed = [
+            owner.post(
+                f"/api/families/{family_id}/members",
+                json={"email": "guest@example.com", "access_mode": "view"},
+            ),
+            owner.patch(
+                f"/api/families/{family_id}/members/1",
+                json={"access_mode": "view"},
+            ),
+            owner.post(
+                f"/api/families/{family_id}/invites",
+                json={"email": "guest@example.com", "access_mode": "view"},
+            ),
+            owner.get(f"/api/families/{family_id}/invites"),
+            owner.delete(f"/api/families/{family_id}/invites/1"),
+            owner.get("/api/public/invites/by-token/not-a-real-invite-token"),
+            owner.post("/api/invites/accept", json={"token": "not-a-real-invite-token"}),
+        ]
+        assert [response.status_code for response in closed] == [404] * len(closed)
+        # Wizard completion stores role member, so the member list stays permission-checked.
+        assert owner.get(f"/api/families/{family_id}/members").status_code == 403
+        with SessionLocal() as db:
+            member = db.execute(
+                select(FamilyMember)
+                .join(User, User.id == FamilyMember.user_id)
+                .where(User.email == email, FamilyMember.family_id == int(family_id))
+            ).scalar_one()
+            member.role = "admin"
+            db.commit()
+        listed = owner.get(f"/api/families/{family_id}/members")
+        assert listed.status_code == 200, listed.text
+        assert len(listed.json()) == 1
+        assert owner.get("/api/families").json()[0]["id"] == family_id
 
 
 def _age_verification(email: str, *, minutes: int = 2, expired: bool = False) -> None:

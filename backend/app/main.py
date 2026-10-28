@@ -5200,10 +5200,9 @@ def add_family_member(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    m = _add_family_member_for_email(db=db, family_id=family_id, email=str(payload.email), access_mode=payload.access_mode)
-    return _family_member_row_to_out(db=db, row=m)
+    """Customer sharing is not offered. Platform-admin routes still add members."""
+    del family_id, payload, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.patch("/api/families/{family_id}/members/{member_user_id}", response_model=FamilyMemberOut)
@@ -5214,32 +5213,16 @@ def patch_family_member(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    m = _apply_family_membership_update(db=db, family_id=family_id, member_user_id=member_user_id, payload=payload)
-    return _family_member_row_to_out(db=db, row=m)
+    """Customer permission changes and ownership transfer are not offered."""
+    del family_id, member_user_id, payload, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.get("/api/public/invites/by-token/{token}", response_model=PublicInviteDetailsOut)
 def public_invite_details(token: str, db=Depends(get_db)):
-    raw = (token or "").strip()
-    if len(raw) < 10:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid.")
-    th = _hash_invite_token(raw)
-    row = db.execute(select(FamilyInvite).where(FamilyInvite.token_hash == th)).scalar_one_or_none()
-    now = datetime.utcnow()
-    if row is None or row.revoked_at is not None or row.accepted_at is not None or row.expires_at < now:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid or has expired.")
-    fam = db.execute(select(Family).where(Family.id == row.family_id)).scalar_one_or_none()
-    if fam is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid.")
-    return PublicInviteDetailsOut(
-        ok=True,
-        family_name=str(fam.name),
-        invitee_email=row.email_normalized,
-        access_mode=str(row.access_mode or "view"),
-        expires_at=row.expires_at,
-    )
+    """Invitation links are not offered."""
+    del token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.post("/api/families/{family_id}/invites", response_model=FamilyInviteCreatedOut)
@@ -5250,92 +5233,9 @@ async def create_family_invite(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    if not _allow_family_invite_send(family_id):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many invites were sent for this family recently. Try again in a little while.",
-        )
-    key = str(payload.email).strip().lower()
-    if not key:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
-    existing_member = db.execute(
-        select(FamilyMember)
-        .join(User, User.id == FamilyMember.user_id)
-        .where(FamilyMember.family_id == family_id, func.lower(User.email) == key)
-    ).scalar_one_or_none()
-    if existing_member is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That user is already in this family.")
-    inviter = db.execute(select(User).where(User.id == user_id)).scalar_one()
-    if key == str(inviter.email).strip().lower():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot invite your own email address.")
-    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
-    if fam is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
-
-    token = secrets.token_urlsafe(32)
-    th = _hash_invite_token(token)
-    expires = datetime.utcnow() + timedelta(days=14)
-    db.execute(
-        update(FamilyInvite)
-        .where(
-            FamilyInvite.family_id == family_id,
-            FamilyInvite.email_normalized == key,
-            FamilyInvite.accepted_at.is_(None),
-            FamilyInvite.revoked_at.is_(None),
-        )
-        .values(revoked_at=datetime.utcnow())
-    )
-    mode = str(payload.access_mode or "view").strip().lower()
-    if mode not in ("edit", "view"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="access_mode must be edit or view")
-    inv = FamilyInvite(
-        family_id=family_id,
-        email_normalized=key,
-        token_hash=th,
-        access_mode=mode,
-        invited_by_user_id=user_id,
-        expires_at=expires,
-    )
-    db.add(inv)
-    db.commit()
-    db.refresh(inv)
-    accept_url = _invite_accept_url(token=token, request=request)
-    access_label = "full edit" if mode == "edit" else "view-only"
-    subject = f"Invitation to join {fam.name} on Balance Whiz"
-    body = (
-        f"You have been invited to collaborate on the family account \"{fam.name}\" "
-        f"with {access_label} access.\n\n"
-        f"Open this link to accept (sign in or create an account with this email if you need to):\n{accept_url}\n\n"
-        "If you did not expect this message, you can ignore it."
-    )
-    email_sent = False
-    if _invite_email_delivery_configured():
-        try:
-
-            def _job() -> None:
-                _send_family_invite_email_sync(
-                    to_addr=key,
-                    subject=subject,
-                    text_body=body,
-                    reply_to=str(inviter.email),
-                )
-
-            await asyncio.wait_for(asyncio.to_thread(_job), timeout=25.0)
-            email_sent = True
-        except asyncio.TimeoutError:
-            logger.warning("Invite email exceeded send deadline")
-        except Exception as e:
-            logger.warning("Invite email failed: %s", type(e).__name__)
-    return FamilyInviteCreatedOut(
-        id=int(inv.id),
-        email=key,
-        access_mode=mode,
-        expires_at=inv.expires_at,
-        email_sent=email_sent,
-        accept_url=accept_url,
-    )
+    """Customer invitations are not offered."""
+    del family_id, payload, request, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.get("/api/families/{family_id}/invites", response_model=list[FamilyInvitePendingOut])
@@ -5344,33 +5244,9 @@ def list_family_invites(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    now = datetime.utcnow()
-    rows = (
-        db.execute(
-            select(FamilyInvite)
-            .where(
-                FamilyInvite.family_id == family_id,
-                FamilyInvite.accepted_at.is_(None),
-                FamilyInvite.revoked_at.is_(None),
-                FamilyInvite.expires_at > now,
-            )
-            .order_by(FamilyInvite.created_at.desc())
-        )
-        .scalars()
-        .all()
-    )
-    return [
-        FamilyInvitePendingOut(
-            id=int(r.id),
-            email=r.email_normalized,
-            access_mode=str(r.access_mode or "view"),
-            created_at=r.created_at,
-            expires_at=r.expires_at,
-        )
-        for r in rows
-    ]
+    """Customer invitation lists are not offered."""
+    del family_id, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.delete("/api/families/{family_id}/invites/{invite_id}")
@@ -5380,18 +5256,9 @@ def revoke_family_invite(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    inv = db.execute(
-        select(FamilyInvite).where(FamilyInvite.id == invite_id, FamilyInvite.family_id == family_id)
-    ).scalar_one_or_none()
-    if inv is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
-    if inv.accepted_at is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This invite was already accepted")
-    inv.revoked_at = datetime.utcnow()
-    db.commit()
-    return {"ok": True}
+    """Customer invitation revocation is not offered."""
+    del family_id, invite_id, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.post("/api/invites/accept", response_model=InviteAcceptOut)
@@ -5400,38 +5267,9 @@ def accept_family_invite(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    user = db.execute(select(User).where(User.id == user_id)).scalar_one()
-    raw = (payload.token or "").strip()
-    if len(raw) < 10:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
-    th = _hash_invite_token(raw)
-    row = db.execute(select(FamilyInvite).where(FamilyInvite.token_hash == th)).scalar_one_or_none()
-    now = datetime.utcnow()
-    if row is None or row.revoked_at is not None or row.accepted_at is not None or row.expires_at < now:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation is not valid or has expired.")
-    if str(user.email).strip().lower() != str(row.email_normalized).strip().lower():
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Sign in with the email address that received this invitation, then try again.",
-        )
-    existing = db.execute(
-        select(FamilyMember).where(FamilyMember.family_id == row.family_id, FamilyMember.user_id == user_id)
-    ).scalar_one_or_none()
-    if existing is not None:
-        row.accepted_at = now
-        db.commit()
-        return InviteAcceptOut(ok=True, family_id=int(row.family_id), already_member=True)
-    _add_family_member_for_email(
-        db=db,
-        family_id=int(row.family_id),
-        email=str(row.email_normalized),
-        access_mode=str(row.access_mode or "view"),
-    )
-    inv2 = db.execute(select(FamilyInvite).where(FamilyInvite.id == row.id)).scalar_one()
-    inv2.accepted_at = datetime.utcnow()
-    db.commit()
-    return InviteAcceptOut(ok=True, family_id=int(row.family_id), already_member=False)
+    """Customer invitation acceptance is not offered."""
+    del payload, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.get("/api/platform/overview", response_model=PlatformOverviewOut)
