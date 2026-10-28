@@ -17745,7 +17745,8 @@ body.account-setup-page #accountSetupWizard[data-step="0"] .account-setup-wizard
 }
 body.account-setup-page .account-setup-sample-back{
   display: block;
-  margin: 12px auto 0;
+  flex-shrink: 0;
+  margin: 2px auto 14px;
   text-align: center;
   font-size: 0.92rem;
   font-weight: 500;

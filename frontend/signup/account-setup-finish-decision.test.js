@@ -52,6 +52,18 @@ check(
 );
 check("a zero family id does not create one", accountSetupFamilyIdAfterComplete({ family_id: 0 }, { ok: false }) === null);
 
+check("unfinished login resumes setup", postLoginPath(true, "/calendar") === "/account-setup/?resume=1");
+check("unfinished login ignores a forecast next", postLoginPath(true, "/settings/") === "/account-setup/?resume=1");
+check("unfinished login with no draft still resumes setup", postLoginPath(true, "") === "/account-setup/?resume=1");
+check("finished login keeps a safe next", postLoginPath(false, "/reports/") === "/reports/");
+check("finished login opens the forecast", postLoginPath(false, "") === "/calendar");
+check("finished login rejects an off-site next", postLoginPath(false, "https://example.com") === "/calendar");
+check("finished login rejects a protocol-relative next", postLoginPath(false, "//example.com") === "/calendar");
+check("empty family stays in setup", accountSetupShouldLeaveWizard(true, true) === false);
+check("unfinished signup with no family stays in setup", accountSetupShouldLeaveWizard(true, false) === false);
+check("finished customer with a family opens the forecast", accountSetupShouldLeaveWizard(false, true) === true);
+check("finished customer without a family does not leave yet", accountSetupShouldLeaveWizard(false, false) === false);
+
 if (failures.length) {
   throw new Error(failures.join("; "));
 }

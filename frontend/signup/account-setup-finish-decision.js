@@ -21,6 +21,26 @@ function accountSetupFamilyIdAfterComplete(completeBody, familiesResult) {
  * A saved step is kept. A draft rewound to step 0 opens on the step that
  * shows the saved checking account or the finish step, and is not submitted.
  */
+/** Verified people who have not finished setup. Same device may still have a draft. */
+var ACCOUNT_SETUP_RESUME_PATH = "/account-setup/?resume=1";
+
+/**
+ * Where to go after login. An unfinished setup ignores next, including /calendar,
+ * so opening the forecast cannot create a family. A finished customer keeps a
+ * same-site next path, or the forecast.
+ */
+function postLoginPath(needsOnboarding, requestedNext) {
+  if (needsOnboarding) return ACCOUNT_SETUP_RESUME_PATH;
+  var raw = String(requestedNext || "").trim();
+  if (raw.startsWith("/") && !raw.startsWith("//") && raw.indexOf("://") === -1) return raw;
+  return "/calendar";
+}
+
+/** An existing family opens the forecast only after setup is finished. */
+function accountSetupShouldLeaveWizard(needsOnboarding, hasFamily) {
+  return !needsOnboarding && !!hasFamily;
+}
+
 function accountSetupVerifiedResumeStep(draft) {
   const source = draft && typeof draft === "object" ? draft : {};
   const step = Number(source.wizardStep);

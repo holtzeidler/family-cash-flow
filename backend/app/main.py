@@ -1820,6 +1820,9 @@ class AuthMeOut(BaseModel):
     user: UserOut
     is_platform_admin: bool = False
     platform_role: Literal["subscriber", "admin"] = "subscriber"
+    # True only while setup has not been finished. Existing customers are marked
+    # finished once at startup, so a null timestamp is not enough on its own.
+    needs_onboarding: bool = False
 
 
 class MaintenanceUserOut(BaseModel):
@@ -3150,6 +3153,7 @@ def startup_populate_schema():
     _ensure_user_onboarding_goal_columns()
     _ensure_platform_admin_audit_table()
     _ensure_billing_tables()
+    _ensure_onboarding_completion_backfill()
     _sync_legacy_platform_admin_roles()
 
 
@@ -3831,6 +3835,82 @@ def _ensure_user_email_verification_columns() -> None:
         conn.execute(
             text(remember),
             {"key": _EMAIL_VERIFIED_BACKFILL_KEY, "value": "1"},
+        )
+
+
+_ONBOARDING_COMPLETED_BACKFILL_KEY = "users.onboarding_completed_at.backfill_v1"
+_ONBOARDING_COMPLETED_BACKFILL_LOCK = 872431502
+# Email verification reached production main at this moment (PR #7, 2026-10-22 17:05:17 UTC).
+_ONBOARDING_COMPLETED_BACKFILL_BEFORE = "2026-10-22 17:05:17"
+
+
+def _ensure_onboarding_completion_backfill() -> None:
+    """Mark existing customers finished, once, without touching their forecast.
+
+    onboarding_completed_at was added empty. Treating every null as unfinished
+    would send current customers back through setup. This sets the timestamp
+    only when it is still null and the person already owns a family that either
+    existed before email verification or already has an account, transaction,
+    expected transaction, or subscription.
+
+    A verified person whose only family is empty and was created after that
+    release stays null, so they can resume setup and reuse that family. The
+    family's created_at is the trial clock and is not changed. Memberships,
+    billing rows, and balances are not changed. The email-verification marker
+    is not changed. This marker is never removed, so a later startup does not
+    reclassify anyone.
+    """
+    with engine.begin() as conn:
+        sqlite = settings.DATABASE_URL.startswith("sqlite")
+        if not sqlite:
+            conn.execute(
+                text("SELECT pg_advisory_xact_lock(:lock_id)"),
+                {"lock_id": _ONBOARDING_COMPLETED_BACKFILL_LOCK},
+            )
+        if sqlite:
+            conn.execute(text("CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"))
+            remember = "INSERT OR IGNORE INTO app_meta (key, value) VALUES (:key, :value)"
+            owner = "fm.is_family_owner = 1"
+            before_cmp = "datetime(f.created_at) < datetime(:before)"
+        else:
+            conn.execute(
+                text("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(128) PRIMARY KEY, value TEXT NOT NULL)")
+            )
+            remember = "INSERT INTO app_meta (key, value) VALUES (:key, :value) ON CONFLICT (key) DO NOTHING"
+            owner = "fm.is_family_owner IS TRUE"
+            before_cmp = "f.created_at < CAST(:before AS TIMESTAMP)"
+        if "onboarding_completed_at" not in _user_column_names(conn):
+            return
+        pending = conn.execute(
+            text("SELECT 1 FROM app_meta WHERE key = :key"),
+            {"key": _ONBOARDING_COMPLETED_BACKFILL_KEY},
+        ).first()
+        if pending is not None:
+            return
+        conn.execute(
+            text(
+                "UPDATE users SET onboarding_completed_at = ("
+                "SELECT MIN(f.created_at) FROM families f "
+                "JOIN family_members fm ON fm.family_id = f.id "
+                f"WHERE fm.user_id = users.id AND {owner}"
+                ") "
+                "WHERE onboarding_completed_at IS NULL "
+                "AND EXISTS ("
+                "SELECT 1 FROM families f "
+                "JOIN family_members fm ON fm.family_id = f.id "
+                f"WHERE fm.user_id = users.id AND {owner} AND ("
+                f"{before_cmp} "
+                "OR EXISTS (SELECT 1 FROM accounts a WHERE a.family_id = f.id) "
+                "OR EXISTS (SELECT 1 FROM transactions t WHERE t.family_id = f.id) "
+                "OR EXISTS (SELECT 1 FROM expected_transactions e WHERE e.family_id = f.id) "
+                "OR EXISTS (SELECT 1 FROM billing_subscriptions b WHERE b.family_id = f.id)"
+                "))"
+            ),
+            {"before": _ONBOARDING_COMPLETED_BACKFILL_BEFORE},
+        )
+        conn.execute(
+            text(remember),
+            {"key": _ONBOARDING_COMPLETED_BACKFILL_KEY, "value": "1"},
         )
 
 
@@ -4935,6 +5015,7 @@ def me(access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_a
         user=_user_out(user),
         is_platform_admin=role == "admin",
         platform_role=role,
+        needs_onboarding=user.onboarding_completed_at is None,
     )
 
 
