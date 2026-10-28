@@ -169,7 +169,7 @@ def test_postgres_history_round_trip_rollback_and_entitlement():
     assert columns["created_at"] == "timestamp without time zone"
     assert {"ix_transaction_history_subject", "ix_transaction_history_lineage"} <= indexes
 
-    with TestClient(app) as client:
+    with TestClient(main.app) as client:
         created = signup_verified(
             client,
             email="bw-smoke-histpg@example.com",
