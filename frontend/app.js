@@ -5198,6 +5198,7 @@ async function openTxEditModalAsync(tx) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
   applyTxEditCategoryRecurrenceDefaults(tx.category_id);
+  syncTransactionHistoryLink();
 }
 
 let txEditApplyScopeChoice = null;
@@ -5343,6 +5344,7 @@ function closeTxEditModal() {
   txEditSelectedBgColor = null;
   txEditColorTouched = false;
   applyTransactionEditMode("actual", { resetting: true });
+  syncTransactionHistoryLink();
 }
 
 function mountTxAddFormInModal() {
@@ -15109,6 +15111,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("recurring");
   applyMinDateToTxEditDateInput();
+  syncTransactionHistoryLink();
 }
 
 function openExpectedDeleteModal(expectedId, occurrenceDate) {
@@ -23454,16 +23457,40 @@ async function openTransactionHistory() {
   }
 }
 
+function transactionHistoryHasExistingSubject() {
+  if (selectedExpectedInstance && selectedExpectedInstance.expected_transaction_id) return true;
+  if (expectedEditId && String(expectedEditId.value || "").trim()) return true;
+  if (txEditId && String(txEditId.value || "").trim()) return true;
+  return false;
+}
+
+function syncTransactionHistoryLink() {
+  const button = document.getElementById("txHistoryOpen");
+  if (!button) return;
+  button.hidden = !transactionHistoryHasExistingSubject();
+}
+
 function ensureTxHistoryUi() {
-  if (document.getElementById("txHistoryOpen") || typeof document === "undefined") return;
+  if (typeof document === "undefined") return;
   const foot = document.querySelector("#txEditModal .modal-actions--tx-edit-foot");
-  if (foot && foot.parentNode) {
+  const deleteBtn = foot && document.getElementById("txEditDelete");
+  if (foot && deleteBtn && deleteBtn.parentNode === foot && !document.getElementById("txHistoryOpen")) {
+    const leading = document.createElement("div");
+    leading.className = "tx-edit-foot-leading";
+    foot.insertBefore(leading, deleteBtn);
+    leading.appendChild(deleteBtn);
     const button = document.createElement("button");
     button.type = "button";
     button.id = "txHistoryOpen";
     button.className = "tx-history-open";
-    button.textContent = "View history";
-    foot.parentNode.insertBefore(button, foot);
+    button.hidden = true;
+    button.setAttribute("aria-label", "View history");
+    button.innerHTML =
+      '<svg class="tx-history-open__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="5.25" fill="none" stroke="currentColor" stroke-width="1.4"></circle>' +
+      '<path d="M8 5.2V8.2l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg><span>View history</span>";
+    leading.appendChild(button);
     button.addEventListener("click", (event) => {
       event.preventDefault();
       void openTransactionHistory();
@@ -23473,7 +23500,13 @@ function ensureTxHistoryUi() {
     const style = document.createElement("style");
     style.id = "txHistoryStyle";
     style.textContent =
-      ".tx-history-open{display:block;margin:0 0 .4rem;padding:0;border:0;background:none;color:#5c6570;font:inherit;font-size:.82rem;text-decoration:underline;cursor:pointer;text-align:left}" +
+      ".tx-edit-foot-leading{display:flex;align-items:center;gap:12px;flex:0 1 auto;min-width:0}" +
+      ".tx-history-open{display:inline-flex;align-items:center;align-self:center;gap:5px;flex:0 0 auto;margin:0;padding:0 4px;min-height:32px;border:0;background:none;color:#5c6570;font:inherit;font-size:12.5px;font-weight:550;line-height:1;text-decoration:none;cursor:pointer;white-space:nowrap;border-radius:8px}" +
+      ".tx-history-open:hover,.tx-history-open:focus-visible{color:#1c2430;text-decoration:underline;text-underline-offset:2px}" +
+      ".tx-history-open:focus-visible{outline:2px solid color-mix(in srgb, var(--accent, #1f6b45) 35%, transparent);outline-offset:2px}" +
+      ".tx-history-open[hidden]{display:none !important}" +
+      ".tx-history-open__icon{display:block;flex:0 0 auto}" +
+      "@media (max-width:720px){.tx-edit-foot-leading{order:1;flex-wrap:wrap;row-gap:8px}.tx-edit-foot-leading>#txHistoryOpen{order:1}}" +
       ".tx-history-panel{background:#fff;color:#1c2430;width:min(26rem,calc(100vw - 1.25rem));max-height:min(78vh,34rem);overflow:auto;border-radius:12px;padding:.9rem 1rem 1rem;box-sizing:border-box}" +
       ".tx-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem}" +
       ".tx-history-head-copy{min-width:0;flex:1}" +
