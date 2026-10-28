@@ -55,6 +55,11 @@ jobs:
       - name: Transaction history
         run: python -m pytest backend/tests/test_transaction_history.py -q
 
+      - name: Transaction history on Postgres
+        env:
+          TEST_POSTGRES_URL: postgresql://ci:ci@localhost:5432/balancewhiz_history
+        run: python -m pytest backend/tests/test_transaction_history_postgres.py -q
+
   frontend:
     runs-on: ubuntu-latest
     steps:
