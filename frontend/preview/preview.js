@@ -698,7 +698,7 @@
       '<p class="preview-finale-note" id="previewTourNote" hidden>Free for 14 days · No bank connection required</p>' +
       '<div class="bw-tour-tooltip__actions"><button type="button" class="bw-tour-tooltip__skip preview-back" id="previewTourBack">Back</button>' +
       '<button type="button" class="bw-tour-tooltip__cta" id="previewTourNext">Next</button>' +
-      '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/account-setup/?fresh=1" hidden>Start my free forecast</a></div>' +
+      '<a class="bw-tour-tooltip__cta preview-tour-link" id="previewTourStart" href="/account-setup/?fresh=1" hidden>Create my forecast</a></div>' +
       '<button type="button" class="bw-tour-tooltip__skip" id="previewTourContinue" hidden>Continue exploring</button>';
     document.body.appendChild(dialog);
     document.getElementById("previewTourClose").addEventListener("click", closeTour);
@@ -893,10 +893,12 @@
   }
 
   function sampleSignupTarget() {
-    if (document.documentElement.getAttribute("data-bw-home-auth") === "in") {
-      return { href: "/calendar/", label: "Go to my forecast" };
-    }
-    return { href: "/account-setup/?fresh=1", label: "Start my free forecast" };
+    var signedIn = document.documentElement.getAttribute("data-bw-home-auth") === "in";
+    var onboarding = document.documentElement.getAttribute("data-bw-onboarding") || "";
+    if (typeof sampleForecastCta === "function") return sampleForecastCta(signedIn, onboarding);
+    if (!signedIn) return { href: "/account-setup/?fresh=1", label: "Create my forecast" };
+    if (onboarding === "done") return { href: "/calendar/", label: "Go to my forecast" };
+    return { href: "/account-setup/?resume=1", label: "Continue setting up my forecast" };
   }
 
   function applySampleSignupLinks() {
@@ -1092,6 +1094,6 @@
   applySampleSignupLinks();
   new MutationObserver(applySampleSignupLinks).observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-bw-home-auth"],
+    attributeFilter: ["data-bw-home-auth", "data-bw-onboarding"],
   });
 })();

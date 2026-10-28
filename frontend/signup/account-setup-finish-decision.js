@@ -41,6 +41,15 @@ function accountSetupShouldLeaveWizard(needsOnboarding, hasFamily) {
   return !needsOnboarding && !!hasFamily;
 }
 
+/** A date the person entered wins. Otherwise keep the saved draft date. Today is only the fallback. */
+function accountSetupBalanceDateValue(savedDate, currentValue, today) {
+  var current = String(currentValue || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(current)) return current;
+  var saved = String(savedDate || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
+  return String(today || "").trim();
+}
+
 function accountSetupVerifiedResumeStep(draft) {
   const source = draft && typeof draft === "object" ? draft : {};
   const step = Number(source.wizardStep);

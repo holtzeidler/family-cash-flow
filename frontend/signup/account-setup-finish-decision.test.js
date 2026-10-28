@@ -64,6 +64,23 @@ check("unfinished signup with no family stays in setup", accountSetupShouldLeave
 check("finished customer with a family opens the forecast", accountSetupShouldLeaveWizard(false, true) === true);
 check("finished customer without a family does not leave yet", accountSetupShouldLeaveWizard(false, false) === false);
 
+check(
+  "a date in the field is kept",
+  accountSetupBalanceDateValue("2026-09-01", "2026-10-03", "2026-10-28") === "2026-10-03"
+);
+check(
+  "a blank field restores the saved date",
+  accountSetupBalanceDateValue("2026-09-15", "", "2026-10-28") === "2026-09-15"
+);
+check(
+  "today is used only when no date was entered",
+  accountSetupBalanceDateValue("", "", "2026-10-28") === "2026-10-28"
+);
+check(
+  "an invalid saved date falls through to today",
+  accountSetupBalanceDateValue("October 28", " ", "2026-10-28") === "2026-10-28"
+);
+
 if (failures.length) {
   throw new Error(failures.join("; "));
 }
