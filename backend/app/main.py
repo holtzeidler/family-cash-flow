@@ -3117,7 +3117,10 @@ def startup_populate_schema():
         db_path = settings.DATABASE_URL.split("sqlite:///")[-1]
         if db_path:
             Path(db_path).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
+    from .transaction_history import ensure_transaction_history_table
+
     Base.metadata.create_all(bind=engine)
+    ensure_transaction_history_table()
     _ensure_account_starting_balance_date_column()
     _ensure_notes_columns()
     _ensure_expected_second_day_column()
@@ -7029,6 +7032,10 @@ def create_expected_transaction(
         bg_color=payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None,
     )
     db.add(tx)
+    db.flush()
+    from .transaction_history import on_series_created
+
+    on_series_created(db, tx, user_id)
     db.commit()
     db.refresh(tx)
 
@@ -7104,6 +7111,9 @@ def update_expected_transaction(
 
     _require_expected_start_on_or_after_account(account, payload.start_date)
 
+    from .transaction_history import on_series_changed, snapshot_series
+
+    before_series = snapshot_series(db, tx)
     previous_start = tx.start_date
     tx.account_id = payload.account_id
     tx.start_date = payload.start_date
@@ -7133,6 +7143,7 @@ def update_expected_transaction(
     tx.fg_color = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
     tx.bg_color = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None
 
+    on_series_changed(db, before_series, tx, user_id)
     db.commit()
     db.refresh(tx)
 
@@ -7189,6 +7200,16 @@ def delete_expected_transaction(
     if tx is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expected transaction not found")
 
+    from .transaction_history import on_series_deleted, snapshot_series
+
+    before_series = snapshot_series(db, tx)
+    on_series_deleted(
+        db,
+        before_series,
+        family_id=family_id,
+        series_id=tx.id,
+        actor_user_id=user_id,
+    )
     db.delete(tx)
     db.commit()
     return {"ok": True}
@@ -7235,7 +7256,14 @@ def _cancel_expected_occurrence(
     expected_id: int,
     occurrence_date: date,
     ovr: Optional[ExpectedTransactionOverride],
-) -> None:
+) -> Optional[dict]:
+    """Cancel one occurrence. Return the change when this call newly skips it."""
+    if ovr is not None and ovr.cancelled:
+        return None
+    before = {
+        "cancelled": False,
+        "moved_to_date": ovr.moved_to_date.isoformat() if ovr is not None and ovr.moved_to_date else None,
+    }
     if ovr is None:
         ovr = ExpectedTransactionOverride(
             expected_transaction_id=expected_id,
@@ -7245,6 +7273,11 @@ def _cancel_expected_occurrence(
         db.add(ovr)
     ovr.cancelled = True
     ovr.moved_to_date = None
+    return {
+        "occurrence_date": occurrence_date,
+        "before": before,
+        "after": {"cancelled": True, "moved_to_date": None},
+    }
 
 
 def _absorb_identical_occurrences_on_date(
@@ -7254,7 +7287,7 @@ def _absorb_identical_occurrences_on_date(
     display_date: date,
     keep_occurrence: date,
     identity: tuple[Optional[int], TransactionKind, int],
-) -> None:
+) -> list[dict]:
     """Cancel other occurrences of this series that show as the same payment on one day.
 
     September's Taxes moved onto October 3 is drawn once, on top of October's
@@ -7300,11 +7333,15 @@ def _absorb_identical_occurrences_on_date(
                 cancel_on.append(display_date)
 
     seen: set[date] = set()
+    recorded: list[dict] = []
     for occ in cancel_on:
         if occ in seen or occ == keep_occurrence:
             continue
         seen.add(occ)
-        _cancel_expected_occurrence(db, tx.id, occ, by_occ.get(occ))
+        change = _cancel_expected_occurrence(db, tx.id, occ, by_occ.get(occ))
+        if change is not None:
+            recorded.append(change)
+    return recorded
 
 
 def _absorb_collapsed_copies_when_date_changes(
@@ -7316,23 +7353,26 @@ def _absorb_collapsed_copies_when_date_changes(
     new_display_date: Optional[date],
     previous_identity: tuple[Optional[int], TransactionKind, int],
     new_identity: tuple[Optional[int], TransactionKind, int],
-) -> None:
+) -> list[dict]:
     if new_display_date is None or new_display_date == previous_display_date:
-        return
-    _absorb_identical_occurrences_on_date(
+        return []
+    recorded = _absorb_identical_occurrences_on_date(
         db,
         tx,
         display_date=previous_display_date,
         keep_occurrence=occurrence_date,
         identity=previous_identity,
     )
-    _absorb_identical_occurrences_on_date(
-        db,
-        tx,
-        display_date=new_display_date,
-        keep_occurrence=occurrence_date,
-        identity=new_identity,
+    recorded.extend(
+        _absorb_identical_occurrences_on_date(
+            db,
+            tx,
+            display_date=new_display_date,
+            keep_occurrence=occurrence_date,
+            identity=new_identity,
+        )
     )
+    return recorded
 
 
 @app.post("/api/families/{family_id}/expected-transactions/{expected_id}/instances/{occurrence_date}")
@@ -7397,6 +7437,18 @@ def upsert_expected_instance_override(
     ).scalar_one_or_none()
     previous_display = _effective_occurrence_date(occurrence_date, existing)
     previous_identity = _occurrence_payment_identity(tx, existing)
+    from .transaction_history import (
+        lineage_for,
+        new_batch_id,
+        new_lineage_id,
+        on_automatic_skips,
+        on_occurrence_changed,
+        snapshot_occurrence,
+    )
+
+    before_occurrence = snapshot_occurrence(db, existing)
+    batch_id = new_batch_id()
+    lineage_id = lineage_for(db, family_id, "expected_series", tx.id) or new_lineage_id()
 
     if existing is None:
         existing = ExpectedTransactionOverride(
@@ -7420,9 +7472,10 @@ def upsert_expected_instance_override(
     elif "variable" in payload.model_fields_set:
         existing.variable = payload.variable
 
+    absorbed: list[dict] = []
     if payload.action != "cancel":
         new_display = moved_to_date if moved_to_date is not None else occurrence_date
-        _absorb_collapsed_copies_when_date_changes(
+        absorbed = _absorb_collapsed_copies_when_date_changes(
             db,
             tx,
             occurrence_date=occurrence_date,
@@ -7431,6 +7484,34 @@ def upsert_expected_instance_override(
             previous_identity=previous_identity,
             new_identity=_occurrence_payment_identity(tx, existing),
         )
+    after_occurrence = snapshot_occurrence(db, existing)
+    if before_occurrence.get("cancelled") and not after_occurrence.get("cancelled"):
+        occurrence_action = "restored"
+    elif after_occurrence.get("cancelled") and not before_occurrence.get("cancelled"):
+        occurrence_action = "skipped"
+    else:
+        occurrence_action = "updated"
+    on_occurrence_changed(
+        db,
+        before_occurrence,
+        after_occurrence,
+        family_id=family_id,
+        series_id=tx.id,
+        occurrence_date=occurrence_date,
+        actor_user_id=user_id,
+        action=occurrence_action,
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+    )
+    on_automatic_skips(
+        db,
+        absorbed,
+        family_id=family_id,
+        series_id=tx.id,
+        actor_user_id=user_id,
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+    )
 
     db.commit()
     db.refresh(existing)
@@ -7457,6 +7538,21 @@ def delete_expected_instance_override(
     ).scalar_one_or_none()
 
     if existing is not None:
+        from .transaction_history import lineage_for, new_lineage_id, on_occurrence_changed, snapshot_occurrence
+
+        before_occurrence = snapshot_occurrence(db, existing)
+        after_occurrence = snapshot_occurrence(db, None)
+        on_occurrence_changed(
+            db,
+            before_occurrence,
+            after_occurrence,
+            family_id=family_id,
+            series_id=expected_id,
+            occurrence_date=occurrence_date,
+            actor_user_id=user_id,
+            action="restored",
+            lineage_id=lineage_for(db, family_id, "expected_series", expected_id) or new_lineage_id(),
+        )
         db.delete(existing)
         db.commit()
 
@@ -7619,11 +7715,25 @@ def apply_expected_from_occurrence(
             ExpectedTransactionOverride.occurrence_date == occurrence_date,
         )
     ).scalar_one_or_none()
+    from .transaction_history import (
+        lineage_for,
+        new_batch_id,
+        new_lineage_id,
+        on_automatic_skips,
+        on_series_changed,
+        on_series_created,
+        snapshot_series,
+    )
+
+    before_series = snapshot_series(db, tx)
+    batch_id = new_batch_id()
+    lineage_id = lineage_for(db, family_id, "expected_series", tx.id) or new_lineage_id()
+    absorbed: list[dict] = []
     if eff_start is not None:
         # "This and future" splits off a new series. A payment already parked on
         # this day (September's Taxes moved onto October 3) is not part of that
         # split, so it would stay behind and look like a second Taxes row.
-        _absorb_collapsed_copies_when_date_changes(
+        absorbed = _absorb_collapsed_copies_when_date_changes(
             db,
             tx,
             occurrence_date=occurrence_date,
@@ -7664,6 +7774,24 @@ def apply_expected_from_occurrence(
             if tx.end_date is not None and tx.end_date < eff_start:
                 tx.end_date = None
             tx.start_date = eff_start
+        on_series_changed(
+            db,
+            before_series,
+            tx,
+            user_id,
+            action="updated",
+            batch_id=batch_id,
+            lineage_id=lineage_id,
+        )
+        on_automatic_skips(
+            db,
+            absorbed,
+            family_id=family_id,
+            series_id=tx.id,
+            actor_user_id=user_id,
+            batch_id=batch_id,
+            lineage_id=lineage_id,
+        )
         db.commit()
         db.refresh(tx)
         return ApplyFromOccurrenceOut(mode="updated_in_place", future_series_id=tx.id, ended_series_id=None)
@@ -7711,6 +7839,34 @@ def apply_expected_from_occurrence(
         bg_color=validate_payload.bg_color,
     )
     db.add(new_tx)
+    db.flush()
+    on_series_changed(
+        db,
+        before_series,
+        tx,
+        user_id,
+        action="split",
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+        related_subject_id=new_tx.id,
+    )
+    on_series_created(
+        db,
+        new_tx,
+        user_id,
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+        related_subject_id=tx.id,
+    )
+    on_automatic_skips(
+        db,
+        absorbed,
+        family_id=family_id,
+        series_id=tx.id,
+        actor_user_id=user_id,
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+    )
     db.commit()
     db.refresh(new_tx)
 
@@ -7765,6 +7921,9 @@ def end_expected_from_occurrence(
     if occurrence_date not in hits:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is not a scheduled occurrence for this series")
 
+    from .transaction_history import on_series_changed, on_series_deleted, snapshot_series
+
+    before_series = snapshot_series(db, tx)
     prev_occ = _occurrence_immediately_before(
         start_date=tx.start_date,
         series_end_date=tx.end_date,
@@ -7785,11 +7944,19 @@ def end_expected_from_occurrence(
 
     if prev_occ is None:
         # No previous occurrence => nothing historical to keep; delete the series row entirely.
+        on_series_deleted(
+            db,
+            before_series,
+            family_id=family_id,
+            series_id=tx.id,
+            actor_user_id=user_id,
+        )
         db.delete(tx)
         db.commit()
         return EndFromOccurrenceOut(mode="deleted", expected_id=None, ended_at=None)
 
     tx.end_date = prev_occ
+    on_series_changed(db, before_series, tx, user_id, action="ended")
     db.commit()
     db.refresh(tx)
     return EndFromOccurrenceOut(mode="ended", expected_id=tx.id, ended_at=tx.end_date)
@@ -9651,6 +9818,10 @@ def create_transaction(
         reimbursable=payload.reimbursable,
     )
     db.add(tx)
+    db.flush()
+    from .transaction_history import on_transaction_created
+
+    on_transaction_created(db, tx, user_id)
     db.commit()
     db.refresh(tx)
 
@@ -9703,6 +9874,9 @@ def update_transaction(
 
     _require_transaction_date_on_or_after_family_start(db, family_id, payload.date)
 
+    from .transaction_history import on_transaction_changed, snapshot_transaction
+
+    before_transaction = snapshot_transaction(db, tx)
     tx.date = payload.date
     tx.description = payload.description
     tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
@@ -9712,6 +9886,7 @@ def update_transaction(
     tx.fg_color = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
     tx.bg_color = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None
     tx.reimbursable = payload.reimbursable
+    on_transaction_changed(db, before_transaction, tx, user_id)
     db.commit()
     db.refresh(tx)
     return _transaction_out(db, tx)
@@ -9733,9 +9908,49 @@ def delete_transaction(
     if tx is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
 
+    from .transaction_history import on_transaction_deleted, snapshot_transaction
+
+    before_transaction = snapshot_transaction(db, tx)
+    on_transaction_deleted(
+        db,
+        before_transaction,
+        family_id=family_id,
+        transaction_id=tx.id,
+        actor_user_id=user_id,
+    )
     db.delete(tx)
     db.commit()
     return {"ok": True}
+
+
+@app.get("/api/families/{family_id}/transaction-history")
+def read_transaction_history(
+    family_id: int,
+    subject_type: str,
+    subject_id: int,
+    occurrence_date: Optional[date] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Read-only history for one transaction or recurring series. Does not change the forecast."""
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    if subject_type not in {"transaction", "expected_series", "expected_occurrence"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown history subject")
+    if subject_type == "expected_occurrence" and occurrence_date is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="occurrence_date is required")
+    from .transaction_history import TransactionHistoryOut, load_history
+
+    payload = load_history(
+        db,
+        family_id=family_id,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        occurrence_date=occurrence_date,
+    )
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History not found")
+    return TransactionHistoryOut.model_validate(payload)
 
 
 def _frontend_dir() -> Path:

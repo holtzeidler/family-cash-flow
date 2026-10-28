@@ -52,6 +52,9 @@ jobs:
       - name: Email verification
         run: python -m pytest backend/tests/test_email_verification.py -q
 
+      - name: Transaction history
+        run: python -m pytest backend/tests/test_transaction_history.py -q
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -62,8 +65,10 @@ jobs:
           node --check frontend/signup/signup.js
           node --check frontend/signup/account-setup-finish-decision.js
           node --check frontend/preview/sample-forecast-cta.js
+          node --check frontend/transaction-history-copy.js
 
       - name: Onboarding finish decisions
         run: |
           node frontend/signup/account-setup-finish-decision.test.js
           node frontend/preview/sample-forecast-cta.test.js
+          node frontend/transaction-history-copy.test.js
