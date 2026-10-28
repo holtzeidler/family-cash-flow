@@ -915,7 +915,7 @@ if (catEditSave) {
   catEditSave.addEventListener("click", async () => {
     try {
       show(catEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       const kind = String(catEditKind?.value || "");
       const idRaw = String(catEditId?.value || "").trim();
       const id = idRaw ? Number(idRaw) : null;
@@ -965,7 +965,7 @@ if (catEditDelete) {
   catEditDelete.addEventListener("click", async () => {
     try {
       show(catEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       const kind = String(catEditKind?.value || "");
       const idRaw = String(catEditId?.value || "").trim();
       const id = idRaw ? Number(idRaw) : null;
@@ -3022,7 +3022,7 @@ async function saveBalanceThresholds(opts = {}) {
       errEl,
       saveBtn,
       savedMsg,
-      savedText: silent ? "" : "Saved for this household.",
+      savedText: silent ? "" : "Saved.",
       toastText: silent ? "" : "Safe balance threshold saved.",
       familyPatch: updated,
       showSavedFeedback: !silent,
@@ -4053,7 +4053,7 @@ function escapeHtml(s) {
 
 async function loadCategoryTotalsReport() {
   show(catReportErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!catReportStart?.value || !catReportEnd?.value) throw new Error("Start and end dates are required");
   const mode = getRadioValue("catReportMode", "actual");
   const q = new URLSearchParams({
@@ -4586,7 +4586,7 @@ function hasDuplicateCategoryNameInGroup(name, groupId) {
 // Helper used by the per-group inline "+ Add category" form and any
 // other surface that needs to add a category to a specific group.
 async function addCategoryToGroup(gid, name) {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const nm = String(name || "").trim();
   if (!nm) throw new Error("Category name is required");
   const targetGid = Number.isFinite(Number(gid)) ? Number(gid) : defaultNewCategoryGroupId();
@@ -4635,7 +4635,7 @@ if (seedDefaultCategoriesBtn) {
   seedDefaultCategoriesBtn.addEventListener("click", async () => {
     try {
       show(catErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       let force = false;
       try {
         await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults`, "POST");
@@ -4725,7 +4725,7 @@ if (addCategoryGroupBtn) {
     loadDefaultCategoriesBtn.addEventListener("click", async () => {
       try {
         show(catErr, "");
-        if (!state.activeFamilyId) throw new Error("Choose a family first");
+        if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
         await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults`, "POST");
         await loadCategories();
         await loadMonthAndCalendar();
@@ -4770,7 +4770,7 @@ if (addCategoryGroupBtn) {
     saveGroupBtn.addEventListener("click", async () => {
       try {
         show(catErr, "");
-        if (!state.activeFamilyId) throw new Error("Choose a family first");
+        if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
         const nm = String(newGroupName?.value || "").trim();
         if (!nm) throw new Error("Group name is required");
         if (nm.trim().toLowerCase() === "new group") {
@@ -4798,7 +4798,7 @@ if (txAddSave) {
     if (txAddSaveInFlight) return;
     try {
       show(txAddErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       txAddValidationTouched = true;
       updateTxAddFormValidity({ forceShow: true });
       if (!txAddFormValidationState().valid) {
@@ -4914,7 +4914,7 @@ if (txAddSave) {
 addAccountBtn.addEventListener("click", async () => {
   try {
     show(accErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
 
     const name = accountName.value.trim();
     const type = accountType.value;
@@ -4945,7 +4945,7 @@ addAccountBtn.addEventListener("click", async () => {
 saveAccountEditBtn.addEventListener("click", async () => {
   try {
     show(accErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
     if (!accountEditId.value) throw new Error("Select an account to edit first");
     const startingBalanceVal = accountStartingBalance.value;
     const startingBalanceDateVal = accountStartingBalanceDate.value;
@@ -5761,7 +5761,7 @@ async function afterBalanceCheckInSaved() {
 /** Reconciled: bank matched forecast — no financial adjustment. */
 async function confirmBalanceMatchesForecast() {
   show(reconcileConfirmErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(reconcileActiveDate);
   if (!iso) throw new Error("Invalid date");
   const forecast = forecastBalanceForReconcileModal(iso);
@@ -5790,7 +5790,7 @@ async function confirmBalanceMatchesForecast() {
 /** Edit path: Adjusted only when bank balance differs from forecast. */
 async function saveBalanceCheckIn() {
   show(reconcileErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(reconcileActiveDate);
   const parsed = parseBalanceThresholdFieldRaw(reconcileActualAmount?.value || "");
   if (!iso) throw new Error("Invalid date");
@@ -5960,7 +5960,7 @@ function closeRemoveAdjustmentModal() {
 
 async function saveEditAdjustment() {
   show(editAdjustmentErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(editAdjustmentActiveDate);
   const parsed = parseBalanceThresholdFieldRaw(editAdjustmentAmount?.value || "");
   if (!iso) throw new Error("Invalid date");
@@ -6000,7 +6000,7 @@ async function saveEditAdjustment() {
 
 async function confirmRemoveAdjustment() {
   show(removeAdjustmentErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(removeAdjustmentActiveDate);
   if (!iso) throw new Error("Invalid date");
   await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
@@ -6010,7 +6010,7 @@ async function confirmRemoveAdjustment() {
 }
 
 async function removeReconciliationForDate(iso) {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const d = normalizeIsoDate(iso);
   if (!d) throw new Error("Invalid date");
   hidePinnedBalanceRecordTip();
@@ -6333,7 +6333,7 @@ if (txEditSave) {
     let convertedToRecurring = false;
     try {
       show(txEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       const id = txEditId.value;
       if (!id) throw new Error("No transaction selected");
       const amountVal = txEditAmount.value;
@@ -6405,7 +6405,7 @@ if (txEditDelete) {
         return;
       }
       show(txEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       const id = txEditId.value;
       if (!id) throw new Error("No transaction selected");
       const ok = await bwConfirm({
@@ -6928,7 +6928,7 @@ async function openCalendarDayAddTransactionAsync(iso, e) {
   if (await guardBillingWriteAsync(e)) return;
   if (state.activeFamilyAccessMode === "view") {
     window.alert(
-      "You have view-only access to this family. Ask the owner to grant edit access if you need to add transactions."
+      "You have view-only access to this account. Ask the owner to grant edit access if you need to add transactions."
     );
     return;
   }
@@ -7272,7 +7272,7 @@ if (tmPrimaryAction) {
 async function saveUncategorizedAssignments() {
   try {
     if (uncatTxErr) show(uncatTxErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
     if (!uncatPendingCategoryByTxId.size) return;
 
     if (uncatTxSaveBtn) {
@@ -7863,7 +7863,7 @@ if (runProjectionBtn) {
       projectionSummary.innerHTML = "";
       projectionDailyList.innerHTML = "";
 
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
 
       const startVal = projectionStart.value;
       if (!startVal) throw new Error("Projection start date is required");
@@ -8775,8 +8775,8 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       showCancel: false,
       callout: {
         kind: "info",
-        title: "Choose a family",
-        text: "Select a family account to see trial status, billing details, and subscription actions.",
+        title: "Your account isn't ready",
+        text: "Finish setting up your BalanceWhiz account to see trial status, billing details, and subscription actions.",
       },
       primaryCta: null,
       meta: null,
@@ -10613,7 +10613,7 @@ async function switchBillingIntervalForActiveFamily() {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     return;
   }
   const cycleBtn =
@@ -10692,7 +10692,7 @@ async function releaseScheduledIntervalForActiveFamily() {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     return;
   }
   const keepBtn = billingCancelButtonEl();
@@ -10746,7 +10746,7 @@ async function scheduleBillingCancellationForActiveFamily() {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     return;
   }
   const cached = cachedBillingStatusForActiveFamily() || {};
@@ -10805,7 +10805,7 @@ async function resumeBillingSubscriptionForActiveFamily() {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     return;
   }
   const keepBtn = billingCancelButtonEl();
@@ -10858,7 +10858,7 @@ function openBillingPortalForActiveFamily(flow = "", onFail = null) {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     fail();
     return;
   }
@@ -11019,7 +11019,7 @@ async function startBillingSecureCheckout() {
   if (!cta) return;
   ensureActiveFamilyIdForBilling();
   if (!state.activeFamilyId) {
-    showBillingCheckoutError("Choose a family first.");
+    showBillingCheckoutError("Your account isn't ready yet.");
     return;
   }
   const apiBase = apiBaseUrl();
@@ -11140,7 +11140,7 @@ function wireBillingActionsOnce() {
           });
           return;
         }
-        showBwToast("Stripe customer portal isn’t available yet for this family.");
+        showBwToast("The billing portal isn't available for your account yet.");
       }
     });
   });
@@ -11550,7 +11550,7 @@ async function refreshProjectionChart() {
   if (!projectionChartCanvas || !chartDaysRange || !chartStart) return;
   show(chartErr, "");
   projectionChartCanvas.dataset.status = "";
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!chartStart.value) throw new Error("Chart start date is required");
   const daysVal = Number(chartDaysRange.value);
   if (!Number.isFinite(daysVal) || daysVal < 1 || daysVal > 4000) {
@@ -12041,7 +12041,7 @@ if (chartRangeDisplay && chartRangePopover) {
 }
 
 function validateTxEditBeforeRecurringApply() {
-  if (!state.activeFamilyId) return "Choose a family first";
+  if (!state.activeFamilyId) return "Your account isn't ready yet";
   if (!selectedExpectedInstance) return "Select an occurrence from the calendar for this series.";
   const amountVal = txEditAmount?.value;
   const amount = amountVal ? Number(amountVal) : null;
@@ -12051,13 +12051,13 @@ function validateTxEditBeforeRecurringApply() {
 }
 
 function validateTxEditBeforeRecurringDelete() {
-  if (!state.activeFamilyId) return "Choose a family first";
+  if (!state.activeFamilyId) return "Your account isn't ready yet";
   if (!selectedExpectedInstance) return "Select an occurrence from the calendar for this series.";
   return null;
 }
 
 async function deleteExpectedThisOccurrenceOnlyFromModal() {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
   const cancelOcc = normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date;
   await api(
@@ -12071,7 +12071,7 @@ async function deleteExpectedThisOccurrenceOnlyFromModal() {
 }
 
 async function deleteExpectedThisAndFutureFromModal() {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
   const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
   if (!meta || meta.recurrence === "once") {
@@ -12154,7 +12154,7 @@ async function navigateCalendarToIsoMonthIfNeeded(iso) {
 
 async function saveExpectedInstanceOverride() {
   show(txEditErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
 
   const amountVal = txEditAmount.value;
@@ -12199,7 +12199,7 @@ async function saveExpectedInstanceOverride() {
 
 async function saveExpectedSeriesFromInstance() {
   show(txEditErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const seriesId = selectedExpectedInstance
     ? Number(selectedExpectedInstance.expected_transaction_id)
     : Number(expectedEditId?.value || 0);
@@ -12417,7 +12417,7 @@ function syncActiveFamilyFlags() {
     const ro = state.activeFamilyAccessMode === "view";
     banner.hidden = !ro;
     banner.textContent = ro
-      ? "You have view-only access to this family. Ask the owner to grant edit access if you need to make changes."
+      ? "You have view-only access to this account. Ask the owner to grant edit access if you need to make changes."
       : "";
   }
   syncHouseholdSettingsUi();
@@ -12446,12 +12446,9 @@ function syncPlatformAdminOnlyUi() {
   });
 }
 
-/** Collaborators settings: family role `admin` only (not platform admin, not owner alone). */
+/** Sharing is not offered. The Collaborators pane stays hidden for every role. */
 function canViewHouseholdSettings() {
-  const fam = activeFamilyMembership();
-  if (!fam) return false;
-  if (String(fam.access_mode || "edit").toLowerCase() === "view") return false;
-  return String(fam.role || "").trim().toLowerCase() === "admin";
+  return false;
 }
 
 /** Invite / add-member controls: family owner or family role `admin`. */
@@ -12468,7 +12465,7 @@ function getActiveSettingsSectionKey() {
   return pane ? String(pane.dataset.settingsPane || "profile") : "profile";
 }
 
-/** Collaborators nav + pane: family role `admin` only. */
+/** Collaborators nav + pane stay hidden for every customer. */
 function syncHouseholdSettingsUi() {
   const canHousehold = canViewHouseholdSettings();
   const canInvite = canManageHouseholdInvites();
@@ -12899,7 +12896,7 @@ async function createCategoryFromCombobox(fieldId, rawName) {
   if (st) hideCategoryComboboxList(st);
   categoryComboboxCreateInFlight.add(fieldId);
   try {
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
     const kind = categoryKindForComboboxField(fieldId);
     const gid = categoryGroupIdForNewCategory(kind);
     if (gid == null || !Number.isFinite(Number(gid))) throw new Error("No category group available yet.");
@@ -13701,7 +13698,7 @@ function openCategoryDeleteReassignModal({ id, name, total }) {
 }
 
 async function deleteCategoryWithOptionalReassign(categoryId, categoryName) {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const cid = Number(categoryId);
   if (!Number.isFinite(cid)) throw new Error("Invalid category");
   await loadCategoryUsageSummary();
@@ -15148,7 +15145,7 @@ if (expectedDeleteModal) {
 async function runExpectedDeleteAction(mode) {
   try {
     show(expectedDeleteErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
     const expectedId = expectedDeleteContext.expectedId;
     if (!expectedId) throw new Error("No series selected");
 
@@ -16174,7 +16171,7 @@ function updateCalendarEmptyStateBanner() {
   }
   if (!state.activeFamilyId) {
     showForecastStatus(
-      "Your forecast isn't ready yet — no household is linked to this login. Refresh, or open Settings → Accounts.",
+      "Your forecast isn't ready yet. Refresh, or open Settings → Accounts.",
       true
     );
     return;
