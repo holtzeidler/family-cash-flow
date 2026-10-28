@@ -246,7 +246,8 @@ body.account-setup-page .container > .grid{
   padding: var(--as-below-nav) 0 14px;
 }
 /* Confirmation card uses the same header gap, in a narrower column. */
-body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])){
+body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])),
+body.account-setup-page .container > .grid:has(#accountSetupVerifyRecovery:not([hidden])){
   width: min(550px, 100%);
   max-width: 550px;
   margin-top: 0;
@@ -254,7 +255,8 @@ body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidd
   justify-content: flex-start;
   align-items: stretch;
 }
-body.account-setup-page #accountSetupEmailCheck.email-check{
+body.account-setup-page #accountSetupEmailCheck.email-check,
+body.account-setup-page #accountSetupVerifyRecovery.email-check{
   box-sizing: border-box;
   width: 100%;
   margin: 0;
@@ -406,12 +408,25 @@ body.account-setup-page .email-check__spam{
   font-weight: 500;
   line-height: 1.4;
 }
+body.account-setup-page #accountSetupVerifyRecovery .email-check__next{
+  max-width: 34rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+body.account-setup-page #accountSetupVerifyRecovery a.email-check__resend{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
 @media (max-width: 640px){
-  body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])){
+  body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])),
+  body.account-setup-page .container > .grid:has(#accountSetupVerifyRecovery:not([hidden])){
     padding-top: 16px;
     padding-bottom: 20px;
   }
-  body.account-setup-page #accountSetupEmailCheck.email-check{
+  body.account-setup-page #accountSetupEmailCheck.email-check,
+  body.account-setup-page #accountSetupVerifyRecovery.email-check{
     padding: 24px 18px 20px;
   }
 }
@@ -419,7 +434,8 @@ body.account-setup-page .email-check__spam{
   body.account-setup-page{
     --as-below-nav: 16px;
   }
-  body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])){
+  body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])),
+  body.account-setup-page .container > .grid:has(#accountSetupVerifyRecovery:not([hidden])){
     padding-top: 12px;
     padding-bottom: 12px;
   }
