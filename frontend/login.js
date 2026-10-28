@@ -252,14 +252,30 @@ function formatServerDiag(resp) {
   }
 }
 
-function postLoginDestination() {
+function readRequestedNextPath() {
   try {
-    const next = new URLSearchParams(window.location.search || "").get("next") || "";
-    const raw = String(next).trim();
-    if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("://")) {
-      return raw;
-    }
-  } catch (_) {}
+    return new URLSearchParams(window.location.search || "").get("next") || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+async function readNeedsOnboarding() {
+  try {
+    const me = await request("/api/auth/me", "GET", null, { timeoutMs: 8000 });
+    return !!(me.ok && me.data && me.data.needs_onboarding);
+  } catch (_) {
+    return false;
+  }
+}
+
+function postLoginDestination(needsOnboarding) {
+  if (typeof postLoginPath === "function") {
+    return postLoginPath(!!needsOnboarding, readRequestedNextPath());
+  }
+  if (needsOnboarding) return "/account-setup/?resume=1";
+  const raw = String(readRequestedNextPath() || "").trim();
+  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("://")) return raw;
   return "/calendar";
 }
 
@@ -267,7 +283,7 @@ async function goApp() {
   try {
     const t = sessionStorage.getItem("bw_invite_token");
     if (!t || !String(t).trim()) {
-      window.location.href = postLoginDestination();
+      window.location.href = postLoginDestination(await readNeedsOnboarding());
       return;
     }
     const enc = encodeURIComponent(String(t).trim());
@@ -280,7 +296,7 @@ async function goApp() {
     });
     const raced = await Promise.race([inviteCheck, timedOut]);
     if (raced === "timeout") {
-      window.location.href = postLoginDestination();
+      window.location.href = postLoginDestination(await readNeedsOnboarding());
       return;
     }
     const [me, inv] = raced;
@@ -836,7 +852,7 @@ async function redirectIfAlreadySignedIn() {
       return;
     }
   } catch (_) {}
-  window.location.replace(postLoginDestination());
+  window.location.replace(postLoginDestination(!!(me.data && me.data.needs_onboarding)));
 }
 void redirectIfAlreadySignedIn();
 

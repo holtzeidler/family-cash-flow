@@ -633,6 +633,7 @@ function toNum(v) {
 let state = {
   user: null,
   isPlatformAdmin: false,
+  needsOnboarding: false,
   families: [],
   activeFamilyId: null,
   activeFamilyAccessMode: "edit",
@@ -12388,6 +12389,7 @@ async function loadMe() {
   if (!data?.user) throw new Error("Not logged in");
   state.user = data.user;
   state.isPlatformAdmin = !!data.is_platform_admin;
+  state.needsOnboarding = !!data.needs_onboarding;
   const adminLink = document.getElementById("platformAdminLink");
   if (adminLink) adminLink.hidden = !state.isPlatformAdmin;
   syncPlatformAdminOnlyUi();
@@ -22943,6 +22945,7 @@ async function tryRecoverAccountSetupDraft() {
     clearAccountSetupDraftJsonStorage();
     return false;
   }
+  if (state.needsOnboarding) return false;
 
   if (!state.activeFamilyId) {
     try {
@@ -23114,6 +23117,10 @@ async function main() {
   syncChartRangeDisplay();
   setDefaultAccountStartDate();
   await loadMe();
+  if (state.needsOnboarding) {
+    window.location.replace("/account-setup/?resume=1");
+    return;
+  }
   bwDispatchMilestone("first-login");
   await loadFamilies();
   if (!state.activeFamilyId) {
