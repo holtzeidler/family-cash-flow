@@ -5198,6 +5198,7 @@ async function openTxEditModalAsync(tx) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
   applyTxEditCategoryRecurrenceDefaults(tx.category_id);
+  syncTransactionHistoryLink();
 }
 
 let txEditApplyScopeChoice = null;
@@ -5343,6 +5344,7 @@ function closeTxEditModal() {
   txEditSelectedBgColor = null;
   txEditColorTouched = false;
   applyTransactionEditMode("actual", { resetting: true });
+  syncTransactionHistoryLink();
 }
 
 function mountTxAddFormInModal() {
@@ -15109,6 +15111,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("recurring");
   applyMinDateToTxEditDateInput();
+  syncTransactionHistoryLink();
 }
 
 function openExpectedDeleteModal(expectedId, occurrenceDate) {
@@ -23386,49 +23389,39 @@ function transactionHistoryRequest() {
   return null;
 }
 
-function renderHistoryEventList(events, options) {
-  if (!events || !events.length) {
-    const empty = (options && options.emptyText) || "Changes from now on will appear here.";
-    return "<p class=\"tx-history-empty\">" + escapeHistoryText(empty) + "</p>";
+function transactionHistoryEditorSummary() {
+  if (typeof transactionHistorySummaryText !== "function") return "";
+  const request = transactionHistoryRequest();
+  let description = "";
+  let recurrence = "";
+  if (request && request.subject_type !== "transaction") {
+    description = expectedSaveDescription();
+    const wrap = document.getElementById("txEditRecurringScheduleWrap");
+    const recurrenceEl = document.getElementById("instanceRecurrence");
+    const recurringVisible = wrap && wrap.style.display !== "none";
+    if (recurringVisible && recurrenceEl && recurrenceEl.value && recurrenceEl.value !== "once") {
+      recurrence = recurrenceEl.value;
+    }
+  } else if (typeof txEditDescriptionSnapshot === "string") {
+    description = txEditDescriptionSnapshot;
   }
-  if (typeof transactionHistoryEventHtml !== "function") {
-    return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
-  }
-  const htmlOptions = options && options.nameTheDate ? { nameTheDate: true } : undefined;
-  return events
-    .map((event) => transactionHistoryEventHtml(event, formatHistoryStamp(event.created_at), htmlOptions))
-    .join("");
+  const amount = txEditAmount && txEditAmount.value != null ? txEditAmount.value : "";
+  return transactionHistorySummaryText({ description, amount, recurrence });
 }
 
-function renderTransactionHistory(payload, request) {
-  if (!payload) return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
-  const recurring =
-    request && (request.subject_type === "expected_occurrence" || request.subject_type === "expected_series");
-  if (recurring) {
-    const note = payload.earlier_edits_note
-      ? "<p class=\"tx-history-note\">" + escapeHistoryText(payload.earlier_edits_note) + "</p>"
-      : "";
-    const thisDate =
-      request.subject_type === "expected_occurrence"
-        ? "<h3>This date</h3>" + renderHistoryEventList(payload.occurrence_events)
-        : "";
-    return (
-      thisDate +
-      "<h3>Other dates in this series</h3>" +
-      renderHistoryEventList(payload.other_occurrence_events, {
-        nameTheDate: true,
-        emptyText: "No other dates in this series have been changed.",
-      }) +
-      "<h3>The series</h3>" +
-      renderHistoryEventList(payload.series_events) +
-      note
-    );
+function refreshTransactionHistorySummary() {
+  const summary = document.getElementById("txHistorySummary");
+  if (!summary) return;
+  const text = transactionHistoryEditorSummary();
+  summary.textContent = text;
+  summary.hidden = !text;
+}
+
+function renderTransactionHistory(payload) {
+  if (!payload || typeof transactionHistoryPanelHtml !== "function") {
+    return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
   }
-  const events = payload.events && payload.events.length ? payload.events : payload.series_events;
-  const note = payload.earlier_edits_note
-    ? "<p class=\"tx-history-note\">" + escapeHistoryText(payload.earlier_edits_note) + "</p>"
-    : "";
-  return renderHistoryEventList(events) + note;
+  return transactionHistoryPanelHtml(payload, formatHistoryStamp);
 }
 
 function closeTransactionHistory() {
@@ -23444,6 +23437,7 @@ async function openTransactionHistory() {
   if (!modal || !body) return;
   modal.classList.add("modal-overlay--open");
   modal.setAttribute("aria-hidden", "false");
+  refreshTransactionHistorySummary();
   const request = transactionHistoryRequest();
   if (!request) {
     body.innerHTML = "<p class=\"tx-history-empty\">Save this transaction before its history can be shown.</p>";
@@ -23457,22 +23451,46 @@ async function openTransactionHistory() {
   if (request.occurrence_date) params.set("occurrence_date", request.occurrence_date);
   try {
     const payload = await api("/api/families/" + request.familyId + "/transaction-history?" + params.toString());
-    body.innerHTML = renderTransactionHistory(payload, request);
+    body.innerHTML = renderTransactionHistory(payload);
   } catch (_) {
     body.innerHTML = "<p class=\"tx-history-empty\">History could not be loaded.</p>";
   }
 }
 
+function transactionHistoryHasExistingSubject() {
+  if (selectedExpectedInstance && selectedExpectedInstance.expected_transaction_id) return true;
+  if (expectedEditId && String(expectedEditId.value || "").trim()) return true;
+  if (txEditId && String(txEditId.value || "").trim()) return true;
+  return false;
+}
+
+function syncTransactionHistoryLink() {
+  const button = document.getElementById("txHistoryOpen");
+  if (!button) return;
+  button.hidden = !transactionHistoryHasExistingSubject();
+}
+
 function ensureTxHistoryUi() {
-  if (document.getElementById("txHistoryOpen") || typeof document === "undefined") return;
+  if (typeof document === "undefined") return;
   const foot = document.querySelector("#txEditModal .modal-actions--tx-edit-foot");
-  if (foot && foot.parentNode) {
+  const deleteBtn = foot && document.getElementById("txEditDelete");
+  if (foot && deleteBtn && deleteBtn.parentNode === foot && !document.getElementById("txHistoryOpen")) {
+    const leading = document.createElement("div");
+    leading.className = "tx-edit-foot-leading";
+    foot.insertBefore(leading, deleteBtn);
+    leading.appendChild(deleteBtn);
     const button = document.createElement("button");
     button.type = "button";
     button.id = "txHistoryOpen";
     button.className = "tx-history-open";
-    button.textContent = "View history";
-    foot.parentNode.insertBefore(button, foot);
+    button.hidden = true;
+    button.setAttribute("aria-label", "View history");
+    button.innerHTML =
+      '<svg class="tx-history-open__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="5.25" fill="none" stroke="currentColor" stroke-width="1.4"></circle>' +
+      '<path d="M8 5.2V8.2l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg><span>View history</span>";
+    leading.appendChild(button);
     button.addEventListener("click", (event) => {
       event.preventDefault();
       void openTransactionHistory();
@@ -23482,15 +23500,32 @@ function ensureTxHistoryUi() {
     const style = document.createElement("style");
     style.id = "txHistoryStyle";
     style.textContent =
-      ".tx-history-open{display:block;margin:0 0 .4rem;padding:0;border:0;background:none;color:#5c6570;font:inherit;font-size:.82rem;text-decoration:underline;cursor:pointer;text-align:left}" +
-      ".tx-history-panel{background:#fff;color:#1c2430;width:min(32rem,100%);max-height:min(70vh,36rem);overflow:auto;border-radius:12px;padding:1rem 1.1rem 1.2rem}" +
-      ".tx-history-panel h2{margin:0 0 .75rem;font-size:1.15rem}" +
-      ".tx-history-panel h3{margin:1rem 0 .35rem;font-size:.95rem}" +
-      ".tx-history-event{margin:0 0 .8rem}" +
-      ".tx-history-event p{margin:0 0 .25rem}" +
-      ".tx-history-event ul{margin:.15rem 0 0;padding-left:1.1rem}" +
-      ".tx-history-empty,.tx-history-note{margin:.35rem 0;color:#5c6570}" +
-      ".tx-history-close{margin-top:.8rem}";
+      ".tx-edit-foot-leading{display:flex;align-items:center;gap:12px;flex:0 1 auto;min-width:0}" +
+      ".tx-history-open{display:inline-flex;align-items:center;align-self:center;gap:5px;flex:0 0 auto;margin:0;padding:0 4px;min-height:32px;border:0;background:none;color:#5c6570;font:inherit;font-size:12.5px;font-weight:550;line-height:1;text-decoration:none;cursor:pointer;white-space:nowrap;border-radius:8px}" +
+      ".tx-history-open:hover,.tx-history-open:focus-visible{color:#1c2430;text-decoration:underline;text-underline-offset:2px}" +
+      ".tx-history-open:focus-visible{outline:2px solid color-mix(in srgb, var(--accent, #1f6b45) 35%, transparent);outline-offset:2px}" +
+      ".tx-history-open[hidden]{display:none !important}" +
+      ".tx-history-open__icon{display:block;flex:0 0 auto}" +
+      "@media (max-width:720px){.tx-edit-foot-leading{order:1;flex-wrap:wrap;row-gap:8px}.tx-edit-foot-leading>#txHistoryOpen{order:1}}" +
+      ".tx-history-panel{background:#fff;color:#1c2430;width:min(26rem,calc(100vw - 1.25rem));max-height:min(78vh,34rem);overflow:auto;border-radius:12px;padding:.9rem 1rem 1rem;box-sizing:border-box}" +
+      ".tx-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem}" +
+      ".tx-history-head-copy{min-width:0;flex:1}" +
+      ".tx-history-panel h2{margin:0;font-size:1.05rem;line-height:1.3}" +
+      ".tx-history-summary{margin:.2rem 0 0;color:#5c6570;font-size:.84rem;line-height:1.35;overflow-wrap:anywhere}" +
+      ".tx-history-x{flex:0 0 auto;margin:-.15rem -.2rem 0 0;border:0;background:transparent;color:#1c2430;font:inherit;font-size:1.45rem;line-height:1;padding:.15rem .35rem;cursor:pointer;border-radius:8px}" +
+      ".tx-history-x:hover,.tx-history-x:focus-visible{background:#f3f4f6}" +
+      ".tx-history-timeline{margin:.85rem 0 0}" +
+      ".tx-history-event{position:relative;margin:0;padding:0 0 .85rem 1rem}" +
+      ".tx-history-event:before{content:\"\";position:absolute;left:0;top:.42rem;bottom:-.15rem;width:2px;background:#e6eaee}" +
+      ".tx-history-event:last-child{padding-bottom:0}" +
+      ".tx-history-event:last-child:before{bottom:auto;height:.15rem}" +
+      ".tx-history-event:after{content:\"\";position:absolute;left:-3px;top:.28rem;width:8px;height:8px;border-radius:50%;background:#1f6b45;box-shadow:0 0 0 2px #fff}" +
+      ".tx-history-title{margin:0;font-size:.92rem;font-weight:650;line-height:1.3;overflow-wrap:anywhere}" +
+      ".tx-history-meta{margin:.12rem 0 0;color:#6b7280;font-size:.75rem;line-height:1.35}" +
+      ".tx-history-details{margin:.28rem 0 0;padding:0;list-style:none}" +
+      ".tx-history-details li{margin:0;font-size:.84rem;line-height:1.4;overflow-wrap:anywhere}" +
+      ".tx-history-empty,.tx-history-note{margin:.75rem 0 0;color:#5c6570;font-size:.8rem;line-height:1.4;overflow-wrap:anywhere}" +
+      "@media (max-width:640px){.tx-history-panel{width:calc(100vw - 1rem);max-height:calc(100dvh - 1.25rem);padding:.8rem .8rem .9rem}.tx-history-title{font-size:.9rem}}";
     document.head.appendChild(style);
   }
   if (!document.getElementById("txHistoryModal")) {
@@ -23500,9 +23535,14 @@ function ensureTxHistoryUi() {
     modal.setAttribute("aria-hidden", "true");
     modal.innerHTML =
       "<div class=\"tx-history-panel\" role=\"dialog\" aria-labelledby=\"txHistoryTitle\">" +
-      "<h2 id=\"txHistoryTitle\">History</h2>" +
+      "<div class=\"tx-history-head\">" +
+      "<div class=\"tx-history-head-copy\">" +
+      "<h2 id=\"txHistoryTitle\">Transaction history</h2>" +
+      "<p id=\"txHistorySummary\" class=\"tx-history-summary\" hidden></p>" +
+      "</div>" +
+      "<button type=\"button\" class=\"tx-history-x\" id=\"txHistoryClose\" aria-label=\"Close\"><span aria-hidden=\"true\">×</span></button>" +
+      "</div>" +
       "<div id=\"txHistoryBody\"></div>" +
-      "<button type=\"button\" class=\"tx-history-close\" id=\"txHistoryClose\">Close</button>" +
       "</div>";
     document.body.appendChild(modal);
     modal.addEventListener("click", (event) => {
