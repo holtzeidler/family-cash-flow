@@ -4125,35 +4125,41 @@ function accountSetupVerifyRecoveryCopy(message) {
     return {
       title: "Email already confirmed",
       message: "This confirmation link has already been used. Sign in to continue setting up BalanceWhiz.",
+      offerNewLink: false,
     };
   }
   if (/expired/i.test(text)) {
     return {
       title: "Link expired",
       message: "This confirmation link has expired. Request a new link to continue setting up BalanceWhiz.",
+      offerNewLink: true,
     };
   }
   if (/not valid/i.test(text)) {
     return {
       title: "Link not recognized",
       message: "This confirmation link is not valid. Request a new link to continue setting up BalanceWhiz.",
+      offerNewLink: true,
     };
   }
   if (/already has an account/i.test(text)) {
     return {
       title: "Account already exists",
       message: "This email already has an account. Sign in to continue.",
+      offerNewLink: true,
     };
   }
   if (/sign in to finish/i.test(text)) {
     return {
       title: "Sign in to continue",
       message: "Sign in to finish setting up your account.",
+      offerNewLink: true,
     };
   }
   return {
     title: "Check your confirmation link",
     message: text || "This confirmation link is not valid. Request a new link to continue setting up BalanceWhiz.",
+    offerNewLink: true,
   };
 }
 
@@ -4161,8 +4167,10 @@ function showAccountSetupVerifyRecovery(message) {
   const copy = accountSetupVerifyRecoveryCopy(message);
   const title = document.getElementById("accountSetupVerifyRecoveryTitle");
   const el = document.getElementById("accountSetupVerifyRecoveryMessage");
+  const retry = document.getElementById("accountSetupVerifyRecoveryRetry");
   if (title) title.textContent = copy.title;
   if (el) el.textContent = copy.message;
+  if (retry) retry.hidden = !copy.offerNewLink;
   setAccountSetupEmailGate("recovery");
 }
 
