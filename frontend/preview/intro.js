@@ -276,10 +276,12 @@
   }
 
   function sampleSignupTarget() {
-    if (document.documentElement.getAttribute("data-bw-home-auth") === "in") {
-      return { href: "/calendar/", label: "Go to my forecast" };
-    }
-    return { href: "/account-setup/?fresh=1", label: "Start my free forecast" };
+    var signedIn = document.documentElement.getAttribute("data-bw-home-auth") === "in";
+    var onboarding = document.documentElement.getAttribute("data-bw-onboarding") || "";
+    if (typeof sampleForecastCta === "function") return sampleForecastCta(signedIn, onboarding);
+    if (!signedIn) return { href: "/account-setup/?fresh=1", label: "Create my forecast" };
+    if (onboarding === "done") return { href: "/calendar/", label: "Go to my forecast" };
+    return { href: "/account-setup/?resume=1", label: "Continue setting up my forecast" };
   }
 
   function applySampleSignupLinks() {
@@ -313,7 +315,7 @@
       "</div>" +
       '<div class="preview-intro-choices" id="previewTourChoices" hidden>' +
       '<a class="bw-tour-tooltip__cta" id="previewTourExplore" href="/preview/month/">Explore a full month</a>' +
-      '<a class="bw-tour-tooltip__cta preview-tour-link--quiet" id="previewTourSignup" href="/account-setup/?fresh=1">Start my free forecast</a>' +
+      '<a class="bw-tour-tooltip__cta preview-tour-link--quiet" id="previewTourSignup" href="/account-setup/?fresh=1">Create my forecast</a>' +
       '<button type="button" class="bw-tour-tooltip__skip" id="previewTourDismiss">Not now</button>' +
       "</div>";
     document.body.appendChild(dialog);
@@ -604,6 +606,6 @@
   document.addEventListener("keydown", onKey);
   new MutationObserver(applySampleSignupLinks).observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-bw-home-auth"],
+    attributeFilter: ["data-bw-home-auth", "data-bw-onboarding"],
   });
 })();

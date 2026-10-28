@@ -17,6 +17,9 @@
 
   if (readStoredApiAccessToken()) {
     document.documentElement.setAttribute("data-bw-home-auth", "in");
+    if (!document.documentElement.getAttribute("data-bw-onboarding")) {
+      document.documentElement.setAttribute("data-bw-onboarding", "unknown");
+    }
   }
   if (window.__bwPublicAuthInit) return;
   window.__bwPublicAuthInit = true;
@@ -53,11 +56,15 @@
 
   function paintLoggedIn() {
     document.documentElement.setAttribute("data-bw-home-auth", "in");
+    if (!document.documentElement.getAttribute("data-bw-onboarding")) {
+      document.documentElement.setAttribute("data-bw-onboarding", "unknown");
+    }
     paintMemberLinks();
   }
 
   function paintLoggedOut() {
     document.documentElement.removeAttribute("data-bw-home-auth");
+    document.documentElement.removeAttribute("data-bw-onboarding");
     paintMemberLinks();
   }
 
@@ -73,7 +80,21 @@
       .then(function (res) {
         if (requestId !== requestSeq) return;
         if (res.status === 200) {
-          paintLoggedIn();
+          res
+            .json()
+            .then(function (body) {
+              if (requestId !== requestSeq) return;
+              document.documentElement.setAttribute(
+                "data-bw-onboarding",
+                body && body.needs_onboarding ? "needs" : "done"
+              );
+              paintLoggedIn();
+            })
+            .catch(function () {
+              if (requestId !== requestSeq) return;
+              document.documentElement.setAttribute("data-bw-onboarding", "unknown");
+              paintLoggedIn();
+            });
           return;
         }
         if (res.status === 401) {

@@ -410,8 +410,13 @@ function mergeAccountSetupDraftTransactions(a, b) {
   return out;
 }
 
+function accountSetupDraftIsoDate(value) {
+  const raw = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+}
+
 function draftAccountIsComplete(account) {
-  return !!(account && account.name && account.starting_balance_date != null);
+  return !!(account && String(account.name || "").trim() && accountSetupDraftIsoDate(account.starting_balance_date));
 }
 
 /** Prefer the copy that has account + the most transactions; union transaction lists. */
@@ -423,7 +428,12 @@ function mergeAccountSetupDraftObjects(sessionObj, localObj) {
   const transactions = mergeAccountSetupDraftTransactions(sessionTx, localTx);
   const sessionAccount = draftAccountIsComplete(sessionObj.account) ? sessionObj.account : null;
   const localAccount = draftAccountIsComplete(localObj.account) ? localObj.account : null;
-  const account = sessionAccount || localAccount || localObj.account || sessionObj.account || null;
+  const datedAccount = accountSetupDraftIsoDate(localObj.account && localObj.account.starting_balance_date)
+    ? localObj.account
+    : accountSetupDraftIsoDate(sessionObj.account && sessionObj.account.starting_balance_date)
+      ? sessionObj.account
+      : null;
+  const account = sessionAccount || localAccount || datedAccount || localObj.account || sessionObj.account || null;
   const sessionSurvey = Array.isArray(sessionObj.surveyHelpWith) ? sessionObj.surveyHelpWith : [];
   const localSurvey = Array.isArray(localObj.surveyHelpWith) ? localObj.surveyHelpWith : [];
   const surveyHelpWith = localSurvey.length >= sessionSurvey.length ? localSurvey : sessionSurvey;
@@ -1512,6 +1522,7 @@ function setAccountSetupWizardStep(step, opts = {}) {
   // Step 2: land on the editable account name so it feels obviously customizable.
   if (s === 1) {
     focusAccountSetupAccountNameInput();
+    applyAccountStartingBalanceDate();
   }
 
   if (s < 2 && document.getElementById("accountSetupWizardPanel2")) {
@@ -1652,11 +1663,56 @@ function isoTodayLocal() {
   return `${y}-${m}-${d}`;
 }
 
-function ensureAccountStartingBalanceDateDefault() {
+function rememberAccountSetupBalanceDate(dateValue) {
+  const next = accountSetupDraftIsoDate(dateValue);
+  if (!next) return;
+  const raw = readAccountSetupDraftRaw() || {};
+  const account = raw.account && typeof raw.account === "object" ? { ...raw.account } : {};
+  if (accountSetupDraftIsoDate(account.starting_balance_date) === next) return;
+  account.starting_balance_date = next;
+  if (!account.type) account.type = "checking";
+  raw.account = account;
+  persistAccountSetupDraftObject(raw);
+}
+
+/** Show the saved date, or today when none was entered. Assign it after the field is visible. */
+function applyAccountStartingBalanceDate() {
   if (!isAccountSetupPath()) return;
   const el = document.getElementById("accountStartingBalanceDate");
-  if (!el) return;
-  if (!String(el.value || "").trim()) el.value = isoTodayLocal();
+  const panel = document.getElementById("accountSetupWizardPanel1");
+  if (!el || !panel) return;
+  if (panel.hasAttribute("inert") || getComputedStyle(panel).display === "none") return;
+  const draft = readAccountSetupDraftRaw();
+  const saved = draft && draft.account ? draft.account.starting_balance_date : "";
+  const next =
+    typeof accountSetupBalanceDateValue === "function"
+      ? accountSetupBalanceDateValue(saved, el.value, isoTodayLocal())
+      : accountSetupDraftIsoDate(el.value) || accountSetupDraftIsoDate(saved) || isoTodayLocal();
+  if (!accountSetupDraftIsoDate(next)) return;
+  const write = () => {
+    if (!el.isConnected) return;
+    el.value = next;
+  };
+  write();
+  window.requestAnimationFrame(write);
+  rememberAccountSetupBalanceDate(next);
+}
+
+function bindAccountSetupBalanceDate() {
+  const el = document.getElementById("accountStartingBalanceDate");
+  if (!el || el.dataset.bwDateBound === "1") return;
+  el.dataset.bwDateBound = "1";
+  const save = () => {
+    const value = accountSetupDraftIsoDate(el.value);
+    if (value) rememberAccountSetupBalanceDate(value);
+  };
+  el.addEventListener("change", save);
+  el.addEventListener("input", save);
+  document.getElementById("accountSetupBackToSample")?.addEventListener("click", save);
+}
+
+function ensureAccountStartingBalanceDateDefault() {
+  applyAccountStartingBalanceDate();
 }
 
 function ensureAccountSetupDefaultAccountName() {
@@ -4011,9 +4067,15 @@ void (async () => {
     initAccountSetupTransactionUi();
   } catch (_) {}
   try {
+    bindAccountSetupBalanceDate();
     ensureAccountStartingBalanceDateDefault();
     ensureAccountSetupDefaultAccountName();
   } catch (_) {}
+  window.addEventListener("pageshow", () => {
+    try {
+      applyAccountStartingBalanceDate();
+    } catch (_) {}
+  });
   initAccountSetupWizardShell();
 
   // Warm up the email availability check while the user is still typing Step 0.
@@ -4486,6 +4548,7 @@ function onSignupPrimaryClickInner() {
         return;
       }
       if (st === 1) {
+        applyAccountStartingBalanceDate();
         const accountName = (document.getElementById("accountName")?.value || "").trim();
         const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
         const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);

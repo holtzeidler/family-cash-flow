@@ -61,6 +61,9 @@ jobs:
         run: |
           node --check frontend/signup/signup.js
           node --check frontend/signup/account-setup-finish-decision.js
+          node --check frontend/preview/sample-forecast-cta.js
 
       - name: Onboarding finish decisions
-        run: node frontend/signup/account-setup-finish-decision.test.js
+        run: |
+          node frontend/signup/account-setup-finish-decision.test.js
+          node frontend/preview/sample-forecast-cta.test.js
