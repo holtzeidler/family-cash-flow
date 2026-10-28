@@ -52,6 +52,41 @@ check(
   "skip sentence",
   transactionHistoryChangeSentence({ field: "cancelled", before: false, after: true }) === "This date was skipped"
 );
+check(
+  "other date heading names the occurrence",
+  transactionHistoryEventHeading(
+    {
+      action: "skipped",
+      actor_kind: "user",
+      subject_type: "expected_occurrence",
+      occurrence_date: "2026-12-15",
+      recorded: true,
+    },
+    { nameTheDate: true }
+  ) === "Skipped December 15, 2026"
+);
+check(
+  "other date sentence names the occurrence",
+  transactionHistoryChangeSentence(
+    { field: "cancelled", before: false, after: true },
+    { nameTheDate: true, occurrenceDate: "2026-12-15" }
+  ) === "December 15, 2026 was skipped"
+);
+var namedSkip = transactionHistoryEventHtml(
+  {
+    recorded: true,
+    action: "skipped",
+    actor_kind: "user",
+    actor_label: "Smoke History",
+    subject_type: "expected_occurrence",
+    occurrence_date: "<script>",
+    changes: [{ field: "cancelled", before: false, after: true }],
+  },
+  "Oct 28, 2026, 4:00 PM",
+  { nameTheDate: true }
+);
+check("named occurrence date is escaped", namedSkip.indexOf("<script>") === -1);
+check("named occurrence date is escaped as text", namedSkip.indexOf("&lt;script&gt;") !== -1);
 
 var hostile = transactionHistoryEventHtml(
   {

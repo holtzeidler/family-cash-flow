@@ -23386,27 +23386,39 @@ function transactionHistoryRequest() {
   return null;
 }
 
-function renderHistoryEventList(events) {
+function renderHistoryEventList(events, options) {
   if (!events || !events.length) {
-    return "<p class=\"tx-history-empty\">Changes from now on will appear here.</p>";
+    const empty = (options && options.emptyText) || "Changes from now on will appear here.";
+    return "<p class=\"tx-history-empty\">" + escapeHistoryText(empty) + "</p>";
   }
   if (typeof transactionHistoryEventHtml !== "function") {
     return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
   }
+  const htmlOptions = options && options.nameTheDate ? { nameTheDate: true } : undefined;
   return events
-    .map((event) => transactionHistoryEventHtml(event, formatHistoryStamp(event.created_at)))
+    .map((event) => transactionHistoryEventHtml(event, formatHistoryStamp(event.created_at), htmlOptions))
     .join("");
 }
 
 function renderTransactionHistory(payload, request) {
   if (!payload) return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
-  if (request.subject_type === "expected_occurrence") {
+  const recurring =
+    request && (request.subject_type === "expected_occurrence" || request.subject_type === "expected_series");
+  if (recurring) {
     const note = payload.earlier_edits_note
       ? "<p class=\"tx-history-note\">" + escapeHistoryText(payload.earlier_edits_note) + "</p>"
       : "";
+    const thisDate =
+      request.subject_type === "expected_occurrence"
+        ? "<h3>This date</h3>" + renderHistoryEventList(payload.occurrence_events)
+        : "";
     return (
-      "<h3>This date</h3>" +
-      renderHistoryEventList(payload.occurrence_events) +
+      thisDate +
+      "<h3>Other dates in this series</h3>" +
+      renderHistoryEventList(payload.other_occurrence_events, {
+        nameTheDate: true,
+        emptyText: "No other dates in this series have been changed.",
+      }) +
       "<h3>The series</h3>" +
       renderHistoryEventList(payload.series_events) +
       note
