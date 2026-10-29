@@ -78,6 +78,8 @@ jobs:
           node --check frontend/category-list-state.js
           node --check frontend/category-list-state.test.js
           node --check frontend/category-recurrence.test.js
+          node --check frontend/category-create-state.js
+          node --check frontend/category-create-state.test.js
 
       - name: Onboarding finish decisions
         run: |
@@ -87,3 +89,4 @@ jobs:
           node frontend/category-starter.test.js
           node frontend/category-list-state.test.js
           node frontend/category-recurrence.test.js
+          node frontend/category-create-state.test.js

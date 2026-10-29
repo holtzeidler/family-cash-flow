@@ -4274,7 +4274,7 @@ function categoryGroupLabelForNewCategory(kind) {
   return categoryGroupNameById(gid) || "your list";
 }
 
-function showCategoryFieldNote(fieldId, message) {
+function showCategoryFieldNote(fieldId, message, opts = {}) {
   const st = categoryComboboxRegistry.get(fieldId);
   if (!st?.wrap) return;
   let note = st.wrap.querySelector(".category-add-note");
@@ -4284,7 +4284,26 @@ function showCategoryFieldNote(fieldId, message) {
     note.setAttribute("role", "status");
     st.wrap.appendChild(note);
   }
-  note.textContent = message || "";
+  note.replaceChildren();
+  const text = String(message || "");
+  note.dataset.categoryName = opts.categoryName || "";
+  if (!text) {
+    note.dataset.categoryName = "";
+    return;
+  }
+  const span = document.createElement("span");
+  span.textContent = text;
+  note.appendChild(span);
+  if (opts.retryName) {
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "category-add-note__retry";
+    retry.textContent = "Try again";
+    retry.addEventListener("click", () => {
+      void createCategoryFromCombobox(fieldId, opts.retryName);
+    });
+    note.appendChild(retry);
+  }
 }
 
 function showCategoryManagerNote(message) {
@@ -12681,6 +12700,71 @@ function hideCategoryComboboxList(st) {
 function showCategoryComboboxList(st) {
   st.list.hidden = false;
   st.input.setAttribute("aria-expanded", "true");
+  fitCategoryComboboxList(st);
+}
+
+function fitCategoryComboboxList(st) {
+  if (!st?.list || !st.input) return;
+  const modal = st.wrap?.closest(".modal") || st.wrap?.closest(".modal-overlay");
+  st.list.style.top = "";
+  st.list.style.bottom = "";
+  st.list.style.maxHeight = "";
+  if (!modal) return;
+  const inputRect = st.input.getBoundingClientRect();
+  const modalRect = modal.getBoundingClientRect();
+  const below = modalRect.bottom - inputRect.bottom - 16;
+  const above = inputRect.top - modalRect.top - 16;
+  const cap = 12 * 16;
+  if (below >= 120 || below >= above) {
+    st.list.style.maxHeight = Math.max(88, Math.min(cap, below)) + "px";
+  } else {
+    st.list.style.top = "auto";
+    st.list.style.bottom = "calc(100% + 4px)";
+    st.list.style.maxHeight = Math.max(88, Math.min(cap, above)) + "px";
+  }
+}
+
+function setCategoryCreateSaveLock(locked) {
+  for (const id of ["txAddSave", "txEditSave"]) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    if (locked) {
+      if (btn.dataset.categoryCreateLock !== "1") {
+        btn.dataset.categoryCreatePrevDisabled = btn.disabled ? "1" : "0";
+      }
+      btn.dataset.categoryCreateLock = "1";
+      btn.disabled = true;
+    } else if (btn.dataset.categoryCreateLock === "1") {
+      btn.disabled = btn.dataset.categoryCreatePrevDisabled === "1";
+      delete btn.dataset.categoryCreateLock;
+      delete btn.dataset.categoryCreatePrevDisabled;
+    }
+  }
+}
+
+function transactionPickerHasDraft(fieldId) {
+  if (fieldId === "txEditCategoryId") return true;
+  const st = categoryComboboxRegistry.get(fieldId);
+  const typed = st?.input?.value?.trim() || "";
+  const amount = txAddAmount?.value?.trim() || "";
+  const notes = txAddNotes?.value?.trim() || "";
+  return !!(typed || amount || notes);
+}
+
+function settingsCategoriesHref() {
+  const path = String(window.location.pathname || "");
+  if (path.includes("/settings")) return "?section=categories";
+  return "../settings/?section=categories";
+}
+
+function onManageCategoriesFromPicker(fieldId) {
+  if (categoryComboboxCreateInFlight.has(fieldId)) return;
+  const decision = manageCategoriesAction(transactionPickerHasDraft(fieldId));
+  if (!decision.navigate) {
+    showCategoryFieldNote(fieldId, decision.message);
+    return;
+  }
+  window.location.href = settingsCategoriesHref();
 }
 
 function getCategoryComboboxActiveIndex(st) {
@@ -12703,6 +12787,7 @@ function selectCategoryComboboxChoice(fieldId, catId, name) {
   st.hidden.value = String(catId);
   st.input.value = name;
   hideCategoryComboboxList(st);
+  showCategoryFieldNote(fieldId, "");
   if (fieldId === "txAddCategoryId") {
     refreshTxAddCategoryChipActiveState();
     updateTxAddFormValidity();
@@ -12827,40 +12912,81 @@ function applyCategoryComboboxPickFromLi(fieldId, li) {
 
 async function createCategoryFromCombobox(fieldId, rawName) {
   const name = String(rawName || "").trim();
-  if (!name) return;
-  if (categoryComboboxCreateInFlight.has(fieldId)) return;
+  const session = beginCategoryCreate(categoryComboboxCreateInFlight.has(fieldId), name);
+  if (!session.started) return;
 
-  const existingAnywhere = (state.categories || []).find(
-    (c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name),
-  );
-  if (existingAnywhere) {
-    selectCategoryComboboxChoice(fieldId, existingAnywhere.id, categoryDisplayLabel(existingAnywhere));
+  const kind = categoryKindForComboboxField(fieldId);
+  const gid = categoryGroupIdForNewCategory(kind);
+  const resolution = categoryCreateResolution(name, state.categories || [], gid);
+  if (resolution.action === "reuse" && resolution.category) {
+    selectCategoryComboboxChoice(fieldId, resolution.category.id, categoryDisplayLabel(resolution.category));
     return;
   }
 
   const st = categoryComboboxRegistry.get(fieldId);
-  if (st) hideCategoryComboboxList(st);
   categoryComboboxCreateInFlight.add(fieldId);
+  if (st) {
+    hideCategoryComboboxList(st);
+    st.hidden.value = "";
+    st.input.value = name;
+    st.input.readOnly = true;
+    st.input.setAttribute("aria-busy", "true");
+  }
+  showCategoryFieldNote(fieldId, session.note || "Creating category…", { categoryName: name });
+  setCategoryCreateSaveLock(true);
   try {
     if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
-    const kind = categoryKindForComboboxField(fieldId);
-    const gid = categoryGroupIdForNewCategory(kind);
     if (gid == null || !Number.isFinite(Number(gid))) throw new Error("No category group available yet.");
     const groupLabel = categoryGroupNameById(gid) || "your list";
     const created = await addCategoryToGroup(gid, name);
-    if (!created) return;
+    if (!created) {
+      if (st) st.input.value = name;
+      showCategoryFieldNote(fieldId, "");
+      return;
+    }
     const pick =
       created && created.id != null
         ? created
         : (state.categories || []).find((c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name));
+    const done = finishCategoryCreate(session, {
+      ok: !!pick,
+      category: pick,
+      groupLabel,
+      error: pick ? "" : `Couldn't create ${name}.`,
+    });
     if (pick) {
       selectCategoryComboboxChoice(fieldId, pick.id, categoryDisplayLabel(pick));
-      showCategoryFieldNote(fieldId, `Added ${name} to ${groupLabel}.`);
+      showCategoryFieldNote(fieldId, done.note, { categoryName: name });
+    } else if (st) {
+      st.hidden.value = "";
+      st.input.value = name;
+      showCategoryFieldNote(fieldId, done.note, { categoryName: name, retryName: name });
     }
   } catch (err) {
-    window.alert(err.message || "Failed to add category");
+    try {
+      await loadCategories();
+    } catch (_) {}
+    const again = categoryCreateResolution(name, state.categories || [], gid);
+    if (again.action === "reuse" && again.category) {
+      selectCategoryComboboxChoice(fieldId, again.category.id, categoryDisplayLabel(again.category));
+      return;
+    }
+    const done = finishCategoryCreate(session, {
+      ok: false,
+      error: err.message || `Couldn't create ${name}.`,
+    });
+    if (st) {
+      st.hidden.value = "";
+      st.input.value = name;
+    }
+    showCategoryFieldNote(fieldId, done.note, { categoryName: name, retryName: name });
   } finally {
     categoryComboboxCreateInFlight.delete(fieldId);
+    if (st) {
+      st.input.readOnly = false;
+      st.input.removeAttribute("aria-busy");
+    }
+    setCategoryCreateSaveLock(false);
   }
 }
 
@@ -12920,6 +13046,10 @@ function onCategoryComboboxKeydown(e, fieldId) {
 function onCategoryComboboxInput(fieldId) {
   const st = categoryComboboxRegistry.get(fieldId);
   if (!st) return;
+  if (categoryComboboxCreateInFlight.has(fieldId)) return;
+  const note = st.wrap?.querySelector(".category-add-note");
+  const confirmedName = note?.dataset?.categoryName || "";
+  if (categoryNoteAfterTyping(confirmedName, st.input.value) === "") showCategoryFieldNote(fieldId, "");
   const raw = st.input.value.trim();
   if (!raw) {
     st.hidden.value = "";
@@ -12967,9 +13097,16 @@ function mountCategoryComboboxFromSelect(selectEl) {
   list.hidden = true;
 
   selectEl.replaceWith(wrap);
+  const manage = document.createElement("button");
+  manage.type = "button";
+  manage.className = "category-combobox__manage";
+  manage.textContent = "Manage categories…";
+  manage.addEventListener("click", () => onManageCategoriesFromPicker(fieldId));
+
   wrap.appendChild(input);
   wrap.appendChild(hidden);
   wrap.appendChild(list);
+  wrap.appendChild(manage);
 
   const label = document.querySelector(`label[for="${fieldId}"]`);
   if (label) label.setAttribute("for", input.id);
