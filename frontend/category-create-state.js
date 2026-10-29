@@ -65,41 +65,6 @@ function categoryNoteAfterTyping(confirmedName, typedName) {
   return "";
 }
 
-function categoryManagementReturn(view) {
-  const known = ["calendar", "transactions", "reports", "settings"];
-  const returnView = known.includes(view) ? view : "calendar";
-  return { reload: false, hideEditor: true, showCategories: true, returnView };
-}
-
-function applyCategoryManagementResult(draft, categories) {
-  const next = {
-    kind: draft.kind,
-    amount: draft.amount,
-    accountId: draft.accountId,
-    date: draft.date,
-    repeat: draft.repeat,
-    notes: draft.notes,
-    variable: draft.variable,
-    color: draft.color,
-    categoryId: draft.categoryId,
-    categoryLabel: draft.categoryLabel || "",
-    categoryNote: "",
-  };
-  if (draft.categoryId == null || draft.categoryId === "") return next;
-  const cat = (categories || []).find((category) => Number(category && category.id) === Number(draft.categoryId));
-  if (!cat) {
-    next.categoryId = null;
-    next.categoryLabel = "";
-    next.categoryNote = "That category was deleted. Choose another one.";
-    return next;
-  }
-  const group = String(cat.group_name || "").trim();
-  const name = String(cat.name || "").trim();
-  next.categoryId = cat.id;
-  next.categoryLabel = group ? `${group} › ${name}` : name;
-  return next;
-}
-
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     normalizeCategoryCreateName,
@@ -107,7 +72,5 @@ if (typeof module !== "undefined" && module.exports) {
     beginCategoryCreate,
     finishCategoryCreate,
     categoryNoteAfterTyping,
-    categoryManagementReturn,
-    applyCategoryManagementResult,
   };
 }

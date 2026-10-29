@@ -3800,7 +3800,6 @@ function setActiveTopView(view) {
     // here flashed the profile page before Billing finished loading.
     activateSettingsSection(settingsSectionFromLocation() || "profile");
   }
-  syncCategoryReturnBar();
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
   } catch (_) {}
@@ -5376,7 +5375,6 @@ function activateSettingsSection(key) {
   if (k === "categories") {
     void loadCategoryUsageSummary().then(() => refreshCategoriesManagerChrome());
   }
-  syncCategoryReturnBar();
 }
 
 function normalizeProfileName(value) {
@@ -12744,121 +12742,6 @@ function setCategoryCreateSaveLock(locked) {
   }
 }
 
-var transactionCategoryReturn = null;
-
-function parkedCategoryId(fieldId) {
-  const st = categoryComboboxRegistry.get(fieldId);
-  const raw = st?.hidden?.value?.trim() || "";
-  if (!raw) return null;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : null;
-}
-
-function concealTransactionModal(modal) {
-  if (!modal) return;
-  modal.classList.remove("modal-overlay--open");
-  modal.setAttribute("aria-hidden", "true");
-}
-
-function revealTransactionModal(modal) {
-  if (!modal) return;
-  try { modal.style.display = ""; } catch (_) {}
-  modal.classList.add("modal-overlay--open");
-  modal.setAttribute("aria-hidden", "false");
-}
-
-function ensureCategoryReturnBar() {
-  let bar = document.getElementById("categoryReturnBar");
-  if (bar) return bar;
-  bar = document.createElement("div");
-  bar.id = "categoryReturnBar";
-  bar.className = "category-return-bar";
-  bar.innerHTML = '<p class="category-return-bar__text">Your transaction is waiting.</p><button type="button" class="settings-house-primary-btn category-return-bar__btn" id="categoryReturnBtn">Back to transaction</button>';
-  const btn = bar.querySelector("#categoryReturnBtn");
-  if (btn) btn.addEventListener("click", () => { void returnToParkedTransaction(); });
-  return bar;
-}
-
-function syncCategoryReturnBar() {
-  if (!transactionCategoryReturn) return;
-  const bar = ensureCategoryReturnBar();
-  const shell = document.querySelector("[data-cats-pane] .categories-manager__shell");
-  const pane = document.querySelector("[data-cats-pane]");
-  const onCategories = document.body?.dataset?.bwView === "settings" && pane && !pane.hidden && shell;
-  if (onCategories) {
-    if (bar.parentElement !== shell) shell.insertBefore(bar, shell.firstChild);
-    bar.classList.remove("category-return-bar--fixed");
-  } else if (bar.parentElement !== document.body) {
-    document.body.appendChild(bar);
-    bar.classList.add("category-return-bar--fixed");
-  } else {
-    bar.classList.add("category-return-bar--fixed");
-  }
-  bar.hidden = false;
-}
-
-function onManageCategoriesFromPicker(fieldId) {
-  if (categoryComboboxCreateInFlight.has(fieldId)) return;
-  const modal = fieldId === "txEditCategoryId" ? txEditModal : (txAddModal || document.getElementById("txAddModal"));
-  if (!modal || !modal.classList.contains("modal-overlay--open")) return;
-  const st = categoryComboboxRegistry.get(fieldId);
-  if (st) hideCategoryComboboxList(st);
-  const plan = categoryManagementReturn(document.body?.dataset?.bwView || "calendar");
-  transactionCategoryReturn = {
-    fieldId,
-    modalId: modal.id,
-    returnView: plan.returnView,
-    categoryId: parkedCategoryId(fieldId),
-  };
-  concealTransactionModal(modal);
-  setActiveTopView("settings");
-  activateSettingsSection("categories");
-  syncCategoryReturnBar();
-  const pane = document.querySelector("[data-cats-pane]");
-  if (pane && typeof pane.scrollIntoView === "function") pane.scrollIntoView({ block: "start" });
-}
-
-async function returnToParkedTransaction() {
-  const session = transactionCategoryReturn;
-  if (!session) return;
-  transactionCategoryReturn = null;
-  const bar = document.getElementById("categoryReturnBar");
-  if (bar) bar.hidden = true;
-  try {
-    await loadCategories();
-  } catch (_) {}
-  const categories = categoryListStatus === "ready"
-    ? (state.categories || [])
-    : (categoryComboboxRegistry.get(session.fieldId)?.categories || []);
-  if (categoryListStatus === "ready") syncAllCategoryComboboxes(categories);
-  const result = applyCategoryManagementResult(
-    {
-      kind: "",
-      amount: "",
-      accountId: "",
-      date: "",
-      repeat: "",
-      notes: "",
-      variable: false,
-      color: null,
-      categoryId: session.categoryId,
-      categoryLabel: "",
-    },
-    categories
-  );
-  if (session.categoryId != null) {
-    if (result.categoryNote) {
-      setCategoryFieldValue(session.fieldId, null);
-      showCategoryFieldNote(session.fieldId, result.categoryNote);
-    } else {
-      setCategoryFieldValue(session.fieldId, result.categoryId);
-      showCategoryFieldNote(session.fieldId, "");
-    }
-  }
-  setActiveTopView(session.returnView);
-  revealTransactionModal(document.getElementById(session.modalId));
-}
-
 function getCategoryComboboxActiveIndex(st) {
   const els = Array.from(st.list.querySelectorAll("li.category-combobox__option"));
   return els.findIndex((li) => li.classList.contains("is-active"));
@@ -13189,16 +13072,10 @@ function mountCategoryComboboxFromSelect(selectEl) {
   list.hidden = true;
 
   selectEl.replaceWith(wrap);
-  const manage = document.createElement("button");
-  manage.type = "button";
-  manage.className = "category-combobox__manage";
-  manage.textContent = "Manage categories…";
-  manage.addEventListener("click", () => onManageCategoriesFromPicker(fieldId));
 
   wrap.appendChild(input);
   wrap.appendChild(hidden);
   wrap.appendChild(list);
-  wrap.appendChild(manage);
 
   const label = document.querySelector(`label[for="${fieldId}"]`);
   if (label) label.setAttribute("for", input.id);
