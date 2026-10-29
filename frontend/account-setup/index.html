@@ -37,7 +37,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=832" />
+    <link rel="stylesheet" href="../styles.css?v=834" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -99,12 +99,18 @@
           <p id="accountSetupEmailCheckNote" class="email-check__note" role="status"></p>
           <p class="email-check__spam">Didn't see it? Check your spam folder.</p>
         </div>
-        <div id="accountSetupVerifyRecovery" class="card auth-section auth-section--open" hidden>
-          <h1 class="account-setup-wizard__eyebrow">Confirm your email</h1>
-          <p id="accountSetupVerifyRecoveryMessage" role="status"></p>
-          <div class="account-setup-actions">
-            <a class="top-nav__logout" href="/login.html">Sign in</a>
-            <button type="button" id="accountSetupVerifyRecoveryRetry" class="secondary">Request a new link</button>
+        <div id="accountSetupVerifyRecovery" class="card auth-section auth-section--open email-check" hidden>
+          <div class="email-check__icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48" width="28" height="28" focusable="false">
+              <rect x="6" y="12" width="36" height="24" rx="4" fill="none" stroke="currentColor" stroke-width="2.2" />
+              <path d="M8 15.5 24 27.5 40 15.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <h1 class="email-check__title" id="accountSetupVerifyRecoveryTitle">Email already confirmed</h1>
+          <p id="accountSetupVerifyRecoveryMessage" class="email-check__next" role="status">This confirmation link has already been used. Sign in to continue setting up BalanceWhiz.</p>
+          <div class="email-check__actions">
+            <a class="email-check__resend" href="/login.html">Sign in</a>
+            <button type="button" id="accountSetupVerifyRecoveryRetry" class="email-check__change">Request a new link</button>
           </div>
         </div>
 
@@ -774,6 +780,7 @@
                 <a id="accountSetupBackToSample" class="account-setup-sample-back" href="/preview/">Back to sample forecast</a>
               </div>
             </div>
+            <a id="accountSetupBackToSample" class="account-setup-sample-back" href="/preview/">Explore a sample forecast</a>
           </div>
         </div>
 
@@ -837,7 +844,7 @@
       </div>
     </div>
 
-    <script src="../signup/account-setup-finish-decision.js?v=1"></script>
-    <script src="../signup/signup.js?v=144"></script>
+    <script src="../signup/account-setup-finish-decision.js?v=3"></script>
+    <script src="../signup/signup.js?v=147"></script>
   </body>
 </html>

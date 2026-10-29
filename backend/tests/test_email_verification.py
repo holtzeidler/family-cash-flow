@@ -9,7 +9,8 @@ from __future__ import annotations
 import sys
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -39,6 +40,8 @@ assert_process_is_safe(_DB)
 sys.path.insert(0, str(ROOT / "backend"))
 from app.main import (  # noqa: E402
     Account,
+    AccountType,
+    BillingSubscription,
     EmailVerification,
     Family,
     FamilyMember,
@@ -46,6 +49,8 @@ from app.main import (  # noqa: E402
     SessionLocal,
     User,
     _EMAIL_VERIFIED_BACKFILL_KEY,
+    _ONBOARDING_COMPLETED_BACKFILL_KEY,
+    _ensure_onboarding_completion_backfill,
     _ensure_user_email_verification_columns,
     _reset_verification_rate_limits,
     engine,
@@ -554,61 +559,75 @@ def test_existing_accounts_are_verified_once_and_later_nulls_stay_null():
         assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
 
-def test_unlisted_staging_address_is_rejected_and_no_mail_is_sent(monkeypatch):
-    listed = _email()
-    outsider = _email()
-    monkeypatch.setattr("app.main._is_staging_deployment", lambda: True)
-    monkeypatch.setattr("app.main._database_looks_like_staging", lambda: True)
-    monkeypatch.setattr(settings, "STAGING_AUTH_EMAIL_ALLOWLIST", listed)
-    with TestClient(app) as client:
-        blocked, blocked_mail = _start(client, outsider)
-        assert blocked.status_code == 403
-        assert blocked_mail == []
-        allowed, allowed_mail = _start(client, listed)
-        assert allowed.status_code == 200
-        assert allowed_mail[0]["kind"] == "confirm"
-        monkeypatch.setattr(settings, "STAGING_AUTH_EMAIL_ALLOWLIST", "")
-        closed, closed_mail = _start(client, _email())
-        assert closed.status_code == 403
-        assert closed_mail == []
-    assert _user_count(outsider) == 0
-    assert _user_count(listed) == 0
-
-
-def test_password_reset_and_invite_still_work_for_verified_users(monkeypatch):
+def test_password_reset_still_works_for_verified_users(monkeypatch):
     owner_email = _email()
-    guest_email = _email()
     sent: dict[str, str] = {}
 
     def capture(**kwargs):
         sent.update(kwargs)
 
-    monkeypatch.setattr("app.main._invite_email_delivery_configured", lambda: True)
     monkeypatch.setattr("app.main._send_password_reset_email_sync", capture)
-    monkeypatch.setattr("app.main._send_family_invite_email_sync", lambda **kwargs: None)
     with TestClient(app) as owner:
         created = signup_verified(owner, email=owner_email, finish=True)
         assert created.status_code == 200
-        family_id = owner.get("/api/families").json()[0]["id"]
-        invited = owner.post(
-            f"/api/families/{family_id}/invites",
-            json={"email": guest_email, "access_mode": "view"},
-        )
-        assert invited.status_code == 200
-        assert _user_count(guest_email) == 0
-        invite_token = parse_qs(urlparse(invited.json()["accept_url"]).query).get("token", [""])[0]
         requested = owner.post("/api/public/password-reset/request", json={"email": owner_email})
         assert requested.status_code == 200
     with SessionLocal() as db:
         user_id = db.execute(select(User.id).where(User.email == owner_email)).scalar_one()
         assert db.execute(select(PasswordResetToken.id).where(PasswordResetToken.user_id == user_id)).first() is not None
-    with TestClient(app) as guest:
-        joined = signup_verified(guest, email=guest_email, finish=False)
-        assert joined.status_code == 200
-        accepted = guest.post("/api/invites/accept", json={"token": invite_token})
-        assert accepted.status_code == 200
-        families = guest.get("/api/families").json()
-        assert any(int(row["id"]) == int(family_id) for row in families)
+
+
+def test_customer_sharing_is_unavailable_and_forecast_access_remains():
+    """Member and admin owners keep their own forecast. Customer sharing routes stay closed."""
+    email = _email()
+    with TestClient(app) as owner:
+        created = signup_verified(owner, email=email, finish=True)
+        assert created.status_code == 200
+        family_id = owner.get("/api/families").json()[0]["id"]
+        account = owner.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "25.00",
+                "starting_balance_date": "2026-10-01",
+            },
+        )
+        assert account.status_code == 200, account.text
+        assert owner.get(f"/api/families/{family_id}/accounts").status_code == 200
+        closed = [
+            owner.post(
+                f"/api/families/{family_id}/members",
+                json={"email": "guest@example.com", "access_mode": "view"},
+            ),
+            owner.patch(
+                f"/api/families/{family_id}/members/1",
+                json={"access_mode": "view"},
+            ),
+            owner.post(
+                f"/api/families/{family_id}/invites",
+                json={"email": "guest@example.com", "access_mode": "view"},
+            ),
+            owner.get(f"/api/families/{family_id}/invites"),
+            owner.delete(f"/api/families/{family_id}/invites/1"),
+            owner.get("/api/public/invites/by-token/not-a-real-invite-token"),
+            owner.post("/api/invites/accept", json={"token": "not-a-real-invite-token"}),
+        ]
+        assert [response.status_code for response in closed] == [404] * len(closed)
+        # Wizard completion stores role member, so the member list stays permission-checked.
+        assert owner.get(f"/api/families/{family_id}/members").status_code == 403
+        with SessionLocal() as db:
+            member = db.execute(
+                select(FamilyMember)
+                .join(User, User.id == FamilyMember.user_id)
+                .where(User.email == email, FamilyMember.family_id == int(family_id))
+            ).scalar_one()
+            member.role = "admin"
+            db.commit()
+        listed = owner.get(f"/api/families/{family_id}/members")
+        assert listed.status_code == 200, listed.text
+        assert len(listed.json()) == 1
+        assert owner.get("/api/families").json()[0]["id"] == family_id
 
 
 def _age_verification(email: str, *, minutes: int = 2, expired: bool = False) -> None:
@@ -821,3 +840,270 @@ def test_confirmation_link_is_not_written_to_the_log(caplog):
         client.post("/api/auth/verify-email", json={"token": token})
     leaked = any("verify=" in record.getMessage() for record in caplog.records)
     assert leaked is False
+
+
+def test_login_after_verification_does_not_start_a_trial_until_setup_finishes(monkeypatch):
+    """A confirmed email can sign in again. The trial starts only when setup finishes."""
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_local_not_sent")
+    monkeypatch.setattr("app.email_service.send_welcome_email", lambda **kwargs: "local")
+    email = _email()
+    with TestClient(app) as client:
+        verified = signup_verified(client, email=email, password=_PASSWORD, finish=False)
+        assert verified.status_code == 200
+        assert verified.json()["trial_started"] is False
+        assert client.get("/api/families").json() == []
+        me = client.get("/api/auth/me")
+        assert me.status_code == 200
+        assert me.json()["needs_onboarding"] is True
+        client.post("/api/auth/logout")
+        logged_in = client.post("/api/auth/login", json={"email": email, "password": _PASSWORD})
+        assert logged_in.status_code == 200
+        assert client.get("/api/families").json() == []
+        assert client.get("/api/auth/me").json()["needs_onboarding"] is True
+        done = client.post("/api/auth/onboarding/complete", json={})
+        assert done.status_code == 200
+        body = done.json()
+        assert body["trial_started"] is True
+        family_id = int(body["family_id"])
+        assert client.get("/api/auth/me").json()["needs_onboarding"] is False
+        again = client.post("/api/auth/onboarding/complete", json={})
+        assert again.status_code == 200
+        assert again.json()["trial_started"] is False
+        assert int(again.json()["family_id"]) == family_id
+        with SessionLocal() as db:
+            user = db.execute(select(User).where(User.email == email)).scalar_one()
+            assert _family_count(int(user.id)) == 1
+            owned = db.get(Family, family_id)
+            assert owned is not None
+            assert owned.created_at is not None
+
+
+def test_empty_family_can_resume_setup_without_resetting_its_trial(monkeypatch):
+    """Opening the forecast created an empty family. Finishing setup reuses it."""
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_local_not_sent")
+    monkeypatch.setattr("app.email_service.send_welcome_email", lambda **kwargs: "local")
+    email = _email()
+    with TestClient(app) as client:
+        verified = signup_verified(client, email=email, password=_PASSWORD, finish=False)
+        assert verified.status_code == 200
+        created = client.post("/api/families", json={"name": "My Family"})
+        assert created.status_code == 200, created.text
+        family_id = int(created.json()["id"])
+        with SessionLocal() as db:
+            user = db.execute(select(User).where(User.email == email)).scalar_one()
+            assert user.onboarding_completed_at is None
+            trial_started_at = db.get(Family, family_id).created_at
+        assert client.get("/api/auth/me").json()["needs_onboarding"] is True
+        done = client.post("/api/auth/onboarding/complete", json={})
+        assert done.status_code == 200
+        assert done.json()["trial_started"] is False
+        assert int(done.json()["family_id"]) == family_id
+        account = client.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "250.00",
+                "starting_balance_date": "2026-10-28",
+            },
+        )
+        assert account.status_code == 200, account.text
+        again = client.post("/api/auth/onboarding/complete", json={})
+        assert again.status_code == 200
+        assert again.json()["trial_started"] is False
+        assert int(again.json()["family_id"]) == family_id
+        assert client.get("/api/auth/me").json()["needs_onboarding"] is False
+        with SessionLocal() as db:
+            user = db.execute(select(User).where(User.email == email)).scalar_one()
+            assert user.onboarding_completed_at is not None
+            owned = db.execute(
+                select(Family)
+                .join(FamilyMember, FamilyMember.family_id == Family.id)
+                .where(FamilyMember.user_id == int(user.id), FamilyMember.is_family_owner.is_(True))
+            ).scalars().all()
+            assert [int(row.id) for row in owned] == [family_id]
+            assert owned[0].created_at == trial_started_at
+            assert int(db.get(Account, account.json()["id"]).family_id) == family_id
+
+
+def _meta_value(key: str):
+    with engine.begin() as conn:
+        row = conn.execute(text("SELECT value FROM app_meta WHERE key = :key"), {"key": key}).first()
+    return None if row is None else row[0]
+
+
+def test_onboarding_backfill_marks_customers_and_leaves_an_empty_new_family():
+    """Existing forecasts are marked finished. A later empty family stays unfinished."""
+    before = datetime(2026, 10, 1, 12, 0, 0)
+    after = datetime(2026, 10, 28, 15, 0, 0)
+    already = datetime(2024, 6, 1, 8, 0, 0)
+    with TestClient(app):
+        pass
+    with SessionLocal() as db:
+        def add_user(stamp):
+            user = User(
+                email=_email(),
+                password_hash="not-a-login",
+                email_verified_at=stamp,
+                onboarding_completed_at=None,
+                platform_role="subscriber",
+            )
+            db.add(user)
+            db.flush()
+            return user
+
+        customer = add_user(before)
+        customer_family = Family(name="Longtime", created_at=before)
+        db.add(customer_family)
+        db.flush()
+        db.add(
+            FamilyMember(
+                family_id=int(customer_family.id),
+                user_id=int(customer.id),
+                role="admin",
+                is_family_owner=True,
+                access_mode="edit",
+            )
+        )
+        with_account = add_user(after)
+        account_family = Family(name="Has checking", created_at=after)
+        db.add(account_family)
+        db.flush()
+        db.add(
+            FamilyMember(
+                family_id=int(account_family.id),
+                user_id=int(with_account.id),
+                role="member",
+                is_family_owner=True,
+                access_mode="edit",
+            )
+        )
+        db.add(
+            Account(
+                family_id=int(account_family.id),
+                name="Checking",
+                type=AccountType.checking,
+                starting_balance=Decimal("10.00"),
+                starting_balance_date=date(2026, 10, 28),
+            )
+        )
+        with_subscription = add_user(after)
+        billed_family = Family(name="Billed", created_at=after)
+        db.add(billed_family)
+        db.flush()
+        db.add(
+            FamilyMember(
+                family_id=int(billed_family.id),
+                user_id=int(with_subscription.id),
+                role="admin",
+                is_family_owner=True,
+                access_mode="edit",
+            )
+        )
+        db.add(
+            BillingSubscription(
+                family_id=int(billed_family.id),
+                stripe_subscription_id=f"sub_local_{uuid.uuid4().hex[:12]}",
+                status="active",
+            )
+        )
+        empty = add_user(after)
+        empty_family = Family(name="My Family", created_at=after)
+        db.add(empty_family)
+        db.flush()
+        db.add(
+            FamilyMember(
+                family_id=int(empty_family.id),
+                user_id=int(empty.id),
+                role="admin",
+                is_family_owner=True,
+                access_mode="edit",
+            )
+        )
+        finished = add_user(after)
+        finished.onboarding_completed_at = already
+        finished_family = Family(name="Done", created_at=after)
+        db.add(finished_family)
+        db.flush()
+        db.add(
+            FamilyMember(
+                family_id=int(finished_family.id),
+                user_id=int(finished.id),
+                role="member",
+                is_family_owner=True,
+                access_mode="edit",
+            )
+        )
+        no_family = add_user(after)
+        db.commit()
+        customer_id = int(customer.id)
+        account_user_id = int(with_account.id)
+        billed_user_id = int(with_subscription.id)
+        empty_id = int(empty.id)
+        finished_id = int(finished.id)
+        no_family_id = int(no_family.id)
+        customer_family_id = int(customer_family.id)
+        account_family_id = int(account_family.id)
+        billed_family_id = int(billed_family.id)
+        empty_family_id = int(empty_family.id)
+        finished_family_id = int(finished_family.id)
+        family_count = len(db.execute(select(Family.id)).all())
+        member_count = len(db.execute(select(FamilyMember.user_id)).all())
+        account_count = len(db.execute(select(Account.id)).all())
+        subscription_count = len(db.execute(select(BillingSubscription.id)).all())
+
+    assert _meta_value(_EMAIL_VERIFIED_BACKFILL_KEY) == "1"
+    with engine.begin() as conn:
+        conn.execute(
+            text("DELETE FROM app_meta WHERE key = :key"),
+            {"key": _ONBOARDING_COMPLETED_BACKFILL_KEY},
+        )
+    _ensure_onboarding_completion_backfill()
+
+    def completed_at(user_id: int):
+        with SessionLocal() as db:
+            return db.get(User, user_id).onboarding_completed_at
+
+    assert completed_at(customer_id) == before
+    assert completed_at(account_user_id) == after
+    assert completed_at(billed_user_id) == after
+    assert completed_at(empty_id) is None
+    assert completed_at(finished_id) == already
+    assert completed_at(no_family_id) is None
+
+    with SessionLocal() as db:
+        empty_user = db.get(User, empty_id)
+        db.add(
+            Account(
+                family_id=empty_family_id,
+                name="Later",
+                type=AccountType.checking,
+                starting_balance=Decimal("1.00"),
+                starting_balance_date=date(2026, 10, 28),
+            )
+        )
+        db.commit()
+        assert empty_user.onboarding_completed_at is None
+    _ensure_onboarding_completion_backfill()
+    assert completed_at(empty_id) is None
+    assert _meta_value(_EMAIL_VERIFIED_BACKFILL_KEY) == "1"
+    assert _meta_value(_ONBOARDING_COMPLETED_BACKFILL_KEY) == "1"
+
+    with SessionLocal() as db:
+        assert db.get(Family, customer_family_id).created_at == before
+        assert db.get(Family, account_family_id).created_at == after
+        assert db.get(Family, billed_family_id).created_at == after
+        assert db.get(Family, empty_family_id).created_at == after
+        assert db.get(Family, finished_family_id).created_at == after
+        assert len(db.execute(select(Family.id)).all()) == family_count
+        assert len(db.execute(select(FamilyMember.user_id)).all()) == member_count
+        assert len(db.execute(select(Account.id)).all()) == account_count + 1
+        assert len(db.execute(select(BillingSubscription.id)).all()) == subscription_count
+        member = db.execute(
+            select(FamilyMember).where(
+                FamilyMember.family_id == empty_family_id,
+                FamilyMember.user_id == empty_id,
+            )
+        ).scalar_one()
+        assert member.role == "admin"
+        assert member.is_family_owner is True

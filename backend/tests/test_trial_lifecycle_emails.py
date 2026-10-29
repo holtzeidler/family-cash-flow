@@ -20,8 +20,7 @@ from smoke_guard import (  # noqa: E402
     smoke_db_path,
 )
 
-# "staging" in the filename lets the staging cron's database check treat this database as staging.
-_DB = smoke_db_path("balancewhiz-smoke-staging-lifecycle.db")
+_DB = smoke_db_path("balancewhiz-smoke-lifecycle.db")
 _DB.parent.mkdir(parents=True, exist_ok=True)
 for _extra in (_DB, Path(str(_DB) + "-wal"), Path(str(_DB) + "-shm")):
     if _extra.exists():

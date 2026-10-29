@@ -1,0 +1,84 @@
+name: Main — session and database checks
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-backend-auth-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auth:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: balancewhiz_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d balancewhiz_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install backend
+        run: pip install -r backend/requirements.txt pytest==8.4.2 httpx==0.28.1
+
+      - name: Session invalidation
+        run: python -m pytest backend/tests/test_session_invalidation.py -q
+
+      - name: Login persistence
+        run: python -m pytest backend/tests/test_login_persistence.py -q
+
+      - name: Empty Postgres startup
+        env:
+          TEST_POSTGRES_URL: postgresql://ci:ci@localhost:5432/balancewhiz_ci
+        run: python -m pytest backend/tests/test_empty_postgres_startup.py -q
+
+      - name: Email verification
+        run: python -m pytest backend/tests/test_email_verification.py -q
+
+      - name: Transaction history
+        run: python -m pytest backend/tests/test_transaction_history.py -q
+
+      - name: Transaction history on Postgres
+        env:
+          TEST_POSTGRES_URL: postgresql://ci:ci@localhost:5432/balancewhiz_history
+        run: python -m pytest backend/tests/test_transaction_history_postgres.py -q
+
+      - name: Starter categories
+        run: python -m pytest backend/tests/test_default_categories.py -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signup script syntax
+        run: |
+          node --check frontend/signup/signup.js
+          node --check frontend/signup/account-setup-finish-decision.js
+          node --check frontend/preview/sample-forecast-cta.js
+          node --check frontend/transaction-history-copy.js
+          node --check frontend/category-starter.test.js
+
+      - name: Onboarding finish decisions
+        run: |
+          node frontend/signup/account-setup-finish-decision.test.js
+          node frontend/preview/sample-forecast-cta.test.js
+          node frontend/transaction-history-copy.test.js
+          node frontend/category-starter.test.js

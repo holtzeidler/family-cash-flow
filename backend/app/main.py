@@ -330,18 +330,6 @@ class TransactionKind(str, Enum):
     expense = "expense"
 
 
-REIMBURSEMENT_STATUSES = {
-    "Needs Review",
-    "Ready to Submit",
-    "Submitted",
-    "Partially Reimbursed",
-    "Fully Reimbursed",
-    "Not Reimbursable",
-}
-
-REIMBURSEMENT_FREQUENCIES = {"monthly", "quarterly", "semiannual", "annual"}
-
-
 class AccountType(str, Enum):
     checking = "checking"
     savings = "savings"
@@ -977,8 +965,6 @@ def get_current_user_id(access_token: Optional[str]) -> int:
     if user_id is None or token_version is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
     _require_token_session_current(user_id, token_version)
-    if _is_staging_deployment():
-        _require_staging_session_allowed(user_id)
     return user_id
 
 
@@ -1765,9 +1751,6 @@ def _send_signup_welcome_email(*, user: User, family: Family) -> None:
     if not (settings.RESEND_API_KEY or "").strip():
         logger.warning("Welcome email skipped: RESEND_API_KEY is not set")
         return
-    if _is_staging_deployment() and not _staging_auth_email_allowed(str(user.email)):
-        logger.info("Welcome email skipped; staging allowlist user id=%s", getattr(user, "id", None))
-        return
     trial_end = trial_ends_at(getattr(family, "created_at", None))
     if trial_end is None:
         logger.warning("Welcome email skipped: trial end date is unknown for user id=%s", getattr(user, "id", None))
@@ -1924,6 +1907,9 @@ class AuthMeOut(BaseModel):
     user: UserOut
     is_platform_admin: bool = False
     platform_role: Literal["subscriber", "admin"] = "subscriber"
+    # True only while setup has not been finished. Existing customers are marked
+    # finished once at startup, so a null timestamp is not enough on its own.
+    needs_onboarding: bool = False
 
 
 class MaintenanceUserOut(BaseModel):
@@ -3316,7 +3302,6 @@ def startup_populate_schema():
         jwt_secret=settings.JWT_SECRET,
         webhook_secret=settings.STRIPE_WEBHOOK_SECRET,
     )
-    assert_staging_database_isolated()
     # For a starter app we create tables on startup.
     # In a production app you'd typically use migrations (Alembic).
     if settings.DATABASE_URL.startswith("sqlite"):
@@ -3324,7 +3309,10 @@ def startup_populate_schema():
         db_path = settings.DATABASE_URL.split("sqlite:///")[-1]
         if db_path:
             Path(db_path).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
+    from .transaction_history import ensure_transaction_history_table
+
     Base.metadata.create_all(bind=engine)
+    ensure_transaction_history_table()
     _ensure_account_starting_balance_date_column()
     _ensure_notes_columns()
     _ensure_expected_second_day_column()
@@ -3362,6 +3350,7 @@ def startup_populate_schema():
     _ensure_reimbursements_table()
     _ensure_vendor_category_mappings_table()
     _ensure_billing_tables()
+    _ensure_onboarding_completion_backfill()
     _sync_legacy_platform_admin_roles()
 
 
@@ -3972,6 +3961,8 @@ def _ensure_user_session_version_column() -> None:
 
 
 _EMAIL_VERIFIED_BACKFILL_KEY = "users.email_verified_at.backfill_v1"
+# Stable lock so two API processes cannot run this migration at the same time.
+_EMAIL_VERIFIED_BACKFILL_LOCK = 872431501
 
 
 def _user_column_names(conn) -> set[str]:
@@ -3990,32 +3981,42 @@ def _user_column_names(conn) -> set[str]:
 def _ensure_user_email_verification_columns() -> None:
     """Add verification timestamps and confirm accounts that already exist, once.
 
-    The backfill runs only while its marker is missing. A later startup leaves
-    a null email_verified_at null, so a restart cannot confirm an account that
-    has not used its link. The update does not change session_version.
+    The column changes, the one-time update, and the app_meta marker commit
+    together. A second process waits, then sees the marker and does not update
+    anyone again. The marker is never removed.
+
+    After the marker exists, an insert that omits email_verified_at — the old
+    registration statement — receives the column default instead of NULL.
+    A later startup still leaves an explicit NULL alone, so a restart cannot
+    confirm an account that has not used its link. session_version is unchanged.
     """
     with engine.begin() as conn:
-        names = _user_column_names(conn)
-        if settings.DATABASE_URL.startswith("sqlite"):
+        sqlite = settings.DATABASE_URL.startswith("sqlite")
+        if not sqlite:
+            conn.execute(text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": _EMAIL_VERIFIED_BACKFILL_LOCK})
+        if sqlite:
             conn.execute(text("CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"))
+            remember = "INSERT OR IGNORE INTO app_meta (key, value) VALUES (:key, :value)"
+        else:
+            conn.execute(
+                text("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(128) PRIMARY KEY, value TEXT NOT NULL)")
+            )
+            remember = "INSERT INTO app_meta (key, value) VALUES (:key, :value) ON CONFLICT (key) DO NOTHING"
+        names = _user_column_names(conn)
+        if sqlite:
             if "email_verified_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN email_verified_at DATETIME"))
             if "welcome_email_sent_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN welcome_email_sent_at DATETIME"))
             if "onboarding_completed_at" not in names:
                 conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_completed_at DATETIME"))
-            remember = "INSERT OR IGNORE INTO app_meta (key, value) VALUES (:key, :value)"
         else:
-            conn.execute(
-                text("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(128) PRIMARY KEY, value TEXT NOT NULL)")
-            )
-            if "email_verified_at" not in names:
-                conn.execute(text("ALTER TABLE users ADD COLUMN email_verified_at TIMESTAMP"))
-            if "welcome_email_sent_at" not in names:
-                conn.execute(text("ALTER TABLE users ADD COLUMN welcome_email_sent_at TIMESTAMP"))
-            if "onboarding_completed_at" not in names:
-                conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_completed_at TIMESTAMP"))
-            remember = "INSERT INTO app_meta (key, value) VALUES (:key, :value) ON CONFLICT (key) DO NOTHING"
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_email_sent_at TIMESTAMP"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMP"))
+            # Hold off inserts until this transaction commits, then the default covers them.
+            conn.execute(text("LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN email_verified_at SET DEFAULT CURRENT_TIMESTAMP"))
         pending = conn.execute(
             text("SELECT 1 FROM app_meta WHERE key = :key"),
             {"key": _EMAIL_VERIFIED_BACKFILL_KEY},
@@ -4031,6 +4032,82 @@ def _ensure_user_email_verification_columns() -> None:
         conn.execute(
             text(remember),
             {"key": _EMAIL_VERIFIED_BACKFILL_KEY, "value": "1"},
+        )
+
+
+_ONBOARDING_COMPLETED_BACKFILL_KEY = "users.onboarding_completed_at.backfill_v1"
+_ONBOARDING_COMPLETED_BACKFILL_LOCK = 872431502
+# Email verification reached production main at this moment (PR #7, 2026-10-22 17:05:17 UTC).
+_ONBOARDING_COMPLETED_BACKFILL_BEFORE = "2026-10-22 17:05:17"
+
+
+def _ensure_onboarding_completion_backfill() -> None:
+    """Mark existing customers finished, once, without touching their forecast.
+
+    onboarding_completed_at was added empty. Treating every null as unfinished
+    would send current customers back through setup. This sets the timestamp
+    only when it is still null and the person already owns a family that either
+    existed before email verification or already has an account, transaction,
+    expected transaction, or subscription.
+
+    A verified person whose only family is empty and was created after that
+    release stays null, so they can resume setup and reuse that family. The
+    family's created_at is the trial clock and is not changed. Memberships,
+    billing rows, and balances are not changed. The email-verification marker
+    is not changed. This marker is never removed, so a later startup does not
+    reclassify anyone.
+    """
+    with engine.begin() as conn:
+        sqlite = settings.DATABASE_URL.startswith("sqlite")
+        if not sqlite:
+            conn.execute(
+                text("SELECT pg_advisory_xact_lock(:lock_id)"),
+                {"lock_id": _ONBOARDING_COMPLETED_BACKFILL_LOCK},
+            )
+        if sqlite:
+            conn.execute(text("CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"))
+            remember = "INSERT OR IGNORE INTO app_meta (key, value) VALUES (:key, :value)"
+            owner = "fm.is_family_owner = 1"
+            before_cmp = "datetime(f.created_at) < datetime(:before)"
+        else:
+            conn.execute(
+                text("CREATE TABLE IF NOT EXISTS app_meta (key VARCHAR(128) PRIMARY KEY, value TEXT NOT NULL)")
+            )
+            remember = "INSERT INTO app_meta (key, value) VALUES (:key, :value) ON CONFLICT (key) DO NOTHING"
+            owner = "fm.is_family_owner IS TRUE"
+            before_cmp = "f.created_at < CAST(:before AS TIMESTAMP)"
+        if "onboarding_completed_at" not in _user_column_names(conn):
+            return
+        pending = conn.execute(
+            text("SELECT 1 FROM app_meta WHERE key = :key"),
+            {"key": _ONBOARDING_COMPLETED_BACKFILL_KEY},
+        ).first()
+        if pending is not None:
+            return
+        conn.execute(
+            text(
+                "UPDATE users SET onboarding_completed_at = ("
+                "SELECT MIN(f.created_at) FROM families f "
+                "JOIN family_members fm ON fm.family_id = f.id "
+                f"WHERE fm.user_id = users.id AND {owner}"
+                ") "
+                "WHERE onboarding_completed_at IS NULL "
+                "AND EXISTS ("
+                "SELECT 1 FROM families f "
+                "JOIN family_members fm ON fm.family_id = f.id "
+                f"WHERE fm.user_id = users.id AND {owner} AND ("
+                f"{before_cmp} "
+                "OR EXISTS (SELECT 1 FROM accounts a WHERE a.family_id = f.id) "
+                "OR EXISTS (SELECT 1 FROM transactions t WHERE t.family_id = f.id) "
+                "OR EXISTS (SELECT 1 FROM expected_transactions e WHERE e.family_id = f.id) "
+                "OR EXISTS (SELECT 1 FROM billing_subscriptions b WHERE b.family_id = f.id)"
+                "))"
+            ),
+            {"before": _ONBOARDING_COMPLETED_BACKFILL_BEFORE},
+        )
+        conn.execute(
+            text(remember),
+            {"key": _ONBOARDING_COMPLETED_BACKFILL_KEY, "value": "1"},
         )
 
 
@@ -5271,6 +5348,7 @@ def me(access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_a
         user=_user_out(user),
         is_platform_admin=role == "admin",
         platform_role=role,
+        needs_onboarding=user.onboarding_completed_at is None,
     )
 
 
@@ -5536,10 +5614,9 @@ def add_family_member(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    m = _add_family_member_for_email(db=db, family_id=family_id, email=str(payload.email), access_mode=payload.access_mode)
-    return _family_member_row_to_out(db=db, row=m)
+    """Customer sharing is not offered. Platform-admin routes still add members."""
+    del family_id, payload, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.patch("/api/families/{family_id}/members/{member_user_id}", response_model=FamilyMemberOut)
@@ -5550,32 +5627,16 @@ def patch_family_member(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    m = _apply_family_membership_update(db=db, family_id=family_id, member_user_id=member_user_id, payload=payload)
-    return _family_member_row_to_out(db=db, row=m)
+    """Customer permission changes and ownership transfer are not offered."""
+    del family_id, member_user_id, payload, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.get("/api/public/invites/by-token/{token}", response_model=PublicInviteDetailsOut)
 def public_invite_details(token: str, db=Depends(get_db)):
-    raw = (token or "").strip()
-    if len(raw) < 10:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid.")
-    th = _hash_invite_token(raw)
-    row = db.execute(select(FamilyInvite).where(FamilyInvite.token_hash == th)).scalar_one_or_none()
-    now = datetime.utcnow()
-    if row is None or row.revoked_at is not None or row.accepted_at is not None or row.expires_at < now:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid or has expired.")
-    fam = db.execute(select(Family).where(Family.id == row.family_id)).scalar_one_or_none()
-    if fam is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This invitation is not valid.")
-    return PublicInviteDetailsOut(
-        ok=True,
-        family_name=str(fam.name),
-        invitee_email=row.email_normalized,
-        access_mode=str(row.access_mode or "view"),
-        expires_at=row.expires_at,
-    )
+    """Invitation links are not offered."""
+    del token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.post("/api/families/{family_id}/invites", response_model=FamilyInviteCreatedOut)
@@ -5586,92 +5647,9 @@ async def create_family_invite(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    if not _allow_family_invite_send(family_id):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many invites were sent for this family recently. Try again in a little while.",
-        )
-    key = str(payload.email).strip().lower()
-    if not key:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
-    existing_member = db.execute(
-        select(FamilyMember)
-        .join(User, User.id == FamilyMember.user_id)
-        .where(FamilyMember.family_id == family_id, func.lower(User.email) == key)
-    ).scalar_one_or_none()
-    if existing_member is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That user is already in this family.")
-    inviter = db.execute(select(User).where(User.id == user_id)).scalar_one()
-    if key == str(inviter.email).strip().lower():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot invite your own email address.")
-    fam = db.execute(select(Family).where(Family.id == family_id)).scalar_one_or_none()
-    if fam is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
-
-    token = secrets.token_urlsafe(32)
-    th = _hash_invite_token(token)
-    expires = datetime.utcnow() + timedelta(days=14)
-    db.execute(
-        update(FamilyInvite)
-        .where(
-            FamilyInvite.family_id == family_id,
-            FamilyInvite.email_normalized == key,
-            FamilyInvite.accepted_at.is_(None),
-            FamilyInvite.revoked_at.is_(None),
-        )
-        .values(revoked_at=datetime.utcnow())
-    )
-    mode = str(payload.access_mode or "view").strip().lower()
-    if mode not in ("edit", "view"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="access_mode must be edit or view")
-    inv = FamilyInvite(
-        family_id=family_id,
-        email_normalized=key,
-        token_hash=th,
-        access_mode=mode,
-        invited_by_user_id=user_id,
-        expires_at=expires,
-    )
-    db.add(inv)
-    db.commit()
-    db.refresh(inv)
-    accept_url = _invite_accept_url(token=token, request=request)
-    access_label = "full edit" if mode == "edit" else "view-only"
-    subject = f"Invitation to join {fam.name} on Balance Whiz"
-    body = (
-        f"You have been invited to collaborate on the family account \"{fam.name}\" "
-        f"with {access_label} access.\n\n"
-        f"Open this link to accept (sign in or create an account with this email if you need to):\n{accept_url}\n\n"
-        "If you did not expect this message, you can ignore it."
-    )
-    email_sent = False
-    if _invite_email_delivery_configured():
-        try:
-
-            def _job() -> None:
-                _send_family_invite_email_sync(
-                    to_addr=key,
-                    subject=subject,
-                    text_body=body,
-                    reply_to=str(inviter.email),
-                )
-
-            await asyncio.wait_for(asyncio.to_thread(_job), timeout=25.0)
-            email_sent = True
-        except asyncio.TimeoutError:
-            logger.warning("Invite email exceeded send deadline")
-        except Exception as e:
-            logger.warning("Invite email failed: %s", type(e).__name__)
-    return FamilyInviteCreatedOut(
-        id=int(inv.id),
-        email=key,
-        access_mode=mode,
-        expires_at=inv.expires_at,
-        email_sent=email_sent,
-        accept_url=accept_url,
-    )
+    """Customer invitations are not offered."""
+    del family_id, payload, request, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.get("/api/families/{family_id}/invites", response_model=list[FamilyInvitePendingOut])
@@ -5680,33 +5658,9 @@ def list_family_invites(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    now = datetime.utcnow()
-    rows = (
-        db.execute(
-            select(FamilyInvite)
-            .where(
-                FamilyInvite.family_id == family_id,
-                FamilyInvite.accepted_at.is_(None),
-                FamilyInvite.revoked_at.is_(None),
-                FamilyInvite.expires_at > now,
-            )
-            .order_by(FamilyInvite.created_at.desc())
-        )
-        .scalars()
-        .all()
-    )
-    return [
-        FamilyInvitePendingOut(
-            id=int(r.id),
-            email=r.email_normalized,
-            access_mode=str(r.access_mode or "view"),
-            created_at=r.created_at,
-            expires_at=r.expires_at,
-        )
-        for r in rows
-    ]
+    """Customer invitation lists are not offered."""
+    del family_id, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.delete("/api/families/{family_id}/invites/{invite_id}")
@@ -5716,18 +5670,9 @@ def revoke_family_invite(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    require_family_owner(db=db, family_id=family_id, user_id=user_id)
-    inv = db.execute(
-        select(FamilyInvite).where(FamilyInvite.id == invite_id, FamilyInvite.family_id == family_id)
-    ).scalar_one_or_none()
-    if inv is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
-    if inv.accepted_at is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This invite was already accepted")
-    inv.revoked_at = datetime.utcnow()
-    db.commit()
-    return {"ok": True}
+    """Customer invitation revocation is not offered."""
+    del family_id, invite_id, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.post("/api/invites/accept", response_model=InviteAcceptOut)
@@ -5736,38 +5681,9 @@ def accept_family_invite(
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
-    user_id = get_current_user_id(access_token)
-    user = db.execute(select(User).where(User.id == user_id)).scalar_one()
-    raw = (payload.token or "").strip()
-    if len(raw) < 10:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
-    th = _hash_invite_token(raw)
-    row = db.execute(select(FamilyInvite).where(FamilyInvite.token_hash == th)).scalar_one_or_none()
-    now = datetime.utcnow()
-    if row is None or row.revoked_at is not None or row.accepted_at is not None or row.expires_at < now:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation is not valid or has expired.")
-    if str(user.email).strip().lower() != str(row.email_normalized).strip().lower():
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Sign in with the email address that received this invitation, then try again.",
-        )
-    existing = db.execute(
-        select(FamilyMember).where(FamilyMember.family_id == row.family_id, FamilyMember.user_id == user_id)
-    ).scalar_one_or_none()
-    if existing is not None:
-        row.accepted_at = now
-        db.commit()
-        return InviteAcceptOut(ok=True, family_id=int(row.family_id), already_member=True)
-    _add_family_member_for_email(
-        db=db,
-        family_id=int(row.family_id),
-        email=str(row.email_normalized),
-        access_mode=str(row.access_mode or "view"),
-    )
-    inv2 = db.execute(select(FamilyInvite).where(FamilyInvite.id == row.id)).scalar_one()
-    inv2.accepted_at = datetime.utcnow()
-    db.commit()
-    return InviteAcceptOut(ok=True, family_id=int(row.family_id), already_member=False)
+    """Customer invitation acceptance is not offered."""
+    del payload, access_token, db
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 @app.get("/api/platform/overview", response_model=PlatformOverviewOut)
@@ -6492,16 +6408,20 @@ def _backfill_category_groups_for_existing_families() -> None:
 
 
 def apply_default_category_seed(*, db, family_id: int, force: bool) -> CategoriesTreeOut:
+    """Add the starter list only when this family has no category groups yet.
+
+    ``force`` is still accepted so an older page does not fail validation.
+    It does not rename, delete, or reorganize categories that already exist.
+    """
+    del force
     existing = int(
         db.execute(select(func.count()).select_from(CategoryGroup).where(CategoryGroup.family_id == family_id)).scalar_one() or 0
     )
-    if existing > 0 and not force:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Category groups already exist for this family")
-
-    if force:
-        db.execute(delete(CategoryGroup).where(CategoryGroup.family_id == family_id))
-        db.execute(update(Category).where(Category.family_id == family_id).values(group_id=None))
-        db.flush()
+    if existing > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Category groups already exist for this family. Existing categories were not changed.",
+        )
 
     blueprint = _default_category_blueprint_rows()
     order_names: list[str] = []
@@ -7446,6 +7366,10 @@ def create_expected_transaction(
         bg_color=payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None,
     )
     db.add(tx)
+    db.flush()
+    from .transaction_history import on_series_created
+
+    on_series_created(db, tx, user_id)
     db.commit()
     db.refresh(tx)
 
@@ -7521,6 +7445,9 @@ def update_expected_transaction(
 
     _require_expected_start_on_or_after_account(account, payload.start_date)
 
+    from .transaction_history import on_series_changed, snapshot_series
+
+    before_series = snapshot_series(db, tx)
     previous_start = tx.start_date
     tx.account_id = payload.account_id
     tx.start_date = payload.start_date
@@ -7550,6 +7477,7 @@ def update_expected_transaction(
     tx.fg_color = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
     tx.bg_color = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None
 
+    on_series_changed(db, before_series, tx, user_id)
     db.commit()
     db.refresh(tx)
 
@@ -7606,6 +7534,16 @@ def delete_expected_transaction(
     if tx is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expected transaction not found")
 
+    from .transaction_history import on_series_deleted, snapshot_series
+
+    before_series = snapshot_series(db, tx)
+    on_series_deleted(
+        db,
+        before_series,
+        family_id=family_id,
+        series_id=tx.id,
+        actor_user_id=user_id,
+    )
     db.delete(tx)
     db.commit()
     return {"ok": True}
@@ -7652,7 +7590,14 @@ def _cancel_expected_occurrence(
     expected_id: int,
     occurrence_date: date,
     ovr: Optional[ExpectedTransactionOverride],
-) -> None:
+) -> Optional[dict]:
+    """Cancel one occurrence. Return the change when this call newly skips it."""
+    if ovr is not None and ovr.cancelled:
+        return None
+    before = {
+        "cancelled": False,
+        "moved_to_date": ovr.moved_to_date.isoformat() if ovr is not None and ovr.moved_to_date else None,
+    }
     if ovr is None:
         ovr = ExpectedTransactionOverride(
             expected_transaction_id=expected_id,
@@ -7662,6 +7607,11 @@ def _cancel_expected_occurrence(
         db.add(ovr)
     ovr.cancelled = True
     ovr.moved_to_date = None
+    return {
+        "occurrence_date": occurrence_date,
+        "before": before,
+        "after": {"cancelled": True, "moved_to_date": None},
+    }
 
 
 def _absorb_identical_occurrences_on_date(
@@ -7671,7 +7621,7 @@ def _absorb_identical_occurrences_on_date(
     display_date: date,
     keep_occurrence: date,
     identity: tuple[Optional[int], TransactionKind, int],
-) -> None:
+) -> list[dict]:
     """Cancel other occurrences of this series that show as the same payment on one day.
 
     September's Taxes moved onto October 3 is drawn once, on top of October's
@@ -7717,11 +7667,15 @@ def _absorb_identical_occurrences_on_date(
                 cancel_on.append(display_date)
 
     seen: set[date] = set()
+    recorded: list[dict] = []
     for occ in cancel_on:
         if occ in seen or occ == keep_occurrence:
             continue
         seen.add(occ)
-        _cancel_expected_occurrence(db, tx.id, occ, by_occ.get(occ))
+        change = _cancel_expected_occurrence(db, tx.id, occ, by_occ.get(occ))
+        if change is not None:
+            recorded.append(change)
+    return recorded
 
 
 def _absorb_collapsed_copies_when_date_changes(
@@ -7733,23 +7687,26 @@ def _absorb_collapsed_copies_when_date_changes(
     new_display_date: Optional[date],
     previous_identity: tuple[Optional[int], TransactionKind, int],
     new_identity: tuple[Optional[int], TransactionKind, int],
-) -> None:
+) -> list[dict]:
     if new_display_date is None or new_display_date == previous_display_date:
-        return
-    _absorb_identical_occurrences_on_date(
+        return []
+    recorded = _absorb_identical_occurrences_on_date(
         db,
         tx,
         display_date=previous_display_date,
         keep_occurrence=occurrence_date,
         identity=previous_identity,
     )
-    _absorb_identical_occurrences_on_date(
-        db,
-        tx,
-        display_date=new_display_date,
-        keep_occurrence=occurrence_date,
-        identity=new_identity,
+    recorded.extend(
+        _absorb_identical_occurrences_on_date(
+            db,
+            tx,
+            display_date=new_display_date,
+            keep_occurrence=occurrence_date,
+            identity=new_identity,
+        )
     )
+    return recorded
 
 
 @app.post("/api/families/{family_id}/expected-transactions/{expected_id}/instances/{occurrence_date}")
@@ -7814,6 +7771,18 @@ def upsert_expected_instance_override(
     ).scalar_one_or_none()
     previous_display = _effective_occurrence_date(occurrence_date, existing)
     previous_identity = _occurrence_payment_identity(tx, existing)
+    from .transaction_history import (
+        lineage_for,
+        new_batch_id,
+        new_lineage_id,
+        on_automatic_skips,
+        on_occurrence_changed,
+        snapshot_occurrence,
+    )
+
+    before_occurrence = snapshot_occurrence(db, existing)
+    batch_id = new_batch_id()
+    lineage_id = lineage_for(db, family_id, "expected_series", tx.id) or new_lineage_id()
 
     if existing is None:
         existing = ExpectedTransactionOverride(
@@ -7837,9 +7806,10 @@ def upsert_expected_instance_override(
     elif "variable" in payload.model_fields_set:
         existing.variable = payload.variable
 
+    absorbed: list[dict] = []
     if payload.action != "cancel":
         new_display = moved_to_date if moved_to_date is not None else occurrence_date
-        _absorb_collapsed_copies_when_date_changes(
+        absorbed = _absorb_collapsed_copies_when_date_changes(
             db,
             tx,
             occurrence_date=occurrence_date,
@@ -7848,6 +7818,34 @@ def upsert_expected_instance_override(
             previous_identity=previous_identity,
             new_identity=_occurrence_payment_identity(tx, existing),
         )
+    after_occurrence = snapshot_occurrence(db, existing)
+    if before_occurrence.get("cancelled") and not after_occurrence.get("cancelled"):
+        occurrence_action = "restored"
+    elif after_occurrence.get("cancelled") and not before_occurrence.get("cancelled"):
+        occurrence_action = "skipped"
+    else:
+        occurrence_action = "updated"
+    on_occurrence_changed(
+        db,
+        before_occurrence,
+        after_occurrence,
+        family_id=family_id,
+        series_id=tx.id,
+        occurrence_date=occurrence_date,
+        actor_user_id=user_id,
+        action=occurrence_action,
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+    )
+    on_automatic_skips(
+        db,
+        absorbed,
+        family_id=family_id,
+        series_id=tx.id,
+        actor_user_id=user_id,
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+    )
 
     db.commit()
     db.refresh(existing)
@@ -7874,6 +7872,21 @@ def delete_expected_instance_override(
     ).scalar_one_or_none()
 
     if existing is not None:
+        from .transaction_history import lineage_for, new_lineage_id, on_occurrence_changed, snapshot_occurrence
+
+        before_occurrence = snapshot_occurrence(db, existing)
+        after_occurrence = snapshot_occurrence(db, None)
+        on_occurrence_changed(
+            db,
+            before_occurrence,
+            after_occurrence,
+            family_id=family_id,
+            series_id=expected_id,
+            occurrence_date=occurrence_date,
+            actor_user_id=user_id,
+            action="restored",
+            lineage_id=lineage_for(db, family_id, "expected_series", expected_id) or new_lineage_id(),
+        )
         db.delete(existing)
         db.commit()
 
@@ -8036,11 +8049,25 @@ def apply_expected_from_occurrence(
             ExpectedTransactionOverride.occurrence_date == occurrence_date,
         )
     ).scalar_one_or_none()
+    from .transaction_history import (
+        lineage_for,
+        new_batch_id,
+        new_lineage_id,
+        on_automatic_skips,
+        on_series_changed,
+        on_series_created,
+        snapshot_series,
+    )
+
+    before_series = snapshot_series(db, tx)
+    batch_id = new_batch_id()
+    lineage_id = lineage_for(db, family_id, "expected_series", tx.id) or new_lineage_id()
+    absorbed: list[dict] = []
     if eff_start is not None:
         # "This and future" splits off a new series. A payment already parked on
         # this day (September's Taxes moved onto October 3) is not part of that
         # split, so it would stay behind and look like a second Taxes row.
-        _absorb_collapsed_copies_when_date_changes(
+        absorbed = _absorb_collapsed_copies_when_date_changes(
             db,
             tx,
             occurrence_date=occurrence_date,
@@ -8081,6 +8108,24 @@ def apply_expected_from_occurrence(
             if tx.end_date is not None and tx.end_date < eff_start:
                 tx.end_date = None
             tx.start_date = eff_start
+        on_series_changed(
+            db,
+            before_series,
+            tx,
+            user_id,
+            action="updated",
+            batch_id=batch_id,
+            lineage_id=lineage_id,
+        )
+        on_automatic_skips(
+            db,
+            absorbed,
+            family_id=family_id,
+            series_id=tx.id,
+            actor_user_id=user_id,
+            batch_id=batch_id,
+            lineage_id=lineage_id,
+        )
         db.commit()
         db.refresh(tx)
         return ApplyFromOccurrenceOut(mode="updated_in_place", future_series_id=tx.id, ended_series_id=None)
@@ -8128,6 +8173,34 @@ def apply_expected_from_occurrence(
         bg_color=validate_payload.bg_color,
     )
     db.add(new_tx)
+    db.flush()
+    on_series_changed(
+        db,
+        before_series,
+        tx,
+        user_id,
+        action="split",
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+        related_subject_id=new_tx.id,
+    )
+    on_series_created(
+        db,
+        new_tx,
+        user_id,
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+        related_subject_id=tx.id,
+    )
+    on_automatic_skips(
+        db,
+        absorbed,
+        family_id=family_id,
+        series_id=tx.id,
+        actor_user_id=user_id,
+        batch_id=batch_id,
+        lineage_id=lineage_id,
+    )
     db.commit()
     db.refresh(new_tx)
 
@@ -8182,6 +8255,9 @@ def end_expected_from_occurrence(
     if occurrence_date not in hits:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date is not a scheduled occurrence for this series")
 
+    from .transaction_history import on_series_changed, on_series_deleted, snapshot_series
+
+    before_series = snapshot_series(db, tx)
     prev_occ = _occurrence_immediately_before(
         start_date=tx.start_date,
         series_end_date=tx.end_date,
@@ -8202,11 +8278,19 @@ def end_expected_from_occurrence(
 
     if prev_occ is None:
         # No previous occurrence => nothing historical to keep; delete the series row entirely.
+        on_series_deleted(
+            db,
+            before_series,
+            family_id=family_id,
+            series_id=tx.id,
+            actor_user_id=user_id,
+        )
         db.delete(tx)
         db.commit()
         return EndFromOccurrenceOut(mode="deleted", expected_id=None, ended_at=None)
 
     tx.end_date = prev_occ
+    on_series_changed(db, before_series, tx, user_id, action="ended")
     db.commit()
     db.refresh(tx)
     return EndFromOccurrenceOut(mode="ended", expected_id=tx.id, ended_at=tx.end_date)
@@ -11031,6 +11115,10 @@ def create_transaction(
         reimbursable=payload.reimbursable,
     )
     db.add(tx)
+    db.flush()
+    from .transaction_history import on_transaction_created
+
+    on_transaction_created(db, tx, user_id)
     db.commit()
     db.refresh(tx)
 
@@ -11083,6 +11171,9 @@ def update_transaction(
 
     _require_transaction_date_on_or_after_family_start(db, family_id, payload.date)
 
+    from .transaction_history import on_transaction_changed, snapshot_transaction
+
+    before_transaction = snapshot_transaction(db, tx)
     tx.date = payload.date
     tx.description = payload.description
     tx.notes = payload.notes.strip() if payload.notes and payload.notes.strip() else None
@@ -11092,6 +11183,7 @@ def update_transaction(
     tx.fg_color = payload.fg_color.strip() if payload.fg_color and payload.fg_color.strip() else None
     tx.bg_color = payload.bg_color.strip() if payload.bg_color and payload.bg_color.strip() else None
     tx.reimbursable = payload.reimbursable
+    on_transaction_changed(db, before_transaction, tx, user_id)
     db.commit()
     db.refresh(tx)
     return _transaction_out(db, tx)
@@ -11113,9 +11205,49 @@ def delete_transaction(
     if tx is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
 
+    from .transaction_history import on_transaction_deleted, snapshot_transaction
+
+    before_transaction = snapshot_transaction(db, tx)
+    on_transaction_deleted(
+        db,
+        before_transaction,
+        family_id=family_id,
+        transaction_id=tx.id,
+        actor_user_id=user_id,
+    )
     db.delete(tx)
     db.commit()
     return {"ok": True}
+
+
+@app.get("/api/families/{family_id}/transaction-history")
+def read_transaction_history(
+    family_id: int,
+    subject_type: str,
+    subject_id: int,
+    occurrence_date: Optional[date] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Read-only history for one transaction or recurring series. Does not change the forecast."""
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    if subject_type not in {"transaction", "expected_series", "expected_occurrence"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown history subject")
+    if subject_type == "expected_occurrence" and occurrence_date is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="occurrence_date is required")
+    from .transaction_history import TransactionHistoryOut, load_history
+
+    payload = load_history(
+        db,
+        family_id=family_id,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        occurrence_date=occurrence_date,
+    )
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History not found")
+    return TransactionHistoryOut.model_validate(payload)
 
 
 def _frontend_dir() -> Path:

@@ -174,29 +174,33 @@ function setCallout(el, msg, mode = "pending") {
 }
 
 async function goApp() {
+  let needs = false;
+  let me = null;
+  try {
+    me = await request("/api/auth/me", "GET");
+    needs = !!(me.ok && me.data && me.data.needs_onboarding);
+  } catch (_) {}
+  const dest = typeof postLoginPath === "function" ? postLoginPath(needs, "") : needs ? "/account-setup/?resume=1" : "/calendar";
   try {
     const t = sessionStorage.getItem("bw_invite_token");
     if (!t || !String(t).trim()) {
-      window.location.replace("/calendar");
+      window.location.replace(dest);
       return;
     }
     const enc = encodeURIComponent(String(t).trim());
-    const [me, inv] = await Promise.all([
-      request("/api/auth/me", "GET"),
-      request(`/api/public/invites/by-token/${enc}`, "GET"),
-    ]);
+    const inv = await request(`/api/public/invites/by-token/${enc}`, "GET");
     if (!inv.ok || !inv.data || !inv.data.ok) {
       try {
         sessionStorage.removeItem("bw_invite_token");
       } catch (_) {}
-      window.location.replace("/calendar");
+      window.location.replace(dest);
       return;
     }
     const invited = String(inv.data.invitee_email || "")
       .trim()
       .toLowerCase();
     const logged =
-      me.ok && me.data && me.data.user && me.data.user.email
+      me && me.ok && me.data && me.data.user && me.data.user.email
         ? String(me.data.user.email)
             .trim()
             .toLowerCase()
@@ -207,7 +211,7 @@ async function goApp() {
     }
     window.location.replace("/invite/?token=" + enc);
   } catch (_) {
-    window.location.replace("/calendar");
+    window.location.replace(dest);
   }
 }
 
@@ -406,8 +410,13 @@ function mergeAccountSetupDraftTransactions(a, b) {
   return out;
 }
 
+function accountSetupDraftIsoDate(value) {
+  const raw = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+}
+
 function draftAccountIsComplete(account) {
-  return !!(account && account.name && account.starting_balance_date != null);
+  return !!(account && String(account.name || "").trim() && accountSetupDraftIsoDate(account.starting_balance_date));
 }
 
 /** Prefer the copy that has account + the most transactions; union transaction lists. */
@@ -419,7 +428,12 @@ function mergeAccountSetupDraftObjects(sessionObj, localObj) {
   const transactions = mergeAccountSetupDraftTransactions(sessionTx, localTx);
   const sessionAccount = draftAccountIsComplete(sessionObj.account) ? sessionObj.account : null;
   const localAccount = draftAccountIsComplete(localObj.account) ? localObj.account : null;
-  const account = sessionAccount || localAccount || localObj.account || sessionObj.account || null;
+  const datedAccount = accountSetupDraftIsoDate(localObj.account && localObj.account.starting_balance_date)
+    ? localObj.account
+    : accountSetupDraftIsoDate(sessionObj.account && sessionObj.account.starting_balance_date)
+      ? sessionObj.account
+      : null;
+  const account = sessionAccount || localAccount || datedAccount || localObj.account || sessionObj.account || null;
   const sessionSurvey = Array.isArray(sessionObj.surveyHelpWith) ? sessionObj.surveyHelpWith : [];
   const localSurvey = Array.isArray(localObj.surveyHelpWith) ? localObj.surveyHelpWith : [];
   const surveyHelpWith = localSurvey.length >= sessionSurvey.length ? localSurvey : sessionSurvey;
@@ -1290,14 +1304,14 @@ function syncAccountSetupWizardShellButtons() {
       subEyebrow.hidden = false;
     }
     const sampleBack = document.getElementById("accountSetupBackToSample");
-    if (sampleBack) sampleBack.hidden = s !== 0;
+    if (sampleBack) sampleBack.hidden = false;
   } catch (_) {
     if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
     if (eyebrow) eyebrow.textContent = "Let’s build your forecast";
     if (reassurance) reassurance.hidden = s !== 0;
     if (subEyebrow) subEyebrow.hidden = false;
     const sampleBack = document.getElementById("accountSetupBackToSample");
-    if (sampleBack) sampleBack.hidden = s !== 0;
+    if (sampleBack) sampleBack.hidden = false;
   }
 
   try {
@@ -1508,6 +1522,7 @@ function setAccountSetupWizardStep(step, opts = {}) {
   // Step 2: land on the editable account name so it feels obviously customizable.
   if (s === 1) {
     focusAccountSetupAccountNameInput();
+    applyAccountStartingBalanceDate();
   }
 
   if (s < 2 && document.getElementById("accountSetupWizardPanel2")) {
@@ -1648,11 +1663,56 @@ function isoTodayLocal() {
   return `${y}-${m}-${d}`;
 }
 
-function ensureAccountStartingBalanceDateDefault() {
+function rememberAccountSetupBalanceDate(dateValue) {
+  const next = accountSetupDraftIsoDate(dateValue);
+  if (!next) return;
+  const raw = readAccountSetupDraftRaw() || {};
+  const account = raw.account && typeof raw.account === "object" ? { ...raw.account } : {};
+  if (accountSetupDraftIsoDate(account.starting_balance_date) === next) return;
+  account.starting_balance_date = next;
+  if (!account.type) account.type = "checking";
+  raw.account = account;
+  persistAccountSetupDraftObject(raw);
+}
+
+/** Show the saved date, or today when none was entered. Assign it after the field is visible. */
+function applyAccountStartingBalanceDate() {
   if (!isAccountSetupPath()) return;
   const el = document.getElementById("accountStartingBalanceDate");
-  if (!el) return;
-  if (!String(el.value || "").trim()) el.value = isoTodayLocal();
+  const panel = document.getElementById("accountSetupWizardPanel1");
+  if (!el || !panel) return;
+  if (panel.hasAttribute("inert") || getComputedStyle(panel).display === "none") return;
+  const draft = readAccountSetupDraftRaw();
+  const saved = draft && draft.account ? draft.account.starting_balance_date : "";
+  const next =
+    typeof accountSetupBalanceDateValue === "function"
+      ? accountSetupBalanceDateValue(saved, el.value, isoTodayLocal())
+      : accountSetupDraftIsoDate(el.value) || accountSetupDraftIsoDate(saved) || isoTodayLocal();
+  if (!accountSetupDraftIsoDate(next)) return;
+  const write = () => {
+    if (!el.isConnected) return;
+    el.value = next;
+  };
+  write();
+  window.requestAnimationFrame(write);
+  rememberAccountSetupBalanceDate(next);
+}
+
+function bindAccountSetupBalanceDate() {
+  const el = document.getElementById("accountStartingBalanceDate");
+  if (!el || el.dataset.bwDateBound === "1") return;
+  el.dataset.bwDateBound = "1";
+  const save = () => {
+    const value = accountSetupDraftIsoDate(el.value);
+    if (value) rememberAccountSetupBalanceDate(value);
+  };
+  el.addEventListener("change", save);
+  el.addEventListener("input", save);
+  document.getElementById("accountSetupBackToSample")?.addEventListener("click", save);
+}
+
+function ensureAccountStartingBalanceDateDefault() {
+  applyAccountStartingBalanceDate();
 }
 
 function ensureAccountSetupDefaultAccountName() {
@@ -3398,8 +3458,9 @@ async function endSessionForFreshAccountSetup() {
     return "";
   }
   let user = null;
+  let me = null;
   try {
-    const me = await request("/api/auth/me", "GET");
+    me = await request("/api/auth/me", "GET");
     user = me.ok && me.data && me.data.user ? me.data.user : null;
   } catch (_) {}
   if (!user) {
@@ -3417,7 +3478,8 @@ async function endSessionForFreshAccountSetup() {
       hasAccount = !!(accounts.ok && Array.isArray(accounts.data) && accounts.data.length > 0);
     }
   } catch (_) {}
-  if (hasAccount) {
+  const needsOnboarding = !!(me && me.ok && me.data && me.data.needs_onboarding);
+  if (!needsOnboarding && hasAccount) {
     window.location.replace("/calendar/");
     return "redirect";
   }
@@ -3438,19 +3500,20 @@ async function maybeEnterAccountSetupResume() {
   const email = String(user.email || "").trim().toLowerCase();
   const draft = readAccountSetupDraftRaw();
   const draftEmail = draft && draft.signupEmail ? String(draft.signupEmail).trim().toLowerCase() : "";
+  const needsOnboarding = !!(me.ok && me.data && me.data.needs_onboarding);
   if (draftEmail && email && draftEmail !== email) {
     removeAccountSetupDraftStorage();
-    window.location.replace("/calendar");
-    return "redirect";
+    if (!needsOnboarding) {
+      window.location.replace("/calendar");
+      return "redirect";
+    }
   }
-  let familyId = null;
+  let hasFamily = false;
   try {
     const fams = await request("/api/families", "GET");
-    if (fams.ok && Array.isArray(fams.data) && fams.data.length && fams.data[0] && fams.data[0].id) {
-      familyId = fams.data[0].id;
-    }
+    hasFamily = !!(fams.ok && Array.isArray(fams.data) && fams.data.length);
   } catch (_) {}
-  if (familyId) {
+  if (typeof accountSetupShouldLeaveWizard === "function" ? accountSetupShouldLeaveWizard(needsOnboarding, hasFamily) : !needsOnboarding && hasFamily) {
     window.location.replace("/calendar/");
     return "redirect";
   }
@@ -4004,9 +4067,15 @@ void (async () => {
     initAccountSetupTransactionUi();
   } catch (_) {}
   try {
+    bindAccountSetupBalanceDate();
     ensureAccountStartingBalanceDateDefault();
     ensureAccountSetupDefaultAccountName();
   } catch (_) {}
+  window.addEventListener("pageshow", () => {
+    try {
+      applyAccountStartingBalanceDate();
+    } catch (_) {}
+  });
   initAccountSetupWizardShell();
 
   // Warm up the email availability check while the user is still typing Step 0.
@@ -4119,9 +4188,50 @@ function showAccountSetupCheckEmail(email) {
   syncAccountSetupResendButton();
 }
 
+function accountSetupVerifyRecoveryCopy(message) {
+  const text = String(message || "").trim();
+  if (/already been used/i.test(text)) {
+    return {
+      title: "Email already confirmed",
+      message: "This confirmation link has already been used. Sign in to continue setting up BalanceWhiz.",
+    };
+  }
+  if (/expired/i.test(text)) {
+    return {
+      title: "Link expired",
+      message: "This confirmation link has expired. Request a new link to continue setting up BalanceWhiz.",
+    };
+  }
+  if (/not valid/i.test(text)) {
+    return {
+      title: "Link not recognized",
+      message: "This confirmation link is not valid. Request a new link to continue setting up BalanceWhiz.",
+    };
+  }
+  if (/already has an account/i.test(text)) {
+    return {
+      title: "Account already exists",
+      message: "This email already has an account. Sign in to continue.",
+    };
+  }
+  if (/sign in to finish/i.test(text)) {
+    return {
+      title: "Sign in to continue",
+      message: "Sign in to finish setting up your account.",
+    };
+  }
+  return {
+    title: "Check your confirmation link",
+    message: text || "This confirmation link is not valid. Request a new link to continue setting up BalanceWhiz.",
+  };
+}
+
 function showAccountSetupVerifyRecovery(message) {
+  const copy = accountSetupVerifyRecoveryCopy(message);
+  const title = document.getElementById("accountSetupVerifyRecoveryTitle");
   const el = document.getElementById("accountSetupVerifyRecoveryMessage");
-  if (el) el.textContent = message || "This confirmation link is not valid. Request a new one.";
+  if (title) title.textContent = copy.title;
+  if (el) el.textContent = copy.message;
   setAccountSetupEmailGate("recovery");
 }
 
@@ -4301,13 +4411,16 @@ async function bootAccountSetupEmailGate() {
   return "";
 }
 
-async function verifiedAccountSetupSession() {
+async function accountSetupMe() {
   try {
     const me = await request("/api/auth/me", "GET");
-    return !!(me.ok && me.data && me.data.user);
-  } catch (_) {
-    return false;
-  }
+    if (me.ok && me.data && me.data.user) return me.data;
+  } catch (_) {}
+  return null;
+}
+
+async function verifiedAccountSetupSession() {
+  return !!(await accountSetupMe());
 }
 
 async function accountSetupFamilyList() {
@@ -4326,28 +4439,40 @@ async function completeVerifiedAccountSetup() {
     showAccountSetupVerifyRecovery("Sign in to finish setting up your account.");
     return;
   }
+  const me = await accountSetupMe();
   const families = await accountSetupFamilyList();
   if (families == null) {
     setCallout(signupCalloutEl, "We couldn't confirm your account. Please try again.", "error");
     return;
   }
-  if (families.length) {
+  const needsOnboarding = !!(me && me.needs_onboarding);
+  const leave =
+    typeof accountSetupShouldLeaveWizard === "function"
+      ? accountSetupShouldLeaveWizard(needsOnboarding, families.length > 0)
+      : !needsOnboarding && families.length > 0;
+  if (leave) {
     window.location.replace("/calendar/");
     return;
   }
   void doSignup();
 }
 
-/** A verified user with no family continues setup. An existing family opens the forecast. */
+/** A verified user who still needs setup stays here, even if an empty family already exists. */
 async function placeVerifiedAccountSetup() {
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return "";
   const check = document.getElementById("accountSetupEmailCheck");
   const recovery = document.getElementById("accountSetupVerifyRecovery");
   if ((check && !check.hidden) || (recovery && !recovery.hidden)) return "";
-  if (!(await verifiedAccountSetupSession())) return "";
+  const me = await accountSetupMe();
+  if (!me) return "";
   const families = await accountSetupFamilyList();
   if (families == null) return "";
-  if (families.length) {
+  const needsOnboarding = !!me.needs_onboarding;
+  const leave =
+    typeof accountSetupShouldLeaveWizard === "function"
+      ? accountSetupShouldLeaveWizard(needsOnboarding, families.length > 0)
+      : !needsOnboarding && families.length > 0;
+  if (leave) {
     window.location.replace("/calendar/");
     return "redirect";
   }
@@ -4423,6 +4548,7 @@ function onSignupPrimaryClickInner() {
         return;
       }
       if (st === 1) {
+        applyAccountStartingBalanceDate();
         const accountName = (document.getElementById("accountName")?.value || "").trim();
         const accountStartingBalanceRaw = document.getElementById("accountStartingBalance")?.value || "";
         const accountStartingBalance = toMoneyNumber(accountStartingBalanceRaw);

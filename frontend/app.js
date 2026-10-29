@@ -634,6 +634,7 @@ function toNum(v) {
 let state = {
   user: null,
   isPlatformAdmin: false,
+  needsOnboarding: false,
   families: [],
   activeFamilyId: null,
   activeFamilyAccessMode: "edit",
@@ -916,7 +917,7 @@ if (catEditSave) {
   catEditSave.addEventListener("click", async () => {
     try {
       show(catEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       const kind = String(catEditKind?.value || "");
       const idRaw = String(catEditId?.value || "").trim();
       const id = idRaw ? Number(idRaw) : null;
@@ -966,7 +967,7 @@ if (catEditDelete) {
   catEditDelete.addEventListener("click", async () => {
     try {
       show(catEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       const kind = String(catEditKind?.value || "");
       const idRaw = String(catEditId?.value || "").trim();
       const id = idRaw ? Number(idRaw) : null;
@@ -3023,7 +3024,7 @@ async function saveBalanceThresholds(opts = {}) {
       errEl,
       saveBtn,
       savedMsg,
-      savedText: silent ? "" : "Saved for this household.",
+      savedText: silent ? "" : "Saved.",
       toastText: silent ? "" : "Safe balance threshold saved.",
       familyPatch: updated,
       showSavedFeedback: !silent,
@@ -3793,9 +3794,7 @@ function setActiveTopView(view) {
         ? "settings"
         : view === "reports"
           ? "reports"
-          : view === "reimbursements"
-            ? "reimbursements"
-            : "calendar";
+          : "calendar";
   try {
     document.body.dataset.bwView = v;
     if (v !== "reports") document.body.removeAttribute("data-bw-pressure-report");
@@ -3887,9 +3886,6 @@ function setActiveTopView(view) {
     // Honor ?section= and /settings/billing on the first paint. Forcing Profile
     // here flashed the profile page before Billing finished loading.
     activateSettingsSection(settingsSectionFromLocation() || "profile");
-  }
-  if (v === "reimbursements") {
-    void refreshReimbursements().catch(() => {});
   }
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
@@ -4074,7 +4070,7 @@ function escapeHtml(s) {
 
 async function loadCategoryTotalsReport() {
   show(catReportErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!catReportStart?.value || !catReportEnd?.value) throw new Error("Start and end dates are required");
   const mode = getRadioValue("catReportMode", "actual");
   const q = new URLSearchParams({
@@ -4119,1108 +4115,6 @@ if (catReportRunBtn) {
     }
   });
 }
-
-const REIMBURSEMENT_STATUSES = [
-  "Needs Review",
-  "Ready to Submit",
-  "Submitted",
-  "Partially Reimbursed",
-  "Fully Reimbursed",
-];
-const REIMBURSEMENT_CATEGORIES = [
-  "Airfare",
-  "Hotel",
-  "Rental Car",
-  "Meals",
-  "Mileage",
-  "Software",
-  "Software & Subscriptions",
-  "Supplies",
-  "Parking",
-  "Tolls",
-  "Other",
-];
-const REIMBURSEMENT_FREQUENCY_LABELS = {
-  monthly: "Monthly",
-  quarterly: "Quarterly",
-  semiannual: "Semi-Annual",
-  annual: "Annual",
-};
-const REIMBURSEMENT_BULK_INITIAL_ROWS = 5;
-const reimbState = {
-  items: [],
-  loaded: false,
-  sortKey: "date",
-  sortDir: "asc",
-  status: "All",
-};
-const reimbSummaryOutstanding = document.getElementById("reimbSummaryOutstanding");
-const reimbSummaryNeedsReview = document.getElementById("reimbSummaryNeedsReview");
-const reimbSummarySubmitted = document.getElementById("reimbSummarySubmitted");
-const reimbSummaryReimbursed = document.getElementById("reimbSummaryReimbursed");
-const reimbSummaryRecurring = document.getElementById("reimbSummaryRecurring");
-const reimbStatusTabs = document.getElementById("reimbStatusTabs");
-const reimbStartDate = document.getElementById("reimbStartDate");
-const reimbEndDate = document.getElementById("reimbEndDate");
-const reimbCategoryFilter = document.getElementById("reimbCategoryFilter");
-const reimbSearch = document.getElementById("reimbSearch");
-const reimbRegisterBody = document.getElementById("reimbRegisterBody");
-const reimbTableWrap = document.getElementById("reimbTableWrap");
-const reimbEmpty = document.getElementById("reimbEmpty");
-const reimbErr = document.getElementById("reimbErr");
-const reimbAddBtn = document.getElementById("reimbAddBtn");
-const reimbEmptyAddBtn = document.getElementById("reimbEmptyAddBtn");
-const reimbScreenshotImportBtn = document.getElementById("reimbScreenshotImportBtn");
-const reimbPasteImportBtn = document.getElementById("reimbPasteImportBtn");
-const reimbScreenshotModal = document.getElementById("reimbScreenshotModal");
-const reimbScreenshotErr = document.getElementById("reimbScreenshotErr");
-const reimbScreenshotPasteZone = document.getElementById("reimbScreenshotPasteZone");
-const reimbScreenshotFile = document.getElementById("reimbScreenshotFile");
-const reimbScreenshotClipboardBtn = document.getElementById("reimbScreenshotClipboardBtn");
-const reimbScreenshotUploadBtn = document.getElementById("reimbScreenshotUploadBtn");
-const reimbScreenshotLoading = document.getElementById("reimbScreenshotLoading");
-const reimbScreenshotSummary = document.getElementById("reimbScreenshotSummary");
-const reimbScreenshotEmpty = document.getElementById("reimbScreenshotEmpty");
-const reimbScreenshotTableWrap = document.getElementById("reimbScreenshotTableWrap");
-const reimbScreenshotRows = document.getElementById("reimbScreenshotRows");
-const reimbScreenshotCancelBtn = document.getElementById("reimbScreenshotCancelBtn");
-const reimbScreenshotSaveBtn = document.getElementById("reimbScreenshotSaveBtn");
-const reimbPasteModal = document.getElementById("reimbPasteModal");
-const reimbPasteErr = document.getElementById("reimbPasteErr");
-const reimbPasteText = document.getElementById("reimbPasteText");
-const reimbPasteParseBtn = document.getElementById("reimbPasteParseBtn");
-const reimbPasteSummary = document.getElementById("reimbPasteSummary");
-const reimbPasteEmpty = document.getElementById("reimbPasteEmpty");
-const reimbPasteTableWrap = document.getElementById("reimbPasteTableWrap");
-const reimbPasteRows = document.getElementById("reimbPasteRows");
-const reimbPasteCancelBtn = document.getElementById("reimbPasteCancelBtn");
-const reimbPasteSaveBtn = document.getElementById("reimbPasteSaveBtn");
-const reimbBulkAddBtn = document.getElementById("reimbBulkAddBtn");
-const reimbBulkModal = document.getElementById("reimbBulkModal");
-const reimbBulkErr = document.getElementById("reimbBulkErr");
-const reimbBulkRows = document.getElementById("reimbBulkRows");
-const reimbBulkCount = document.getElementById("reimbBulkCount");
-const reimbBulkTotal = document.getElementById("reimbBulkTotal");
-const reimbBulkSameDate = document.getElementById("reimbBulkSameDate");
-const reimbBulkApplyDateBtn = document.getElementById("reimbBulkApplyDateBtn");
-const reimbBulkSameCategory = document.getElementById("reimbBulkSameCategory");
-const reimbBulkApplyCategoryBtn = document.getElementById("reimbBulkApplyCategoryBtn");
-const reimbBulkPasteText = document.getElementById("reimbBulkPasteText");
-const reimbBulkPasteBtn = document.getElementById("reimbBulkPasteBtn");
-const reimbBulkAddRowBtn = document.getElementById("reimbBulkAddRowBtn");
-const reimbBulkCancelBtn = document.getElementById("reimbBulkCancelBtn");
-const reimbBulkSaveBtn = document.getElementById("reimbBulkSaveBtn");
-const reimbModal = document.getElementById("reimbModal");
-const reimbModalTitle = document.getElementById("reimbModalTitle");
-const reimbModalErr = document.getElementById("reimbModalErr");
-const reimbEditId = document.getElementById("reimbEditId");
-const reimbDate = document.getElementById("reimbDate");
-const reimbVendor = document.getElementById("reimbVendor");
-const reimbDescription = document.getElementById("reimbDescription");
-const reimbAmount = document.getElementById("reimbAmount");
-const reimbCategory = document.getElementById("reimbCategory");
-const reimbStatus = document.getElementById("reimbStatus");
-const reimbNotes = document.getElementById("reimbNotes");
-const reimbRecurringFields = document.getElementById("reimbRecurringFields");
-const reimbFrequency = document.getElementById("reimbFrequency");
-const reimbStartDateSeries = document.getElementById("reimbStartDateSeries");
-const reimbEndDateSeries = document.getElementById("reimbEndDateSeries");
-const reimbAutoCreateFuture = document.getElementById("reimbAutoCreateFuture");
-const reimbApplyScope = document.getElementById("reimbApplyScope");
-const reimbSaveBtn = document.getElementById("reimbSaveBtn");
-const reimbCancelBtn = document.getElementById("reimbCancelBtn");
-const reimbDeleteBtn = document.getElementById("reimbDeleteBtn");
-
-function formatReimbursementMoney(value) {
-  const n = Number(value || 0);
-  if (!Number.isFinite(n)) return "$0";
-  return `$${fmtMoney(Math.abs(n))}`;
-}
-
-function reimbursementStatusClass(status) {
-  return `reimb-status--${String(status || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
-}
-
-function selectedReimbursementType() {
-  return getRadioValue("reimbType", "one_time");
-}
-
-function selectedReimbursementApplyScope() {
-  return getRadioValue("reimbApplyScope", "future");
-}
-
-function setReimbursementType(type) {
-  const t = type === "recurring" ? "recurring" : "one_time";
-  document.querySelectorAll('input[name="reimbType"]').forEach((r) => {
-    r.checked = String(r.value) === t;
-  });
-  syncReimbursementRecurringUi();
-}
-
-function setReimbursementApplyScope(scope) {
-  const s = scope === "this" ? "this" : "future";
-  document.querySelectorAll('input[name="reimbApplyScope"]').forEach((r) => {
-    r.checked = String(r.value) === s;
-  });
-}
-
-function syncReimbursementRecurringUi() {
-  const isRecurring = selectedReimbursementType() === "recurring";
-  if (reimbRecurringFields) reimbRecurringFields.hidden = !isRecurring;
-  if (isRecurring && reimbStartDateSeries && !reimbStartDateSeries.value) {
-    reimbStartDateSeries.value = reimbDate?.value || toISODate(new Date());
-  }
-}
-
-function reimbursementFrequencyLabel(frequency) {
-  return REIMBURSEMENT_FREQUENCY_LABELS[String(frequency || "").trim().toLowerCase()] || "";
-}
-
-function populateReimbursementSelects() {
-  for (const select of [reimbCategory, reimbCategoryFilter, reimbBulkSameCategory]) {
-    if (!select || select.dataset.reimbPopulated === "1") continue;
-    const keepBlank = select === reimbCategoryFilter || select === reimbBulkSameCategory;
-    select.innerHTML = select === reimbCategoryFilter ? `<option value="">All categories</option>` : (keepBlank ? `<option value="">Choose category</option>` : "");
-    for (const cat of REIMBURSEMENT_CATEGORIES) {
-      const opt = document.createElement("option");
-      opt.value = cat;
-      opt.textContent = cat;
-      select.appendChild(opt);
-    }
-    select.dataset.reimbPopulated = "1";
-  }
-  if (reimbStatus && reimbStatus.dataset.reimbPopulated !== "1") {
-    reimbStatus.innerHTML = "";
-    for (const st of REIMBURSEMENT_STATUSES) {
-      const opt = document.createElement("option");
-      opt.value = st;
-      opt.textContent = st;
-      reimbStatus.appendChild(opt);
-    }
-    reimbStatus.dataset.reimbPopulated = "1";
-  }
-}
-
-function reimbursementSummary(items) {
-  const out = { outstanding: 0, needsReview: 0, submitted: 0, reimbursed: 0, recurringActive: 0 };
-  const activeSeries = new Set();
-  const todayIso = toISODate(new Date());
-  for (const it of items || []) {
-    const amount = Number(it.amount || 0);
-    if (it.status === "Needs Review") out.needsReview += 1;
-    if (it.status === "Ready to Submit" || it.status === "Submitted" || it.status === "Partially Reimbursed") {
-      out.outstanding += amount;
-    }
-    if (it.status === "Submitted") out.submitted += amount;
-    if (it.status === "Fully Reimbursed") out.reimbursed += amount;
-    if (it.is_recurring && (!it.end_date || String(it.end_date) >= todayIso)) {
-      activeSeries.add(it.series_id || `item:${it.id}`);
-    }
-  }
-  out.recurringActive = activeSeries.size;
-  return out;
-}
-
-function renderReimbursementSummary() {
-  const s = reimbursementSummary(visibleReimbursements());
-  if (reimbSummaryOutstanding) reimbSummaryOutstanding.textContent = formatReimbursementMoney(s.outstanding);
-  if (reimbSummaryNeedsReview) reimbSummaryNeedsReview.textContent = `${s.needsReview} item${s.needsReview === 1 ? "" : "s"}`;
-  if (reimbSummarySubmitted) reimbSummarySubmitted.textContent = formatReimbursementMoney(s.submitted);
-  if (reimbSummaryReimbursed) reimbSummaryReimbursed.textContent = formatReimbursementMoney(s.reimbursed);
-  if (reimbSummaryRecurring) reimbSummaryRecurring.textContent = `${s.recurringActive} active`;
-}
-
-function visibleReimbursements() {
-  const items = Array.isArray(reimbState.items) ? reimbState.items : [];
-  const todayIso = toISODate(new Date());
-  const nextBySeries = new Map();
-  for (const it of items) {
-    if (!it?.is_recurring) continue;
-    const seriesKey = it.series_id || `item:${it.id}`;
-    const iso = String(it.date || "");
-    if (!iso || iso < todayIso) continue;
-    const current = nextBySeries.get(seriesKey);
-    if (!current || String(it.date || "").localeCompare(String(current.date || "")) < 0 || (it.date === current.date && Number(it.id || 0) < Number(current.id || 0))) {
-      nextBySeries.set(seriesKey, it);
-    }
-  }
-  return items.filter((it) => {
-    if (!it?.is_recurring) return true;
-    const iso = String(it.date || "");
-    if (!iso || iso < todayIso) return true;
-    const seriesKey = it.series_id || `item:${it.id}`;
-    const next = nextBySeries.get(seriesKey);
-    return !next || String(next.id) === String(it.id);
-  });
-}
-
-function filteredReimbursements() {
-  const q = String(reimbSearch?.value || "").trim().toLowerCase();
-  const start = reimbStartDate?.value || "";
-  const end = reimbEndDate?.value || "";
-  const cat = reimbCategoryFilter?.value || "";
-  return visibleReimbursements().filter((it) => {
-    if (reimbState.status !== "All" && it.status !== reimbState.status) return false;
-    if (start && String(it.date || "") < start) return false;
-    if (end && String(it.date || "") > end) return false;
-    if (cat && it.category !== cat) return false;
-    if (q) {
-      const hay = `${it.vendor || ""} ${it.description || ""} ${it.notes || ""}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-}
-
-function sortReimbursements(items) {
-  const dir = reimbState.sortDir === "asc" ? 1 : -1;
-  const key = reimbState.sortKey;
-  return [...items].sort((a, b) => {
-    let av = a[key];
-    let bv = b[key];
-    if (key === "amount") {
-      av = Number(av || 0);
-      bv = Number(bv || 0);
-      return (av - bv) * dir;
-    }
-    return String(av || "").localeCompare(String(bv || "")) * dir;
-  });
-}
-
-function reimbursementQuickActions(status) {
-  if (status === "Needs Review") return [["Ready to Submit", "Mark Ready"]];
-  if (status === "Ready to Submit") return [["Submitted", "Mark Submitted"]];
-  if (status === "Submitted") return [["Fully Reimbursed", "Mark Reimbursed"], ["Partially Reimbursed", "Mark Partially Reimbursed"]];
-  if (status === "Partially Reimbursed") return [["Fully Reimbursed", "Mark Reimbursed"]];
-  if (status === "Fully Reimbursed") return [["Needs Review", "Reopen"]];
-  return [];
-}
-
-function renderReimbursements() {
-  if (!reimbursementsViewPanel) return;
-  renderReimbursementSummary();
-  const filtered = sortReimbursements(filteredReimbursements());
-  const hasAny = reimbState.items.length > 0;
-  if (reimbEmpty) reimbEmpty.hidden = hasAny;
-  if (reimbTableWrap) reimbTableWrap.hidden = !hasAny;
-  if (!reimbRegisterBody) return;
-  reimbRegisterBody.innerHTML = "";
-  if (!hasAny) return;
-  if (!filtered.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="7" class="reimbursements-none">No reimbursements match these filters.</td>`;
-    reimbRegisterBody.appendChild(tr);
-    return;
-  }
-  for (const it of filtered) {
-    const tr = document.createElement("tr");
-    const recurringLabel = it.is_recurring ? reimbursementFrequencyLabel(it.frequency) : "";
-    const recurringHtml = recurringLabel
-      ? `<span class="reimb-recurring-indicator" title="Recurring reimbursement"><span aria-hidden="true">↻</span> ${escapeHtml(recurringLabel)}</span>`
-      : "";
-    const actions = reimbursementQuickActions(it.status)
-      .map(([next, label]) => `<button type="button" class="reimb-quick-btn" data-reimb-id="${it.id}" data-reimb-next="${escapeHtml(next)}">${escapeHtml(label)}</button>`)
-      .join("");
-    tr.innerHTML = `
-      <td>${escapeHtml(String(it.date || ""))}</td>
-      <td><strong>${escapeHtml(it.vendor || "")}</strong>${it.description ? `<span class="reimb-row-desc">${escapeHtml(it.description)}</span>` : ""}${recurringHtml}</td>
-      <td>${escapeHtml(it.category || "")}</td>
-      <td class="reimbursements-amount-col">${escapeHtml(formatReimbursementMoney(it.amount))}</td>
-      <td><span class="reimb-status ${reimbursementStatusClass(it.status)}">${escapeHtml(it.status || "")}</span></td>
-      <td>${it.notes ? escapeHtml(it.notes) : '<span class="muted">-</span>'}</td>
-      <td><div class="reimb-row-actions"><button type="button" class="secondary reimb-edit-btn" data-reimb-id="${it.id}">Edit</button>${actions}</div></td>
-    `;
-    reimbRegisterBody.appendChild(tr);
-  }
-}
-
-
-function openReimbursementScreenshotModal() {
-  if (guardBillingWrite()) return;
-  if (!reimbScreenshotModal) return;
-  populateReimbursementSelects();
-  show(reimbScreenshotErr, "");
-  if (reimbScreenshotFile) reimbScreenshotFile.value = "";
-  if (reimbScreenshotRows) reimbScreenshotRows.innerHTML = "";
-  if (reimbScreenshotSummary) reimbScreenshotSummary.hidden = true;
-  if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = true;
-  if (reimbScreenshotTableWrap) reimbScreenshotTableWrap.hidden = true;
-  setReimbursementScreenshotImporting(false);
-  reimbScreenshotModal.classList.add("modal-overlay--open");
-  reimbScreenshotModal.setAttribute("aria-hidden", "false");
-  window.setTimeout(() => reimbScreenshotPasteZone?.focus?.(), 0);
-}
-
-function closeReimbursementScreenshotModal() {
-  if (!reimbScreenshotModal) return;
-  setReimbursementScreenshotImporting(false);
-  reimbScreenshotModal.classList.remove("modal-overlay--open");
-  reimbScreenshotModal.setAttribute("aria-hidden", "true");
-}
-
-function setReimbursementScreenshotImporting(isImporting) {
-  if (reimbScreenshotLoading) reimbScreenshotLoading.hidden = !isImporting;
-  if (reimbScreenshotPasteZone) reimbScreenshotPasteZone.classList.toggle("is-importing", !!isImporting);
-  for (const btn of [reimbScreenshotUploadBtn, reimbScreenshotClipboardBtn, reimbScreenshotSaveBtn]) {
-    if (btn) btn.disabled = !!isImporting;
-  }
-  if (reimbScreenshotFile) reimbScreenshotFile.disabled = !!isImporting;
-  if (isImporting) {
-    if (reimbScreenshotSummary) reimbScreenshotSummary.hidden = true;
-    if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = true;
-  }
-}
-
-function reimbursementImportCategoryOptions(selected = "Other") {
-  return REIMBURSEMENT_CATEGORIES.map((cat) => `<option value="${escapeHtml(cat)}"${cat === selected ? " selected" : ""}>${escapeHtml(cat)}</option>`).join("");
-}
-
-function reimbursementImportStatusOptions(selected = "Needs Review") {
-  return REIMBURSEMENT_STATUSES.map((st) => `<option value="${escapeHtml(st)}"${st === selected ? " selected" : ""}>${escapeHtml(st)}</option>`).join("");
-}
-
-function renderReimbursementScreenshotDraft(rows) {
-  if (!reimbScreenshotRows) return;
-  const items = Array.isArray(rows) ? rows : [];
-  reimbScreenshotRows.innerHTML = "";
-  if (reimbScreenshotSummary) {
-    reimbScreenshotSummary.textContent = `Found ${items.length} possible expense${items.length === 1 ? "" : "s"}`;
-    reimbScreenshotSummary.hidden = items.length === 0;
-  }
-  if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = items.length !== 0;
-  if (reimbScreenshotTableWrap) reimbScreenshotTableWrap.hidden = items.length === 0;
-  for (const row of items) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><input class="reimb-import-date" type="date" value="${escapeHtml(row.date || "")}" /></td>
-      <td><input class="reimb-import-vendor" type="text" maxlength="255" value="${escapeHtml(row.vendor || "")}" /></td>
-      <td><input class="reimb-import-amount" type="number" min="0" step="0.01" value="${escapeHtml(row.amount ?? "")}" /></td>
-      <td><select class="reimb-import-category">${reimbursementImportCategoryOptions(row.suggested_category || "Other")}</select></td>
-      <td><select class="reimb-import-status">${reimbursementImportStatusOptions(row.status || "Needs Review")}</select></td>
-      <td><button type="button" class="secondary reimb-import-remove-row">Delete</button></td>
-    `;
-    reimbScreenshotRows.appendChild(tr);
-  }
-  updateReimbursementScreenshotDraftSummary();
-}
-
-function updateReimbursementScreenshotDraftSummary() {
-  const count = reimbScreenshotRows?.querySelectorAll("tr").length || 0;
-  if (reimbScreenshotSummary) {
-    reimbScreenshotSummary.textContent = `Review ${count} OCR row${count === 1 ? "" : "s"}`;
-    reimbScreenshotSummary.hidden = count === 0;
-  }
-  if (reimbScreenshotEmpty) reimbScreenshotEmpty.hidden = count !== 0;
-  if (reimbScreenshotTableWrap) reimbScreenshotTableWrap.hidden = count === 0;
-}
-
-async function extractReimbursementScreenshotRows(fileOverride = null, options = {}) {
-  try {
-    show(reimbScreenshotErr, "");
-    const sourceFile = fileOverride || reimbScreenshotFile?.files?.[0];
-    const file = options.normalizeClipboardImage ? await normalizedPastedScreenshotFile(sourceFile) : sourceFile;
-    if (!file) throw new Error("Choose a screenshot to import.");
-    if (!/^image\//.test(file.type || "")) throw new Error("Please choose an image file.");
-    setReimbursementScreenshotImporting(true);
-    const importFile = (imageFile) => {
-      const form = new FormData();
-      form.append("file", imageFile, imageFile.name || "screenshot.png");
-      const timeout = new Promise((_, reject) => {
-        window.setTimeout(() => reject(new Error("Screenshot import is taking too long. Try cropping to just the transaction list, or use Bulk Add Expenses for now.")), 25000);
-      });
-      return Promise.race([apiForm("/api/reimbursements/import-screenshot", form), timeout]);
-    };
-    let draft = await importFile(file);
-    if ((!draft?.rows || draft.rows.length === 0) && !options.normalizeClipboardImage) {
-      const normalizedFile = await normalizedPastedScreenshotFile(sourceFile);
-      if (normalizedFile && normalizedFile !== sourceFile) {
-        draft = await importFile(normalizedFile);
-      }
-    }
-    renderReimbursementScreenshotDraft(draft?.rows || []);
-    if ((!draft?.rows || draft.rows.length === 0) && draft?.message) show(reimbScreenshotErr, "");
-  } catch (e) {
-    show(reimbScreenshotErr, e.message || "Could not extract rows from screenshot");
-  } finally {
-    setReimbursementScreenshotImporting(false);
-  }
-}
-
-function preferredClipboardImageType(types = []) {
-  const imageTypes = Array.from(types || []).filter((type) => /^image\//.test(type || ""));
-  return (
-    imageTypes.find((type) => type === "image/png")
-    || imageTypes.find((type) => type === "image/jpeg" || type === "image/jpg")
-    || imageTypes.find((type) => type === "image/webp")
-    || imageTypes[0]
-    || ""
-  );
-}
-
-function canvasBlob(canvas, type = "image/png", quality = 0.92) {
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), type, quality);
-  });
-}
-
-async function normalizedPastedScreenshotFile(file) {
-  if (!file || !/^image\//.test(file.type || "")) return file;
-  if (typeof createImageBitmap !== "function" || typeof document === "undefined") return file;
-  let bitmap = null;
-  try {
-    bitmap = await createImageBitmap(file);
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, bitmap.width, bitmap.height);
-    ctx.drawImage(bitmap, 0, 0);
-    const blob = await canvasBlob(canvas, "image/png");
-    if (!blob) return file;
-    return new File([blob], "pasted-screenshot.png", { type: "image/png" });
-  } catch (_) {
-    return file;
-  } finally {
-    if (bitmap && typeof bitmap.close === "function") bitmap.close();
-  }
-}
-
-function pastedScreenshotFileFromEvent(e) {
-  const files = Array.from(e?.clipboardData?.files || []);
-  const file = files.find((f) => f && /^(image\/png|image\/jpe?g|image\/webp)$/i.test(f.type || ""))
-    || files.find((f) => f && /^image\//.test(f.type || ""));
-  if (file) return file;
-  const items = Array.from(e?.clipboardData?.items || []);
-  const imageType = preferredClipboardImageType(items.map((item) => item.type));
-  const item = items.find((candidate) => candidate.type === imageType);
-  if (item) {
-    const blob = item.getAsFile();
-    if (blob) return new File([blob], "pasted-screenshot.png", { type: blob.type || imageType || "image/png" });
-  }
-  return null;
-}
-
-function handleReimbursementScreenshotPaste(e) {
-  if (e.defaultPrevented) return;
-  if (!reimbScreenshotModal?.classList?.contains("modal-overlay--open")) return;
-  const file = pastedScreenshotFileFromEvent(e);
-  if (!file) return;
-  e.preventDefault();
-  void extractReimbursementScreenshotRows(file, { normalizeClipboardImage: true });
-}
-
-async function importReimbursementScreenshotFromClipboard() {
-  try {
-    show(reimbScreenshotErr, "");
-    if (!navigator.clipboard?.read) {
-      throw new Error("Clipboard image paste is not available in this browser. Try Cmd+V / Ctrl+V in the paste box or choose a file.");
-    }
-    const items = await navigator.clipboard.read();
-    for (const item of items || []) {
-      const imageType = preferredClipboardImageType(item.types || []);
-      if (!imageType) continue;
-      const blob = await item.getType(imageType);
-      const file = new File([blob], "clipboard-screenshot.png", { type: imageType });
-      await extractReimbursementScreenshotRows(file, { normalizeClipboardImage: true });
-      return;
-    }
-    throw new Error("No image found on the clipboard.");
-  } catch (e) {
-    show(reimbScreenshotErr, e.message || "Could not read an image from the clipboard");
-  }
-}
-
-function droppedScreenshotFileFromEvent(e) {
-  const files = Array.from(e?.dataTransfer?.files || []);
-  return files.find((file) => file && /^image\//.test(file.type || "")) || null;
-}
-
-function handleReimbursementScreenshotDrag(e) {
-  if (!reimbScreenshotModal?.classList?.contains("modal-overlay--open")) return;
-  if (!reimbScreenshotPasteZone) return;
-  e.preventDefault();
-  e.stopPropagation();
-  if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
-  reimbScreenshotPasteZone.classList.add("is-dragover");
-}
-
-function handleReimbursementScreenshotDragLeave(e) {
-  if (!reimbScreenshotPasteZone) return;
-  if (e.currentTarget && e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) return;
-  reimbScreenshotPasteZone.classList.remove("is-dragover");
-}
-
-function handleReimbursementScreenshotDrop(e) {
-  if (!reimbScreenshotModal?.classList?.contains("modal-overlay--open")) return;
-  e.preventDefault();
-  e.stopPropagation();
-  reimbScreenshotPasteZone?.classList.remove("is-dragover");
-  const file = droppedScreenshotFileFromEvent(e);
-  if (!file) {
-    show(reimbScreenshotErr, "Drop an image file to import.");
-    return;
-  }
-  void extractReimbursementScreenshotRows(file);
-}
-
-function reimbursementScreenshotSelectedRows() {
-  const rows = [];
-  const errors = [];
-  reimbScreenshotRows?.querySelectorAll("tr").forEach((tr, idx) => {
-    const dateValue = String(tr.querySelector(".reimb-import-date")?.value || "").trim();
-    const vendor = String(tr.querySelector(".reimb-import-vendor")?.value || "").trim();
-    const amount = Number(tr.querySelector(".reimb-import-amount")?.value || "");
-    const category = String(tr.querySelector(".reimb-import-category")?.value || "Other").trim();
-    const statusValue = String(tr.querySelector(".reimb-import-status")?.value || "Needs Review").trim();
-    const label = `Row ${idx + 1}`;
-    if (!dateValue) errors.push(`${label}: Date is required`);
-    if (!vendor) errors.push(`${label}: Vendor is required`);
-    if (!Number.isFinite(amount) || amount <= 0) errors.push(`${label}: Amount must be greater than zero`);
-    if (!category) errors.push(`${label}: Category is required`);
-    rows.push({ date: dateValue, vendor, amount, category, status: statusValue || "Needs Review", notes: null });
-  });
-  if (!rows.length) errors.push("Keep at least one reviewed row before saving.");
-  if (errors.length) throw new Error(errors.join("\n"));
-  return rows;
-}
-
-async function saveReimbursementScreenshotImport() {
-  try {
-    show(reimbScreenshotErr, "");
-    const rows = reimbursementScreenshotSelectedRows();
-    if (reimbScreenshotSaveBtn) reimbScreenshotSaveBtn.disabled = true;
-    await api("/api/reimbursements/import-screenshot/save", "POST", { rows });
-    closeReimbursementScreenshotModal();
-    reimbState.loaded = false;
-    await refreshReimbursements({ force: true });
-  } catch (e) {
-    show(reimbScreenshotErr, e.message || "Could not save selected expenses");
-  } finally {
-    if (reimbScreenshotSaveBtn) reimbScreenshotSaveBtn.disabled = false;
-  }
-}
-
-
-function openReimbursementPasteModal() {
-  if (guardBillingWrite()) return;
-  if (!reimbPasteModal) return;
-  populateReimbursementSelects();
-  show(reimbPasteErr, "");
-  if (reimbPasteText) reimbPasteText.value = "";
-  if (reimbPasteRows) reimbPasteRows.innerHTML = "";
-  if (reimbPasteSummary) reimbPasteSummary.hidden = true;
-  if (reimbPasteEmpty) reimbPasteEmpty.hidden = true;
-  if (reimbPasteTableWrap) reimbPasteTableWrap.hidden = true;
-  reimbPasteModal.classList.add("modal-overlay--open");
-  reimbPasteModal.setAttribute("aria-hidden", "false");
-  window.setTimeout(() => reimbPasteText?.focus?.(), 0);
-}
-
-function closeReimbursementPasteModal() {
-  if (!reimbPasteModal) return;
-  reimbPasteModal.classList.remove("modal-overlay--open");
-  reimbPasteModal.setAttribute("aria-hidden", "true");
-}
-
-function renderReimbursementPasteDraft(rows) {
-  if (!reimbPasteRows) return;
-  const items = Array.isArray(rows) ? rows : [];
-  reimbPasteRows.innerHTML = "";
-  if (reimbPasteSummary) {
-    reimbPasteSummary.textContent = `Found ${items.length} possible transaction${items.length === 1 ? "" : "s"}`;
-    reimbPasteSummary.hidden = items.length === 0;
-  }
-  if (reimbPasteEmpty) reimbPasteEmpty.hidden = items.length !== 0;
-  if (reimbPasteTableWrap) reimbPasteTableWrap.hidden = items.length === 0;
-  for (const row of items) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><input class="reimb-paste-include" type="checkbox"${row.include !== false ? " checked" : ""} /></td>
-      <td><input class="reimb-paste-date" type="date" value="${escapeHtml(row.date || "")}" /></td>
-      <td><input class="reimb-paste-vendor" type="text" maxlength="255" value="${escapeHtml(row.vendor || "")}" /></td>
-      <td><input class="reimb-paste-amount" type="number" min="0" step="0.01" value="${escapeHtml(row.amount ?? "")}" /></td>
-      <td><select class="reimb-paste-category">${reimbursementImportCategoryOptions(row.suggested_category || "Other")}</select></td>
-      <td><select class="reimb-paste-status">${reimbursementImportStatusOptions(row.status || "Needs Review")}</select></td>
-      <td><input class="reimb-paste-notes" type="text" maxlength="1000" value="${escapeHtml(row.notes || "")}" /></td>
-      <td>${row.possible_duplicate ? '<span class="reimb-import-warning">Possible duplicate reimbursement expense already exists.</span>' : '<span class="muted">-</span>'}</td>
-    `;
-    reimbPasteRows.appendChild(tr);
-  }
-}
-
-async function parseReimbursementPastedTransactions() {
-  try {
-    show(reimbPasteErr, "");
-    const text = String(reimbPasteText?.value || "").trim();
-    if (!text) throw new Error("Paste transaction rows before parsing.");
-    if (reimbPasteParseBtn) reimbPasteParseBtn.disabled = true;
-    const draft = await api("/api/reimbursements/import-paste", "POST", { text });
-    renderReimbursementPasteDraft(draft?.rows || []);
-    if ((!draft?.rows || draft.rows.length === 0) && draft?.message) show(reimbPasteErr, draft.message);
-  } catch (e) {
-    show(reimbPasteErr, e.message || "Could not parse pasted transactions");
-  } finally {
-    if (reimbPasteParseBtn) reimbPasteParseBtn.disabled = false;
-  }
-}
-
-function reimbursementPasteSelectedRows() {
-  const rows = [];
-  const errors = [];
-  reimbPasteRows?.querySelectorAll("tr").forEach((tr, idx) => {
-    if (!tr.querySelector(".reimb-paste-include")?.checked) return;
-    const dateValue = String(tr.querySelector(".reimb-paste-date")?.value || "").trim();
-    const vendor = String(tr.querySelector(".reimb-paste-vendor")?.value || "").trim();
-    const amount = Number(tr.querySelector(".reimb-paste-amount")?.value || "");
-    const category = String(tr.querySelector(".reimb-paste-category")?.value || "Other").trim();
-    const statusValue = String(tr.querySelector(".reimb-paste-status")?.value || "Needs Review").trim();
-    const notes = String(tr.querySelector(".reimb-paste-notes")?.value || "").trim();
-    const label = `Row ${idx + 1}`;
-    if (!dateValue) errors.push(`${label}: Date is required`);
-    if (!vendor) errors.push(`${label}: Vendor is required`);
-    if (!Number.isFinite(amount) || amount <= 0) errors.push(`${label}: Amount must be greater than zero`);
-    if (!category) errors.push(`${label}: Category is required`);
-    rows.push({ date: dateValue, vendor, amount, category, status: statusValue || "Needs Review", notes: notes || null });
-  });
-  if (!rows.length) errors.push("Select at least one transaction to save.");
-  if (errors.length) throw new Error(errors.join("\n"));
-  return rows;
-}
-
-async function saveReimbursementPasteImport() {
-  try {
-    show(reimbPasteErr, "");
-    const rows = reimbursementPasteSelectedRows();
-    if (reimbPasteSaveBtn) reimbPasteSaveBtn.disabled = true;
-    await api("/api/reimbursements/import-screenshot/save", "POST", { rows });
-    closeReimbursementPasteModal();
-    reimbState.loaded = false;
-    await refreshReimbursements({ force: true });
-  } catch (e) {
-    show(reimbPasteErr, e.message || "Could not save selected transactions");
-  } finally {
-    if (reimbPasteSaveBtn) reimbPasteSaveBtn.disabled = false;
-  }
-}
-
-
-function reimbursementBulkCategoryOptions(selected = "Other") {
-  return REIMBURSEMENT_CATEGORIES.map((cat) => `<option value="${escapeHtml(cat)}"${cat === selected ? " selected" : ""}>${escapeHtml(cat)}</option>`).join("");
-}
-
-function reimbursementBulkStatusOptions(selected = "Needs Review") {
-  return REIMBURSEMENT_STATUSES.map((st) => `<option value="${escapeHtml(st)}"${st === selected ? " selected" : ""}>${escapeHtml(st)}</option>`).join("");
-}
-
-function addReimbursementBulkRow(values = {}, { focus = false } = {}) {
-  if (!reimbBulkRows) return;
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-    <td><input class="reimb-bulk-date" type="date" value="${escapeHtml(values.date || toISODate(new Date()))}" /></td>
-    <td><input class="reimb-bulk-vendor" type="text" maxlength="255" value="${escapeHtml(values.vendor || "")}" /></td>
-    <td><input class="reimb-bulk-amount" type="number" min="0" step="0.01" value="${escapeHtml(values.amount || "")}" /></td>
-    <td><select class="reimb-bulk-category">${reimbursementBulkCategoryOptions(values.category || "Other")}</select></td>
-    <td><select class="reimb-bulk-status">${reimbursementBulkStatusOptions(values.status || "Needs Review")}</select></td>
-    <td><input class="reimb-bulk-notes" type="text" maxlength="1000" value="${escapeHtml(values.notes || values.description || "")}" /></td>
-    <td><div class="reimb-bulk-row-actions"><button type="button" class="secondary reimb-bulk-duplicate-row">Duplicate</button><button type="button" class="secondary reimb-bulk-remove-row">Remove</button></div></td>
-  `;
-  reimbBulkRows.appendChild(tr);
-  updateReimbursementBulkSummary();
-  if (focus) tr.querySelector("input, select")?.focus?.();
-}
-
-function reimbursementBulkRowValues(row) {
-  return {
-    date: String(row.querySelector(".reimb-bulk-date")?.value || "").trim(),
-    vendor: String(row.querySelector(".reimb-bulk-vendor")?.value || "").trim(),
-    amount: String(row.querySelector(".reimb-bulk-amount")?.value || "").trim(),
-    category: String(row.querySelector(".reimb-bulk-category")?.value || "Other").trim(),
-    status: String(row.querySelector(".reimb-bulk-status")?.value || "Needs Review").trim(),
-    notes: String(row.querySelector(".reimb-bulk-notes")?.value || "").trim(),
-  };
-}
-
-function reimbursementBulkRowHasAnyValue(values) {
-  return Boolean(values.vendor || values.amount || values.notes);
-}
-
-function reimbursementBulkPayloads() {
-  const payloads = [];
-  const errors = [];
-  reimbBulkRows?.querySelectorAll("tr").forEach((row, idx) => {
-    const values = reimbursementBulkRowValues(row);
-    if (!reimbursementBulkRowHasAnyValue(values)) return;
-    const amount = Number(values.amount || "");
-    const label = `Row ${idx + 1}`;
-    if (!values.date) errors.push(`${label}: Date is required`);
-    if (!values.vendor) errors.push(`${label}: Vendor is required`);
-    if (!Number.isFinite(amount) || amount <= 0) errors.push(`${label}: Amount must be greater than zero`);
-    if (!values.category) errors.push(`${label}: Category is required`);
-    if (!values.status) errors.push(`${label}: Status is required`);
-    payloads.push({
-      date: values.date,
-      vendor: values.vendor,
-      description: values.notes || null,
-      amount,
-      category: values.category || "Other",
-      status: values.status || "Needs Review",
-      notes: values.notes || null,
-      source_type: "bulk_manual",
-      linked_transaction_id: null,
-      is_recurring: false,
-      frequency: null,
-      series_id: null,
-      start_date: null,
-      end_date: null,
-      auto_create_future: false,
-      apply_scope: "this",
-    });
-  });
-  if (!payloads.length) errors.push("Add at least one expense before saving.");
-  if (errors.length) throw new Error(errors.join("\n"));
-  return payloads;
-}
-
-function updateReimbursementBulkSummary() {
-  let count = 0;
-  let total = 0;
-  reimbBulkRows?.querySelectorAll("tr").forEach((row) => {
-    const values = reimbursementBulkRowValues(row);
-    if (!reimbursementBulkRowHasAnyValue(values)) return;
-    count += 1;
-    const amount = Number(values.amount || 0);
-    if (Number.isFinite(amount) && amount > 0) total += amount;
-  });
-  if (reimbBulkCount) reimbBulkCount.textContent = `${count} expense${count === 1 ? "" : "s"}`;
-  if (reimbBulkTotal) reimbBulkTotal.textContent = `Total: ${formatReimbursementMoney(total)}`;
-}
-
-function resetReimbursementBulkRows() {
-  if (!reimbBulkRows) return;
-  reimbBulkRows.innerHTML = "";
-  for (let i = 0; i < REIMBURSEMENT_BULK_INITIAL_ROWS; i++) addReimbursementBulkRow();
-  updateReimbursementBulkSummary();
-}
-
-function openReimbursementBulkModal() {
-  if (guardBillingWrite()) return;
-  if (!reimbBulkModal) return;
-  populateReimbursementSelects();
-  show(reimbBulkErr, "");
-  if (reimbBulkSameDate) reimbBulkSameDate.value = toISODate(new Date());
-  if (reimbBulkSameCategory) reimbBulkSameCategory.value = "";
-  if (reimbBulkPasteText) reimbBulkPasteText.value = "";
-  resetReimbursementBulkRows();
-  reimbBulkModal.classList.add("modal-overlay--open");
-  reimbBulkModal.setAttribute("aria-hidden", "false");
-  window.setTimeout(() => reimbBulkRows?.querySelector("input")?.focus?.(), 0);
-}
-
-function closeReimbursementBulkModal() {
-  if (!reimbBulkModal) return;
-  reimbBulkModal.classList.remove("modal-overlay--open");
-  reimbBulkModal.setAttribute("aria-hidden", "true");
-}
-
-function applyReimbursementBulkDate() {
-  const dt = String(reimbBulkSameDate?.value || "").trim();
-  if (!dt) return;
-  reimbBulkRows?.querySelectorAll(".reimb-bulk-date").forEach((input) => { input.value = dt; });
-  updateReimbursementBulkSummary();
-}
-
-function applyReimbursementBulkCategory() {
-  const category = String(reimbBulkSameCategory?.value || "").trim();
-  if (!category) return;
-  reimbBulkRows?.querySelectorAll(".reimb-bulk-category").forEach((select) => { select.value = category; });
-  updateReimbursementBulkSummary();
-}
-
-function parseReimbursementBulkPasteLine(line) {
-  const parts = String(line || "").split(/\t|,/).map((part) => part.trim());
-  if (!parts.some(Boolean)) return null;
-  const [dateValue, vendor, amount, category, status, ...rest] = parts;
-  return {
-    date: dateValue || toISODate(new Date()),
-    vendor: vendor || "",
-    amount: amount ? amount.replace(/^\$/, "") : "",
-    category: REIMBURSEMENT_CATEGORIES.includes(category) ? category : "Other",
-    status: REIMBURSEMENT_STATUSES.includes(status) ? status : "Needs Review",
-    notes: rest.join(" "),
-  };
-}
-
-function usePastedReimbursementBulkRows() {
-  const rows = String(reimbBulkPasteText?.value || "")
-    .split(/\r?\n/)
-    .map(parseReimbursementBulkPasteLine)
-    .filter(Boolean);
-  if (!rows.length) return;
-  if (reimbBulkRows) reimbBulkRows.innerHTML = "";
-  rows.forEach((row) => addReimbursementBulkRow(row));
-  updateReimbursementBulkSummary();
-}
-
-async function saveReimbursementBulkFromModal() {
-  try {
-    show(reimbBulkErr, "");
-    const payloads = reimbursementBulkPayloads();
-    for (const payload of payloads) {
-      await api("/api/reimbursements", "POST", payload);
-    }
-    closeReimbursementBulkModal();
-    reimbState.loaded = false;
-    await refreshReimbursements({ force: true });
-  } catch (e) {
-    show(reimbBulkErr, e.message || "Could not save bulk expenses");
-  }
-}
-
-async function refreshReimbursements({ force = false } = {}) {
-  if (!reimbursementsViewPanel) return;
-  if (reimbState.loaded && !force) {
-    renderReimbursements();
-    return;
-  }
-  try {
-    show(reimbErr, "");
-    populateReimbursementSelects();
-    const items = await api("/api/reimbursements", "GET");
-    reimbState.items = Array.isArray(items) ? items : [];
-    reimbState.loaded = true;
-    renderReimbursements();
-  } catch (e) {
-    show(reimbErr, e.message || "Failed to load reimbursements");
-  }
-}
-
-function openReimbursementModal(item = null) {
-  if (guardBillingWrite()) return;
-  if (!reimbModal) return;
-  populateReimbursementSelects();
-  show(reimbModalErr, "");
-  if (reimbModalTitle) reimbModalTitle.textContent = item ? "Edit Expense" : "Add Expense";
-  if (reimbEditId) reimbEditId.value = item ? String(item.id) : "";
-  if (reimbDate) reimbDate.value = item?.date || toISODate(new Date());
-  if (reimbVendor) reimbVendor.value = item?.vendor || "";
-  if (reimbDescription) reimbDescription.value = item?.description || "";
-  if (reimbAmount) reimbAmount.value = item ? String(Number(item.amount || 0)) : "";
-  if (reimbCategory) reimbCategory.value = item?.category || "Other";
-  if (reimbStatus) reimbStatus.value = item?.status || "Needs Review";
-  if (reimbNotes) reimbNotes.value = item?.notes || "";
-  setReimbursementType(item?.is_recurring ? "recurring" : "one_time");
-  if (reimbFrequency) reimbFrequency.value = item?.frequency || "monthly";
-  if (reimbStartDateSeries) reimbStartDateSeries.value = item?.start_date || item?.date || reimbDate?.value || toISODate(new Date());
-  if (reimbEndDateSeries) reimbEndDateSeries.value = item?.end_date || "";
-  if (reimbAutoCreateFuture) reimbAutoCreateFuture.checked = !item;
-  if (reimbApplyScope) reimbApplyScope.hidden = !(item?.is_recurring && item?.series_id);
-  if (reimbDeleteBtn) reimbDeleteBtn.hidden = !item;
-  setReimbursementApplyScope(item?.is_recurring && item?.series_id ? "future" : "this");
-  syncReimbursementRecurringUi();
-  reimbModal.classList.add("modal-overlay--open");
-  reimbModal.setAttribute("aria-hidden", "false");
-  window.setTimeout(() => reimbVendor?.focus?.(), 0);
-}
-
-function closeReimbursementModal() {
-  if (!reimbModal) return;
-  reimbModal.classList.remove("modal-overlay--open");
-  reimbModal.setAttribute("aria-hidden", "true");
-}
-
-
-function reimbursementPayloadFromForm() {
-  const vendor = String(reimbVendor?.value || "").trim();
-  const amount = Number(reimbAmount?.value || "");
-  const category = String(reimbCategory?.value || "").trim();
-  const status = String(reimbStatus?.value || "Needs Review").trim();
-  const dt = String(reimbDate?.value || "").trim();
-  const isRecurring = selectedReimbursementType() === "recurring";
-  const frequency = String(reimbFrequency?.value || "monthly").trim();
-  const seriesStart = String(reimbStartDateSeries?.value || dt).trim();
-  const seriesEnd = String(reimbEndDateSeries?.value || "").trim();
-  if (!dt) throw new Error("Date is required");
-  if (!vendor) throw new Error("Vendor is required");
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than zero");
-  if (!category) throw new Error("Category is required");
-  if (isRecurring && !seriesStart) throw new Error("Start date is required for recurring expenses");
-  if (isRecurring && seriesEnd && seriesEnd < seriesStart) throw new Error("End date cannot be before start date");
-  return {
-    date: dt,
-    vendor,
-    description: String(reimbDescription?.value || "").trim() || null,
-    amount,
-    category,
-    status,
-    notes: String(reimbNotes?.value || "").trim() || null,
-    source_type: "manual",
-    linked_transaction_id: null,
-    is_recurring: isRecurring,
-    frequency: isRecurring ? frequency : null,
-    series_id: null,
-    start_date: isRecurring ? seriesStart : null,
-    end_date: isRecurring && seriesEnd ? seriesEnd : null,
-    auto_create_future: isRecurring ? !!(reimbAutoCreateFuture && reimbAutoCreateFuture.checked) : false,
-    apply_scope: isRecurring ? selectedReimbursementApplyScope() : "this",
-  };
-}
-
-async function saveReimbursementFromModal() {
-  try {
-    show(reimbModalErr, "");
-    const payload = reimbursementPayloadFromForm();
-    const id = String(reimbEditId?.value || "").trim();
-    if (id) {
-      const current = reimbState.items.find((it) => String(it.id) === id);
-      if (current?.series_id) payload.series_id = current.series_id;
-      await api(`/api/reimbursements/${encodeURIComponent(id)}`, "PUT", payload);
-    }
-    else await api("/api/reimbursements", "POST", payload);
-    closeReimbursementModal();
-    reimbState.loaded = false;
-    await refreshReimbursements({ force: true });
-  } catch (e) {
-    show(reimbModalErr, e.message || "Could not save reimbursement");
-  }
-}
-
-async function deleteReimbursementFromModal() {
-  try {
-    show(reimbModalErr, "");
-    const id = String(reimbEditId?.value || "").trim();
-    if (!id) return;
-    const vendor = String(reimbVendor?.value || "this expense").trim() || "this expense";
-    if (!window.confirm(`Delete ${vendor} from reimbursements? This cannot be undone.`)) return;
-    if (reimbDeleteBtn) reimbDeleteBtn.disabled = true;
-    await api(`/api/reimbursements/${encodeURIComponent(id)}`, "DELETE");
-    closeReimbursementModal();
-    reimbState.loaded = false;
-    await refreshReimbursements({ force: true });
-  } catch (e) {
-    show(reimbModalErr, e.message || "Could not delete reimbursement");
-  } finally {
-    if (reimbDeleteBtn) reimbDeleteBtn.disabled = false;
-  }
-}
-
-async function updateReimbursementStatus(id, nextStatus) {
-  try {
-    show(reimbErr, "");
-    await api(`/api/reimbursements/${encodeURIComponent(String(id))}/status`, "PATCH", { status: nextStatus });
-    reimbState.loaded = false;
-    await refreshReimbursements({ force: true });
-  } catch (e) {
-    show(reimbErr, e.message || "Could not update status");
-  }
-}
-
-function initReimbursementsUi() {
-  if (!reimbursementsViewPanel || reimbursementsViewPanel.dataset.reimbInit === "1") return;
-  reimbursementsViewPanel.dataset.reimbInit = "1";
-  populateReimbursementSelects();
-  reimbAddBtn?.addEventListener("click", () => openReimbursementModal());
-  reimbEmptyAddBtn?.addEventListener("click", () => openReimbursementModal());
-  reimbScreenshotImportBtn?.addEventListener("click", openReimbursementScreenshotModal);
-  reimbPasteImportBtn?.addEventListener("click", openReimbursementPasteModal);
-  reimbScreenshotCancelBtn?.addEventListener("click", closeReimbursementScreenshotModal);
-  reimbPasteCancelBtn?.addEventListener("click", closeReimbursementPasteModal);
-  reimbPasteParseBtn?.addEventListener("click", () => void parseReimbursementPastedTransactions());
-  reimbPasteSaveBtn?.addEventListener("click", () => void saveReimbursementPasteImport());
-  reimbScreenshotPasteZone?.addEventListener("click", () => reimbScreenshotPasteZone.focus?.());
-  reimbScreenshotPasteZone?.addEventListener("paste", handleReimbursementScreenshotPaste);
-  reimbScreenshotPasteZone?.addEventListener("dragenter", handleReimbursementScreenshotDrag);
-  reimbScreenshotPasteZone?.addEventListener("dragover", handleReimbursementScreenshotDrag);
-  reimbScreenshotPasteZone?.addEventListener("dragleave", handleReimbursementScreenshotDragLeave);
-  reimbScreenshotPasteZone?.addEventListener("drop", handleReimbursementScreenshotDrop);
-  reimbScreenshotClipboardBtn?.addEventListener("click", () => void importReimbursementScreenshotFromClipboard());
-  reimbScreenshotModal?.addEventListener("paste", handleReimbursementScreenshotPaste);
-  reimbScreenshotModal?.addEventListener("dragenter", handleReimbursementScreenshotDrag);
-  reimbScreenshotModal?.addEventListener("dragover", handleReimbursementScreenshotDrag);
-  reimbScreenshotModal?.addEventListener("drop", handleReimbursementScreenshotDrop);
-  document.addEventListener("paste", handleReimbursementScreenshotPaste);
-  document.addEventListener("dragover", handleReimbursementScreenshotDrag);
-  document.addEventListener("drop", handleReimbursementScreenshotDrop);
-  reimbScreenshotUploadBtn?.addEventListener("click", () => void extractReimbursementScreenshotRows());
-  reimbScreenshotFile?.addEventListener("change", () => {
-    if (reimbScreenshotFile.files?.[0]) void extractReimbursementScreenshotRows();
-  });
-  reimbScreenshotRows?.addEventListener("click", (e) => {
-    const remove = e.target?.closest?.(".reimb-import-remove-row");
-    if (!remove) return;
-    remove.closest("tr")?.remove();
-    updateReimbursementScreenshotDraftSummary();
-  });
-  reimbScreenshotSaveBtn?.addEventListener("click", () => void saveReimbursementScreenshotImport());
-  reimbBulkAddBtn?.addEventListener("click", openReimbursementBulkModal);
-  reimbBulkCancelBtn?.addEventListener("click", closeReimbursementBulkModal);
-  reimbBulkAddRowBtn?.addEventListener("click", () => addReimbursementBulkRow({}, { focus: true }));
-  reimbBulkSaveBtn?.addEventListener("click", () => void saveReimbursementBulkFromModal());
-  reimbBulkApplyDateBtn?.addEventListener("click", applyReimbursementBulkDate);
-  reimbBulkApplyCategoryBtn?.addEventListener("click", applyReimbursementBulkCategory);
-  reimbBulkPasteBtn?.addEventListener("click", usePastedReimbursementBulkRows);
-  reimbBulkRows?.addEventListener("input", updateReimbursementBulkSummary);
-  reimbBulkRows?.addEventListener("change", updateReimbursementBulkSummary);
-  reimbBulkRows?.addEventListener("click", (e) => {
-    const row = e.target?.closest?.("tr");
-    if (!row) return;
-    if (e.target?.closest?.(".reimb-bulk-duplicate-row")) {
-      addReimbursementBulkRow(reimbursementBulkRowValues(row));
-      return;
-    }
-    if (e.target?.closest?.(".reimb-bulk-remove-row")) {
-      row.remove();
-      if (!reimbBulkRows.querySelector("tr")) addReimbursementBulkRow();
-      updateReimbursementBulkSummary();
-    }
-  });
-  reimbCancelBtn?.addEventListener("click", closeReimbursementModal);
-  reimbDeleteBtn?.addEventListener("click", () => void deleteReimbursementFromModal());
-  reimbSaveBtn?.addEventListener("click", () => void saveReimbursementFromModal());
-  document.querySelectorAll('input[name="reimbType"]').forEach((r) => {
-    r.addEventListener("change", syncReimbursementRecurringUi);
-  });
-  reimbDate?.addEventListener("change", () => {
-    if (selectedReimbursementType() === "recurring" && reimbStartDateSeries && !reimbStartDateSeries.value) {
-      reimbStartDateSeries.value = reimbDate.value || toISODate(new Date());
-    }
-  });
-  reimbStatusTabs?.addEventListener("click", (e) => {
-    const btn = e.target?.closest?.("[data-reimb-status]");
-    if (!btn) return;
-    reimbState.status = btn.dataset.reimbStatus || "All";
-    reimbStatusTabs.querySelectorAll("[data-reimb-status]").forEach((b) => b.classList.toggle("is-active", b === btn));
-    renderReimbursements();
-  });
-  for (const el of [reimbStartDate, reimbEndDate, reimbCategoryFilter, reimbSearch]) {
-    el?.addEventListener("input", renderReimbursements);
-    el?.addEventListener("change", renderReimbursements);
-  }
-  reimbursementsViewPanel.querySelectorAll("[data-reimb-sort]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const key = btn.dataset.reimbSort || "date";
-      if (reimbState.sortKey === key) reimbState.sortDir = reimbState.sortDir === "asc" ? "desc" : "asc";
-      else {
-        reimbState.sortKey = key;
-        reimbState.sortDir = key === "date" ? "desc" : "asc";
-      }
-      renderReimbursements();
-    });
-  });
-  reimbRegisterBody?.addEventListener("click", (e) => {
-    const edit = e.target?.closest?.(".reimb-edit-btn");
-    if (edit) {
-      const item = reimbState.items.find((it) => String(it.id) === String(edit.dataset.reimbId));
-      if (item) openReimbursementModal(item);
-      return;
-    }
-    const quick = e.target?.closest?.(".reimb-quick-btn");
-    if (quick) void updateReimbursementStatus(quick.dataset.reimbId, quick.dataset.reimbNext);
-  });
-}
-
-initReimbursementsUi();
 
 function settingsSectionFromLocation() {
   try {
@@ -5465,6 +4359,44 @@ function categoryGroupIdForNewCategory(kind) {
   return defaultNewCategoryGroupId();
 }
 
+function categoryGroupNameById(gid) {
+  const g = (state.categoryTree?.groups || []).find((x) => Number(x?.id) === Number(gid));
+  return g ? String(g.name || "").trim() : "";
+}
+
+function categoryGroupLabelForNewCategory(kind) {
+  const gid = categoryGroupIdForNewCategory(kind);
+  return categoryGroupNameById(gid) || "your list";
+}
+
+function showCategoryFieldNote(fieldId, message) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  if (!st?.wrap) return;
+  let note = st.wrap.querySelector(".category-add-note");
+  if (!note) {
+    note = document.createElement("p");
+    note.className = "category-add-note";
+    note.setAttribute("role", "status");
+    st.wrap.appendChild(note);
+  }
+  note.textContent = message || "";
+}
+
+function showCategoryManagerNote(message) {
+  const pane = document.querySelector("[data-cats-pane]");
+  if (!pane) return;
+  let note = pane.querySelector(".category-manager-note");
+  if (!note) {
+    note = document.createElement("p");
+    note.className = "category-manager-note";
+    note.setAttribute("role", "status");
+    const tree = pane.querySelector("#categoriesTree");
+    if (tree) tree.insertAdjacentElement("beforebegin", note);
+    else pane.appendChild(note);
+  }
+  note.textContent = message || "";
+}
+
 function categoryKindForComboboxField(fieldId) {
   if (fieldId === "txAddCategoryId") return getRadioValue("txAddKind", "expense");
   if (fieldId === "txEditCategoryId") {
@@ -5474,8 +4406,16 @@ function categoryKindForComboboxField(fieldId) {
 }
 
 const TX_ADD_CATEGORY_CHIP_MAX = 3;
-const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Transfer In", "Bonus", "Reimbursement", "Other Income"];
-const TX_ADD_EXPENSE_CHIP_HINTS = ["Groceries", "Mortgage", "Utilities", "Credit Card", "Gas", "Subscription"];
+const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Other Income"];
+const TX_ADD_EXPENSE_CHIP_HINTS = [
+  "Mortgage / Rent",
+  "Utilities",
+  "Insurance",
+  "Subscriptions",
+  "Credit Card Payment",
+  "Loan Payment",
+  "Other Expense",
+];
 let txAddCategoryChipsBound = false;
 
 function categoryMatchesTransactionKind(cat, kind) {
@@ -5709,7 +4649,7 @@ function hasDuplicateCategoryNameInGroup(name, groupId) {
 // Helper used by the per-group inline "+ Add category" form and any
 // other surface that needs to add a category to a specific group.
 async function addCategoryToGroup(gid, name) {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const nm = String(name || "").trim();
   if (!nm) throw new Error("Category name is required");
   const targetGid = Number.isFinite(Number(gid)) ? Number(gid) : defaultNewCategoryGroupId();
@@ -5758,19 +4698,16 @@ if (seedDefaultCategoriesBtn) {
   seedDefaultCategoriesBtn.addEventListener("click", async () => {
     try {
       show(catErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
-      let force = false;
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       try {
         await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults`, "POST");
       } catch (e) {
         const msg = String(e.message || "").toLowerCase();
-        if (msg.includes("already exist") || msg.includes("409")) {
-          if (!window.confirm("Replace all existing category groups and categories with the default list? This cannot be undone.")) return;
-          force = true;
-          await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults?force=true`, "POST");
-        } else {
-          throw e;
+        if (msg.includes("already exist") || msg.includes("409") || msg.includes("not changed")) {
+          showCategoryManagerNote("Your categories were left as they are. Defaults are only added when you don't have any yet.");
+          return;
         }
+        throw e;
       }
       await loadCategories();
       await loadMonthAndCalendar();
@@ -5848,31 +4785,15 @@ if (addCategoryGroupBtn) {
     loadDefaultCategoriesBtn.addEventListener("click", async () => {
       try {
         show(catErr, "");
-        if (!state.activeFamilyId) throw new Error("Choose a family first");
+        if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
         await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults`, "POST");
         await loadCategories();
         await loadMonthAndCalendar();
+        showCategoryManagerNote("Starter categories added.");
       } catch (e) {
         const msg = String(e?.message || "").toLowerCase();
-        if (msg.includes("already exist") || msg.includes("409")) {
-          // Defaults are only meant for the empty-state surface, but if
-          // the user already has a structure, offer a clear choice
-          // before wiping it.
-          if (
-            window.confirm(
-              "You already have category groups. Replace them with the defaults? This cannot be undone."
-            )
-          ) {
-            try {
-              await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults?force=true`, "POST");
-              await loadCategories();
-              await loadMonthAndCalendar();
-              return;
-            } catch (e2) {
-              show(catErr, e2?.message || "Failed to load default categories");
-              return;
-            }
-          }
+        if (msg.includes("already exist") || msg.includes("409") || msg.includes("not changed")) {
+          showCategoryManagerNote("Your categories were left as they are. Defaults are only added when you don't have any yet.");
           return;
         }
         show(catErr, e?.message || "Failed to load default categories");
@@ -5893,7 +4814,7 @@ if (addCategoryGroupBtn) {
     saveGroupBtn.addEventListener("click", async () => {
       try {
         show(catErr, "");
-        if (!state.activeFamilyId) throw new Error("Choose a family first");
+        if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
         const nm = String(newGroupName?.value || "").trim();
         if (!nm) throw new Error("Group name is required");
         if (nm.trim().toLowerCase() === "new group") {
@@ -5921,7 +4842,7 @@ if (txAddSave) {
     if (txAddSaveInFlight) return;
     try {
       show(txAddErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       txAddValidationTouched = true;
       updateTxAddFormValidity({ forceShow: true });
       if (!txAddFormValidationState().valid) {
@@ -6037,7 +4958,7 @@ if (txAddSave) {
 addAccountBtn.addEventListener("click", async () => {
   try {
     show(accErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
 
     const name = accountName.value.trim();
     const type = accountType.value;
@@ -6068,7 +4989,7 @@ addAccountBtn.addEventListener("click", async () => {
 saveAccountEditBtn.addEventListener("click", async () => {
   try {
     show(accErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
     if (!accountEditId.value) throw new Error("Select an account to edit first");
     const startingBalanceVal = accountStartingBalance.value;
     const startingBalanceDateVal = accountStartingBalanceDate.value;
@@ -6320,6 +5241,7 @@ async function openTxEditModalAsync(tx) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
   applyTxEditCategoryRecurrenceDefaults(tx.category_id);
+  syncTransactionHistoryLink();
 }
 
 let txEditApplyScopeChoice = null;
@@ -6465,6 +5387,7 @@ function closeTxEditModal() {
   txEditSelectedBgColor = null;
   txEditColorTouched = false;
   applyTransactionEditMode("actual", { resetting: true });
+  syncTransactionHistoryLink();
 }
 
 function mountTxAddFormInModal() {
@@ -6884,7 +5807,7 @@ async function afterBalanceCheckInSaved() {
 /** Reconciled: bank matched forecast — no financial adjustment. */
 async function confirmBalanceMatchesForecast() {
   show(reconcileConfirmErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(reconcileActiveDate);
   if (!iso) throw new Error("Invalid date");
   const forecast = forecastBalanceForReconcileModal(iso);
@@ -6913,7 +5836,7 @@ async function confirmBalanceMatchesForecast() {
 /** Edit path: Adjusted only when bank balance differs from forecast. */
 async function saveBalanceCheckIn() {
   show(reconcileErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(reconcileActiveDate);
   const parsed = parseBalanceThresholdFieldRaw(reconcileActualAmount?.value || "");
   if (!iso) throw new Error("Invalid date");
@@ -7083,7 +6006,7 @@ function closeRemoveAdjustmentModal() {
 
 async function saveEditAdjustment() {
   show(editAdjustmentErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(editAdjustmentActiveDate);
   const parsed = parseBalanceThresholdFieldRaw(editAdjustmentAmount?.value || "");
   if (!iso) throw new Error("Invalid date");
@@ -7123,7 +6046,7 @@ async function saveEditAdjustment() {
 
 async function confirmRemoveAdjustment() {
   show(removeAdjustmentErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(removeAdjustmentActiveDate);
   if (!iso) throw new Error("Invalid date");
   await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
@@ -7133,7 +6056,7 @@ async function confirmRemoveAdjustment() {
 }
 
 async function removeReconciliationForDate(iso) {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const d = normalizeIsoDate(iso);
   if (!d) throw new Error("Invalid date");
   hidePinnedBalanceRecordTip();
@@ -7456,7 +6379,7 @@ if (txEditSave) {
     let convertedToRecurring = false;
     try {
       show(txEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       const id = txEditId.value;
       if (!id) throw new Error("No transaction selected");
       const amountVal = txEditAmount.value;
@@ -7528,7 +6451,7 @@ if (txEditDelete) {
         return;
       }
       show(txEditErr, "");
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
       const id = txEditId.value;
       if (!id) throw new Error("No transaction selected");
       const ok = await bwConfirm({
@@ -8051,7 +6974,7 @@ async function openCalendarDayAddTransactionAsync(iso, e) {
   if (await guardBillingWriteAsync(e)) return;
   if (state.activeFamilyAccessMode === "view") {
     window.alert(
-      "You have view-only access to this family. Ask the owner to grant edit access if you need to add transactions."
+      "You have view-only access to this account. Ask the owner to grant edit access if you need to add transactions."
     );
     return;
   }
@@ -8395,7 +7318,7 @@ if (tmPrimaryAction) {
 async function saveUncategorizedAssignments() {
   try {
     if (uncatTxErr) show(uncatTxErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
     if (!uncatPendingCategoryByTxId.size) return;
 
     if (uncatTxSaveBtn) {
@@ -8986,7 +7909,7 @@ if (runProjectionBtn) {
       projectionSummary.innerHTML = "";
       projectionDailyList.innerHTML = "";
 
-      if (!state.activeFamilyId) throw new Error("Choose a family first");
+      if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
 
       const startVal = projectionStart.value;
       if (!startVal) throw new Error("Projection start date is required");
@@ -9905,8 +8828,8 @@ function resolveBillingLifecycleModel(status, { hasFamily = true } = {}) {
       showCancel: false,
       callout: {
         kind: "info",
-        title: "Choose a family",
-        text: "Select a family account to see trial status, billing details, and subscription actions.",
+        title: "Your account isn't ready",
+        text: "Finish setting up your BalanceWhiz account to see trial status, billing details, and subscription actions.",
       },
       primaryCta: null,
       meta: null,
@@ -11743,7 +10666,7 @@ async function switchBillingIntervalForActiveFamily() {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     return;
   }
   const cycleBtn =
@@ -11822,7 +10745,7 @@ async function releaseScheduledIntervalForActiveFamily() {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     return;
   }
   const keepBtn = billingCancelButtonEl();
@@ -11876,7 +10799,7 @@ async function scheduleBillingCancellationForActiveFamily() {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     return;
   }
   const cached = cachedBillingStatusForActiveFamily() || {};
@@ -11935,7 +10858,7 @@ async function resumeBillingSubscriptionForActiveFamily() {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     return;
   }
   const keepBtn = billingCancelButtonEl();
@@ -11988,7 +10911,7 @@ function openBillingPortalForActiveFamily(flow = "", onFail = null) {
     return;
   }
   if (!state.activeFamilyId) {
-    showBwToast("Choose a family first.");
+    showBwToast("Your account isn't ready yet.");
     fail();
     return;
   }
@@ -12149,7 +11072,7 @@ async function startBillingSecureCheckout() {
   if (!cta) return;
   ensureActiveFamilyIdForBilling();
   if (!state.activeFamilyId) {
-    showBillingCheckoutError("Choose a family first.");
+    showBillingCheckoutError("Your account isn't ready yet.");
     return;
   }
   const apiBase = apiBaseUrl();
@@ -12270,7 +11193,7 @@ function wireBillingActionsOnce() {
           });
           return;
         }
-        showBwToast("Stripe customer portal isn’t available yet for this family.");
+        showBwToast("The billing portal isn't available for your account yet.");
       }
     });
   });
@@ -12680,7 +11603,7 @@ async function refreshProjectionChart() {
   if (!projectionChartCanvas || !chartDaysRange || !chartStart) return;
   show(chartErr, "");
   projectionChartCanvas.dataset.status = "";
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!chartStart.value) throw new Error("Chart start date is required");
   const daysVal = Number(chartDaysRange.value);
   if (!Number.isFinite(daysVal) || daysVal < 1 || daysVal > 4000) {
@@ -13171,7 +12094,7 @@ if (chartRangeDisplay && chartRangePopover) {
 }
 
 function validateTxEditBeforeRecurringApply() {
-  if (!state.activeFamilyId) return "Choose a family first";
+  if (!state.activeFamilyId) return "Your account isn't ready yet";
   if (!selectedExpectedInstance) return "Select an occurrence from the calendar for this series.";
   const amountVal = txEditAmount?.value;
   const amount = amountVal ? Number(amountVal) : null;
@@ -13181,13 +12104,13 @@ function validateTxEditBeforeRecurringApply() {
 }
 
 function validateTxEditBeforeRecurringDelete() {
-  if (!state.activeFamilyId) return "Choose a family first";
+  if (!state.activeFamilyId) return "Your account isn't ready yet";
   if (!selectedExpectedInstance) return "Select an occurrence from the calendar for this series.";
   return null;
 }
 
 async function deleteExpectedThisOccurrenceOnlyFromModal() {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
   const cancelOcc = normalizeIsoDate(selectedExpectedInstance.occurrence_date) || selectedExpectedInstance.occurrence_date;
   await api(
@@ -13201,7 +12124,7 @@ async function deleteExpectedThisOccurrenceOnlyFromModal() {
 }
 
 async function deleteExpectedThisAndFutureFromModal() {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
   const meta = getExpectedSeriesMeta(selectedExpectedInstance.expected_transaction_id);
   if (!meta || meta.recurrence === "once") {
@@ -13284,7 +12207,7 @@ async function navigateCalendarToIsoMonthIfNeeded(iso) {
 
 async function saveExpectedInstanceOverride() {
   show(txEditErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
 
   const amountVal = txEditAmount.value;
@@ -13329,7 +12252,7 @@ async function saveExpectedInstanceOverride() {
 
 async function saveExpectedSeriesFromInstance() {
   show(txEditErr, "");
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const seriesId = selectedExpectedInstance
     ? Number(selectedExpectedInstance.expected_transaction_id)
     : Number(expectedEditId?.value || 0);
@@ -13518,6 +12441,7 @@ async function loadMe() {
   if (!data?.user) throw new Error("Not logged in");
   state.user = data.user;
   state.isPlatformAdmin = !!data.is_platform_admin;
+  state.needsOnboarding = !!data.needs_onboarding;
   const adminLink = document.getElementById("platformAdminLink");
   if (adminLink) adminLink.hidden = !state.isPlatformAdmin;
   syncPlatformAdminOnlyUi();
@@ -13549,7 +12473,7 @@ function syncActiveFamilyFlags() {
     const ro = state.activeFamilyAccessMode === "view";
     banner.hidden = !ro;
     banner.textContent = ro
-      ? "You have view-only access to this family. Ask the owner to grant edit access if you need to make changes."
+      ? "You have view-only access to this account. Ask the owner to grant edit access if you need to make changes."
       : "";
   }
   syncHouseholdSettingsUi();
@@ -13578,12 +12502,9 @@ function syncPlatformAdminOnlyUi() {
   });
 }
 
-/** Collaborators settings: family role `admin` only (not platform admin, not owner alone). */
+/** Sharing is not offered. The Collaborators pane stays hidden for every role. */
 function canViewHouseholdSettings() {
-  const fam = activeFamilyMembership();
-  if (!fam) return false;
-  if (String(fam.access_mode || "edit").toLowerCase() === "view") return false;
-  return String(fam.role || "").trim().toLowerCase() === "admin";
+  return false;
 }
 
 /** Invite / add-member controls: family owner or family role `admin`. */
@@ -13600,7 +12521,7 @@ function getActiveSettingsSectionKey() {
   return pane ? String(pane.dataset.settingsPane || "profile") : "profile";
 }
 
-/** Collaborators nav + pane: family role `admin` only. */
+/** Collaborators nav + pane stay hidden for every customer. */
 function syncHouseholdSettingsUi() {
   const canHousehold = canViewHouseholdSettings();
   const canInvite = canManageHouseholdInvites();
@@ -13996,8 +12917,10 @@ function filterCategoryCombobox(fieldId) {
     addLi.className = "category-combobox__option category-combobox__option--create";
     addLi.setAttribute("role", "option");
     addLi.dataset.createName = rawQ;
+    const groupLabel = categoryGroupLabelForNewCategory(categoryKindForComboboxField(fieldId));
     const safe = escapeHtml(rawQ);
-    addLi.innerHTML = `<span class="category-combobox__plus" aria-hidden="true">+</span><span class="category-combobox__create-text">Add “${safe}” as new category</span>`;
+    const safeGroup = escapeHtml(groupLabel);
+    addLi.innerHTML = `<span class="category-combobox__plus" aria-hidden="true">+</span><span class="category-combobox__create-text">Add “${safe}” to ${safeGroup}</span>`;
     st.list.appendChild(addLi);
   }
 }
@@ -14031,17 +12954,21 @@ async function createCategoryFromCombobox(fieldId, rawName) {
   if (st) hideCategoryComboboxList(st);
   categoryComboboxCreateInFlight.add(fieldId);
   try {
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
     const kind = categoryKindForComboboxField(fieldId);
     const gid = categoryGroupIdForNewCategory(kind);
     if (gid == null || !Number.isFinite(Number(gid))) throw new Error("No category group available yet.");
+    const groupLabel = categoryGroupNameById(gid) || "your list";
     const created = await addCategoryToGroup(gid, name);
     if (!created) return;
     const pick =
       created && created.id != null
         ? created
         : (state.categories || []).find((c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name));
-    if (pick) selectCategoryComboboxChoice(fieldId, pick.id, categoryDisplayLabel(pick));
+    if (pick) {
+      selectCategoryComboboxChoice(fieldId, pick.id, categoryDisplayLabel(pick));
+      showCategoryFieldNote(fieldId, `Added ${name} to ${groupLabel}.`);
+    }
   } catch (err) {
     window.alert(err.message || "Failed to add category");
   } finally {
@@ -14325,19 +13252,12 @@ function isSystemUncategorizedGroupName(name) {
   return normalizeCategoryGroupName(name) === normalizeCategoryGroupName(SYSTEM_UNCATEGORIZED_GROUP_NAME);
 }
 
-async function maybeEnsureSystemUncategorizedGroup(tree) {
-  const groups = Array.isArray(tree?.groups) ? tree.groups.filter(Boolean) : [];
-  if (!state.activeFamilyId || groups.length === 0 || groups.some((g) => isSystemUncategorizedGroupName(g?.name))) {
-    return tree || { groups: [] };
-  }
-  try {
-    await api(`/api/families/${state.activeFamilyId}/category-groups`, "POST", {
-      name: SYSTEM_UNCATEGORIZED_GROUP_NAME,
-    });
-    return await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
-  } catch (_) {
-    return tree || { groups: [] };
-  }
+function withoutEmptyUncategorizedGroup(tree) {
+  const groups = (Array.isArray(tree?.groups) ? tree.groups : []).filter((g) => {
+    if (!g || !isSystemUncategorizedGroupName(g.name)) return !!g;
+    return (g.categories || []).length > 0;
+  });
+  return { ...(tree || {}), groups };
 }
 
 async function loadCategoryUsageSummary() {
@@ -14833,7 +13753,7 @@ function openCategoryDeleteReassignModal({ id, name, total }) {
 }
 
 async function deleteCategoryWithOptionalReassign(categoryId, categoryName) {
-  if (!state.activeFamilyId) throw new Error("Choose a family first");
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const cid = Number(categoryId);
   if (!Number.isFinite(cid)) throw new Error("Invalid category");
   await loadCategoryUsageSummary();
@@ -15518,19 +14438,29 @@ function renderCategoriesGrid(tree) {
     const addRow = document.createElement("div");
     addRow.className = "cats-group__add-row";
 
+    const groupLabel = String(g.name || "this group").trim() || "this group";
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.className = "cats-group__add-trigger";
-    trigger.innerHTML = '<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category</span>';
+    trigger.setAttribute("aria-label", `Add a category to ${groupLabel}`);
+    trigger.innerHTML =
+      '<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category to ' +
+      escapeHtml(groupLabel) +
+      "</span>";
 
     const form = document.createElement("form");
     form.className = "cats-group__add-form";
     form.hidden = true;
 
+    const target = document.createElement("p");
+    target.className = "cats-group__add-target";
+    target.textContent = `Adding to ${groupLabel}`;
+
     const input = document.createElement("input");
     input.type = "text";
     input.className = "cats-group__add-input";
-    input.placeholder = "New category";
+    input.placeholder = "Category name";
+    input.setAttribute("aria-label", `New category in ${groupLabel}`);
     input.autocomplete = "off";
 
     const submit = document.createElement("button");
@@ -15543,6 +14473,7 @@ function renderCategoriesGrid(tree) {
     cancel.className = "cats-group__add-cancel";
     cancel.textContent = "Cancel";
 
+    form.appendChild(target);
     form.appendChild(input);
     form.appendChild(submit);
     form.appendChild(cancel);
@@ -15571,6 +14502,7 @@ function renderCategoriesGrid(tree) {
         const ok = await addCategoryToGroup(Number(g.id), nm);
         if (ok) {
           input.value = "";
+          showCategoryManagerNote(`Added ${nm} to ${groupLabel}.`);
           try {
             input.focus();
           } catch (_) {}
@@ -15638,7 +14570,8 @@ async function flushCategoryTreePersistIfPending() {
 }
 
 function applyCategoryTreeToState(tree) {
-  state.categoryTree = tree || { groups: [] };
+  const visible = withoutEmptyUncategorizedGroup(tree);
+  state.categoryTree = visible;
   state.categories = flattenCategoryTree(state.categoryTree);
   renderCategoriesGrid(state.categoryTree);
   syncAllCategoryComboboxes(state.categories);
@@ -15687,7 +14620,7 @@ async function loadCategories() {
   if (!state.activeFamilyId) return;
   await flushCategoryTreePersistIfPending();
   let tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
-  tree = await maybeEnsureSystemUncategorizedGroup(tree);
+  tree = withoutEmptyUncategorizedGroup(tree);
   applyCategoryTreeToState(tree);
   await loadCategoryUsageSummary();
   refreshCategoriesManagerChrome();
@@ -16242,6 +15175,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("recurring");
   applyMinDateToTxEditDateInput();
+  syncTransactionHistoryLink();
 }
 
 function openExpectedDeleteModal(expectedId, occurrenceDate) {
@@ -16280,7 +15214,7 @@ if (expectedDeleteModal) {
 async function runExpectedDeleteAction(mode) {
   try {
     show(expectedDeleteErr, "");
-    if (!state.activeFamilyId) throw new Error("Choose a family first");
+    if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
     const expectedId = expectedDeleteContext.expectedId;
     if (!expectedId) throw new Error("No series selected");
 
@@ -17306,7 +16240,7 @@ function updateCalendarEmptyStateBanner() {
   }
   if (!state.activeFamilyId) {
     showForecastStatus(
-      "Your forecast isn't ready yet — no household is linked to this login. Refresh, or open Settings → Accounts.",
+      "Your forecast isn't ready yet. Refresh, or open Settings → Accounts.",
       true
     );
     return;
@@ -24078,6 +23012,7 @@ async function tryRecoverAccountSetupDraft() {
     clearAccountSetupDraftJsonStorage();
     return false;
   }
+  if (state.needsOnboarding) return false;
 
   if (!state.activeFamilyId) {
     try {
@@ -24249,6 +23184,10 @@ async function main() {
   syncChartRangeDisplay();
   setDefaultAccountStartDate();
   await loadMe();
+  if (state.needsOnboarding) {
+    window.location.replace("/account-setup/?resume=1");
+    return;
+  }
   bwDispatchMilestone("first-login");
   await loadFamilies();
   if (!state.activeFamilyId) {
@@ -24464,3 +23403,226 @@ main().catch((e) => {
     renderCalendar();
   } catch (_) {}
 });
+
+function escapeHistoryText(value) {
+  if (typeof transactionHistoryEscape === "function") return transactionHistoryEscape(value);
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatHistoryStamp(value) {
+  if (!value) return "";
+  const raw = String(value);
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!match) return raw;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[Number(match[2]) - 1] || match[2];
+  let hour = Number(match[4]);
+  const minute = match[5];
+  const suffix = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return month + " " + Number(match[3]) + ", " + match[1] + ", " + hour + ":" + minute + " " + suffix;
+}
+
+function transactionHistoryRequest() {
+  const familyId = state && state.activeFamilyId;
+  if (!familyId) return null;
+  if (
+    selectedExpectedInstance &&
+    selectedExpectedInstance.expected_transaction_id &&
+    selectedExpectedInstance.occurrence_date
+  ) {
+    return {
+      familyId,
+      subject_type: "expected_occurrence",
+      subject_id: selectedExpectedInstance.expected_transaction_id,
+      occurrence_date: selectedExpectedInstance.occurrence_date,
+    };
+  }
+  const seriesId = expectedEditId && String(expectedEditId.value || "").trim();
+  if (seriesId) {
+    return { familyId, subject_type: "expected_series", subject_id: seriesId };
+  }
+  const oneTimeId = txEditId && String(txEditId.value || "").trim();
+  if (oneTimeId) {
+    return { familyId, subject_type: "transaction", subject_id: oneTimeId };
+  }
+  return null;
+}
+
+function transactionHistoryEditorSummary() {
+  if (typeof transactionHistorySummaryText !== "function") return "";
+  const request = transactionHistoryRequest();
+  let description = "";
+  let recurrence = "";
+  if (request && request.subject_type !== "transaction") {
+    description = expectedSaveDescription();
+    const wrap = document.getElementById("txEditRecurringScheduleWrap");
+    const recurrenceEl = document.getElementById("instanceRecurrence");
+    const recurringVisible = wrap && wrap.style.display !== "none";
+    if (recurringVisible && recurrenceEl && recurrenceEl.value && recurrenceEl.value !== "once") {
+      recurrence = recurrenceEl.value;
+    }
+  } else if (typeof txEditDescriptionSnapshot === "string") {
+    description = txEditDescriptionSnapshot;
+  }
+  const amount = txEditAmount && txEditAmount.value != null ? txEditAmount.value : "";
+  return transactionHistorySummaryText({ description, amount, recurrence });
+}
+
+function refreshTransactionHistorySummary() {
+  const summary = document.getElementById("txHistorySummary");
+  if (!summary) return;
+  const text = transactionHistoryEditorSummary();
+  summary.textContent = text;
+  summary.hidden = !text;
+}
+
+function renderTransactionHistory(payload) {
+  if (!payload || typeof transactionHistoryPanelHtml !== "function") {
+    return "<p class=\"tx-history-empty\">History could not be loaded.</p>";
+  }
+  return transactionHistoryPanelHtml(payload, formatHistoryStamp);
+}
+
+function closeTransactionHistory() {
+  const modal = document.getElementById("txHistoryModal");
+  if (!modal) return;
+  modal.classList.remove("modal-overlay--open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function openTransactionHistory() {
+  const modal = document.getElementById("txHistoryModal");
+  const body = document.getElementById("txHistoryBody");
+  if (!modal || !body) return;
+  modal.classList.add("modal-overlay--open");
+  modal.setAttribute("aria-hidden", "false");
+  refreshTransactionHistorySummary();
+  const request = transactionHistoryRequest();
+  if (!request) {
+    body.innerHTML = "<p class=\"tx-history-empty\">Save this transaction before its history can be shown.</p>";
+    return;
+  }
+  body.innerHTML = "<p class=\"tx-history-empty\">Loading history…</p>";
+  const params = new URLSearchParams({
+    subject_type: request.subject_type,
+    subject_id: String(request.subject_id),
+  });
+  if (request.occurrence_date) params.set("occurrence_date", request.occurrence_date);
+  try {
+    const payload = await api("/api/families/" + request.familyId + "/transaction-history?" + params.toString());
+    body.innerHTML = renderTransactionHistory(payload);
+  } catch (_) {
+    body.innerHTML = "<p class=\"tx-history-empty\">History could not be loaded.</p>";
+  }
+}
+
+function transactionHistoryHasExistingSubject() {
+  if (selectedExpectedInstance && selectedExpectedInstance.expected_transaction_id) return true;
+  if (expectedEditId && String(expectedEditId.value || "").trim()) return true;
+  if (txEditId && String(txEditId.value || "").trim()) return true;
+  return false;
+}
+
+function syncTransactionHistoryLink() {
+  const button = document.getElementById("txHistoryOpen");
+  if (!button) return;
+  button.hidden = !transactionHistoryHasExistingSubject();
+}
+
+function ensureTxHistoryUi() {
+  if (typeof document === "undefined") return;
+  const foot = document.querySelector("#txEditModal .modal-actions--tx-edit-foot");
+  const deleteBtn = foot && document.getElementById("txEditDelete");
+  if (foot && deleteBtn && deleteBtn.parentNode === foot && !document.getElementById("txHistoryOpen")) {
+    const leading = document.createElement("div");
+    leading.className = "tx-edit-foot-leading";
+    foot.insertBefore(leading, deleteBtn);
+    leading.appendChild(deleteBtn);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = "txHistoryOpen";
+    button.className = "tx-history-open";
+    button.hidden = true;
+    button.setAttribute("aria-label", "View history");
+    button.innerHTML =
+      '<svg class="tx-history-open__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="5.25" fill="none" stroke="currentColor" stroke-width="1.4"></circle>' +
+      '<path d="M8 5.2V8.2l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      "</svg><span>View history</span>";
+    leading.appendChild(button);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      void openTransactionHistory();
+    });
+  }
+  if (!document.getElementById("txHistoryStyle")) {
+    const style = document.createElement("style");
+    style.id = "txHistoryStyle";
+    style.textContent =
+      ".tx-edit-foot-leading{display:flex;align-items:center;gap:12px;flex:0 1 auto;min-width:0}" +
+      ".tx-history-open{display:inline-flex;align-items:center;align-self:center;gap:5px;flex:0 0 auto;margin:0;padding:0 4px;min-height:32px;border:0;background:none;color:#5c6570;font:inherit;font-size:12.5px;font-weight:550;line-height:1;text-decoration:none;cursor:pointer;white-space:nowrap;border-radius:8px}" +
+      ".tx-history-open:hover,.tx-history-open:focus-visible{color:#1c2430;text-decoration:underline;text-underline-offset:2px}" +
+      ".tx-history-open:focus-visible{outline:2px solid color-mix(in srgb, var(--accent, #1f6b45) 35%, transparent);outline-offset:2px}" +
+      ".tx-history-open[hidden]{display:none !important}" +
+      ".tx-history-open__icon{display:block;flex:0 0 auto}" +
+      "@media (max-width:720px){.tx-edit-foot-leading{order:1;flex-wrap:wrap;row-gap:8px}.tx-edit-foot-leading>#txHistoryOpen{order:1}}" +
+      ".tx-history-panel{background:#fff;color:#1c2430;width:min(26rem,calc(100vw - 1.25rem));max-height:min(78vh,34rem);overflow:auto;border-radius:12px;padding:.9rem 1rem 1rem;box-sizing:border-box}" +
+      ".tx-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem}" +
+      ".tx-history-head-copy{min-width:0;flex:1}" +
+      ".tx-history-panel h2{margin:0;font-size:1.05rem;line-height:1.3}" +
+      ".tx-history-summary{margin:.2rem 0 0;color:#5c6570;font-size:.84rem;line-height:1.35;overflow-wrap:anywhere}" +
+      ".tx-history-x{flex:0 0 auto;margin:-.15rem -.2rem 0 0;border:0;background:transparent;color:#1c2430;font:inherit;font-size:1.45rem;line-height:1;padding:.15rem .35rem;cursor:pointer;border-radius:8px}" +
+      ".tx-history-x:hover,.tx-history-x:focus-visible{background:#f3f4f6}" +
+      ".tx-history-timeline{margin:.85rem 0 0}" +
+      ".tx-history-event{position:relative;margin:0;padding:0 0 .85rem 1rem}" +
+      ".tx-history-event:before{content:\"\";position:absolute;left:0;top:.42rem;bottom:-.15rem;width:2px;background:#e6eaee}" +
+      ".tx-history-event:last-child{padding-bottom:0}" +
+      ".tx-history-event:last-child:before{bottom:auto;height:.15rem}" +
+      ".tx-history-event:after{content:\"\";position:absolute;left:-3px;top:.28rem;width:8px;height:8px;border-radius:50%;background:#1f6b45;box-shadow:0 0 0 2px #fff}" +
+      ".tx-history-title{margin:0;font-size:.92rem;font-weight:650;line-height:1.3;overflow-wrap:anywhere}" +
+      ".tx-history-meta{margin:.12rem 0 0;color:#6b7280;font-size:.75rem;line-height:1.35}" +
+      ".tx-history-details{margin:.28rem 0 0;padding:0;list-style:none}" +
+      ".tx-history-details li{margin:0;font-size:.84rem;line-height:1.4;overflow-wrap:anywhere}" +
+      ".tx-history-empty,.tx-history-note{margin:.75rem 0 0;color:#5c6570;font-size:.8rem;line-height:1.4;overflow-wrap:anywhere}" +
+      "@media (max-width:640px){.tx-history-panel{width:calc(100vw - 1rem);max-height:calc(100dvh - 1.25rem);padding:.8rem .8rem .9rem}.tx-history-title{font-size:.9rem}}";
+    document.head.appendChild(style);
+  }
+  if (!document.getElementById("txHistoryModal")) {
+    const modal = document.createElement("div");
+    modal.id = "txHistoryModal";
+    modal.className = "modal-overlay modal-overlay--nested";
+    modal.setAttribute("aria-hidden", "true");
+    modal.innerHTML =
+      "<div class=\"tx-history-panel\" role=\"dialog\" aria-labelledby=\"txHistoryTitle\">" +
+      "<div class=\"tx-history-head\">" +
+      "<div class=\"tx-history-head-copy\">" +
+      "<h2 id=\"txHistoryTitle\">Transaction history</h2>" +
+      "<p id=\"txHistorySummary\" class=\"tx-history-summary\" hidden></p>" +
+      "</div>" +
+      "<button type=\"button\" class=\"tx-history-x\" id=\"txHistoryClose\" aria-label=\"Close\"><span aria-hidden=\"true\">×</span></button>" +
+      "</div>" +
+      "<div id=\"txHistoryBody\"></div>" +
+      "</div>";
+    document.body.appendChild(modal);
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeTransactionHistory();
+    });
+    const close = document.getElementById("txHistoryClose");
+    if (close) close.addEventListener("click", closeTransactionHistory);
+  }
+  if (!window.__bwHistoryEscapeBound) {
+    window.__bwHistoryEscapeBound = true;
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const modal = document.getElementById("txHistoryModal");
+      if (modal && modal.classList.contains("modal-overlay--open")) closeTransactionHistory();
+    });
+  }
+}
+
+ensureTxHistoryUi();

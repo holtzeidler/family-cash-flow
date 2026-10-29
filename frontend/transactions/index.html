@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=827" />
+    <link rel="stylesheet" href="../styles.css?v=829" />
   </head>
   <body>
     <h1 class="sr-only">Transactions</h1>
@@ -587,76 +587,7 @@
 
           </div>
 
-          <div id="reimbursementsViewPanel" class="app-view reimbursements-view" hidden>
-            <section class="card reimbursements-panel" aria-labelledby="reimbursementsTitle">
-              <header class="reimbursements-head">
-                <div>
-                  <h2 id="reimbursementsTitle" class="reimbursements-title">Reimbursements</h2>
-                  <p class="reimbursements-lede">Track work expenses paid personally, from review through reimbursement. These items do not affect your cash flow forecast.</p>
-                </div>
-                <div class="reimbursements-head__actions">
-                  <button type="button" id="reimbScreenshotImportBtn" class="secondary reimbursements-screenshot-btn">Import from Screenshot</button>
-                  <button type="button" id="reimbPasteImportBtn" class="secondary reimbursements-paste-btn">Paste Transactions</button>
-                  <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Import from CSV</button>
-                  <button type="button" class="secondary reimbursements-coming-soon" disabled title="Coming later">Detect Recurring Charges</button>
-                  <button type="button" id="reimbBulkAddBtn" class="secondary reimbursements-bulk-btn">Bulk Add Expenses</button>
-                  <button type="button" id="reimbAddBtn" class="reimbursements-primary-btn">Add Expense</button>
-                </div>
-              </header>
-
-              <div class="reimbursements-summary" aria-label="Reimbursement summary">
-                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Outstanding</span><strong id="reimbSummaryOutstanding">$0</strong></article>
-                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Needs Review</span><strong id="reimbSummaryNeedsReview">0 items</strong></article>
-                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Submitted</span><strong id="reimbSummarySubmitted">$0</strong></article>
-                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Reimbursed</span><strong id="reimbSummaryReimbursed">$0</strong></article>
-                <article class="reimbursements-summary-card"><span class="reimbursements-summary-card__label">Recurring Expenses</span><strong id="reimbSummaryRecurring">0 active</strong></article>
-              </div>
-
-              <div class="reimbursements-filters" aria-label="Reimbursement filters">
-                <div class="reimbursements-status-tabs" id="reimbStatusTabs" role="tablist" aria-label="Status filter">
-                  <button type="button" class="reimbursements-status-tab is-active" data-reimb-status="All">All</button>
-                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Needs Review">Needs Review</button>
-                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Ready to Submit">Ready to Submit</button>
-                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Submitted">Submitted</button>
-                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Partially Reimbursed">Partially Reimbursed</button>
-                  <button type="button" class="reimbursements-status-tab" data-reimb-status="Fully Reimbursed">Fully Reimbursed</button>
-                </div>
-                <div class="reimbursements-filter-grid">
-                  <label>Start <input id="reimbStartDate" type="date" /></label>
-                  <label>End <input id="reimbEndDate" type="date" /></label>
-                  <label>Category <select id="reimbCategoryFilter"><option value="">All categories</option></select></label>
-                  <label>Search <input id="reimbSearch" type="search" placeholder="Vendor or description" autocomplete="off" /></label>
-                </div>
-              </div>
-
-              <div id="reimbErr" class="error"></div>
-              <div id="reimbEmpty" class="reimbursements-empty" hidden>
-                <h3>Track reimbursable work expenses</h3>
-                <p>Add airline tickets, hotels, meals, software, and other work expenses so you can make sure nothing slips through the cracks.</p>
-                <p class="reimbursements-empty__soon">Screenshot and credit card import coming later.</p>
-                <button type="button" id="reimbEmptyAddBtn">Add Expense</button>
-              </div>
-
-              <div class="reimbursements-table-wrap" id="reimbTableWrap">
-                <table class="reimbursements-table">
-                  <thead>
-                    <tr>
-                      <th><button type="button" data-reimb-sort="date">Date</button></th>
-                      <th>Vendor</th>
-                      <th><button type="button" data-reimb-sort="category">Category</button></th>
-                      <th class="reimbursements-amount-col"><button type="button" data-reimb-sort="amount">Amount</button></th>
-                      <th><button type="button" data-reimb-sort="status">Status</button></th>
-                      <th>Notes</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="reimbRegisterBody"></tbody>
-                </table>
-              </div>
-
-            </section>
-          </div>
-
+          
           <div id="settingsViewPanel" class="app-view" hidden>
             <div class="settings-layout settings-layout--sidebar-nav">
               <div class="settings-content settings-content--hub card">
@@ -1725,189 +1656,10 @@
 
 
 
-    <div id="reimbScreenshotModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal modal--reimbursement modal--reimbursement-import" role="dialog" aria-labelledby="reimbScreenshotModalTitle" aria-modal="true">
-        <h3 id="reimbScreenshotModalTitle">Import from Screenshot</h3>
-        <p class="reimbursements-modal-note">Upload a screenshot of credit card transactions. Review and edit detected rows before saving them as reimbursement expenses.</p>
-        <div id="reimbScreenshotErr" class="error"></div>
-        <div id="reimbScreenshotPasteZone" class="reimb-import-paste-zone" tabindex="0" role="button" aria-label="Paste screenshot here">
-          <strong>Paste screenshot here</strong>
-          <span>Copy an image, then press ⌘V / Ctrl+V, or drag and drop an image anywhere in this window.</span>
-        </div>
-        <div class="reimb-import-upload">
-          <button type="button" id="reimbScreenshotClipboardBtn" class="secondary">Paste from Clipboard</button>
-          <input id="reimbScreenshotFile" type="file" accept="image/*" />
-          <button type="button" id="reimbScreenshotUploadBtn" class="secondary">Extract Rows</button>
-        </div>
-        <div id="reimbScreenshotLoading" class="reimb-import-loading" hidden><span aria-hidden="true"></span> Extracting rows from screenshot... This can take a few seconds.</div>
-        <div id="reimbScreenshotSummary" class="reimb-import-summary" hidden>Found 0 possible expenses</div>
-        <div id="reimbScreenshotEmpty" class="reimb-import-empty" hidden>We couldn't find any transactions in this screenshot. Try cropping to show the transaction list clearly.</div>
-        <div id="reimbScreenshotTableWrap" class="reimb-import-table-wrap" hidden>
-          <table class="reimb-import-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Vendor</th>
-                <th>Amount</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="reimbScreenshotRows"></tbody>
-          </table>
-        </div>
-        <div class="modal-actions reimbursements-modal-actions">
-          <button type="button" id="reimbScreenshotCancelBtn" class="secondary">Cancel</button>
-          <button type="button" id="reimbScreenshotSaveBtn">Save Expenses</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="reimbPasteModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal modal--reimbursement modal--reimbursement-paste" role="dialog" aria-labelledby="reimbPasteModalTitle" aria-modal="true">
-        <h3 id="reimbPasteModalTitle">Paste Transactions</h3>
-        <p class="reimbursements-modal-note">Paste transaction rows from a credit card website, statement, spreadsheet, or PDF.</p>
-        <div class="reimb-paste-examples">
-          <strong>Examples</strong>
-          <pre>06/12/2026 DELTA AIRLINES $1,240.00
-06/14/2026 | MARRIOTT HOTEL | 689.22
-Date,Vendor,Amount
-06/15/2026,ADOBE,64.99</pre>
-        </div>
-        <div id="reimbPasteErr" class="error"></div>
-        <label for="reimbPasteText">Transactions</label>
-        <textarea id="reimbPasteText" class="reimb-paste-textarea" rows="8" placeholder="Paste transaction rows here"></textarea>
-        <button type="button" id="reimbPasteParseBtn" class="secondary">Parse Transactions</button>
-        <div id="reimbPasteSummary" class="reimb-import-summary" hidden>Found 0 possible transactions</div>
-        <div id="reimbPasteEmpty" class="reimb-import-empty" hidden>No transaction rows found. Try pasting rows with date, vendor, and amount.</div>
-        <div id="reimbPasteTableWrap" class="reimb-import-table-wrap" hidden>
-          <table class="reimb-import-table">
-            <thead>
-              <tr>
-                <th>Include</th>
-                <th>Date</th>
-                <th>Vendor</th>
-                <th>Amount</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Notes</th>
-                <th>Warning</th>
-              </tr>
-            </thead>
-            <tbody id="reimbPasteRows"></tbody>
-          </table>
-        </div>
-        <div class="modal-actions reimbursements-modal-actions">
-          <button type="button" id="reimbPasteCancelBtn" class="secondary">Cancel</button>
-          <button type="button" id="reimbPasteSaveBtn">Save Checked Expenses</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="reimbBulkModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal modal--reimbursement modal--reimbursement-bulk" role="dialog" aria-labelledby="reimbBulkModalTitle" aria-modal="true">
-        <h3 id="reimbBulkModalTitle">Bulk Add Expenses</h3>
-        <p class="reimbursements-modal-note">Enter multiple reimbursable expenses at once. Blank rows are ignored; partially filled rows are validated before saving.</p>
-        <div id="reimbBulkErr" class="error"></div>
-        <div class="reimb-bulk-shortcuts" aria-label="Bulk add shortcuts">
-          <label>Same date for all <input id="reimbBulkSameDate" type="date" /></label>
-          <button type="button" id="reimbBulkApplyDateBtn" class="secondary">Apply Date</button>
-          <label>Same category <select id="reimbBulkSameCategory"><option value="">Choose category</option></select></label>
-          <button type="button" id="reimbBulkApplyCategoryBtn" class="secondary">Apply Category</button>
-        </div>
-        <details class="reimb-bulk-paste">
-          <summary>Paste from spreadsheet/CSV</summary>
-          <textarea id="reimbBulkPasteText" rows="4" placeholder="Date, Vendor, Amount, Category, Status, Description/Notes"></textarea>
-          <button type="button" id="reimbBulkPasteBtn" class="secondary">Use pasted rows</button>
-        </details>
-        <div class="reimb-bulk-table-wrap">
-          <table class="reimb-bulk-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Vendor</th>
-                <th>Amount</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Description / Notes</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="reimbBulkRows"></tbody>
-          </table>
-        </div>
-        <div class="reimb-bulk-footer">
-          <div><strong id="reimbBulkCount">0 expenses</strong><span id="reimbBulkTotal">Total: $0</span></div>
-          <div class="modal-actions reimbursements-modal-actions">
-            <button type="button" id="reimbBulkAddRowBtn" class="secondary">Add Row</button>
-            <button type="button" id="reimbBulkCancelBtn" class="secondary">Cancel</button>
-            <button type="button" id="reimbBulkSaveBtn">Save All Expenses</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="reimbModal" class="modal-overlay" aria-hidden="true">
-      <div class="modal modal--reimbursement" role="dialog" aria-labelledby="reimbModalTitle" aria-modal="true">
-        <h3 id="reimbModalTitle">Add Expense</h3>
-        <div id="reimbModalErr" class="error"></div>
-        <input id="reimbEditId" type="hidden" />
-        <div class="row two">
-          <div><label for="reimbDate">Date</label><input id="reimbDate" type="date" /></div>
-          <div><label for="reimbVendor">Vendor</label><input id="reimbVendor" type="text" maxlength="255" placeholder="Airline, hotel, client lunch" /></div>
-        </div>
-        <div class="row two">
-          <div><label for="reimbAmount">Amount</label><div class="money-input"><span class="money-input__prefix" aria-hidden="true">$</span><input id="reimbAmount" type="number" min="0" step="0.01" placeholder="0.00" /></div></div>
-          <div><label for="reimbCategory">Category</label><select id="reimbCategory"></select></div>
-        </div>
-        <div class="reimb-recurring-section" id="reimbRecurringSection">
-          <label class="reimb-recurring-section__label">Reimbursement Type</label>
-          <div class="reimb-type-options" role="radiogroup" aria-label="Reimbursement type">
-            <label><input type="radio" name="reimbType" value="one_time" checked /> One-Time</label>
-            <label><input type="radio" name="reimbType" value="recurring" /> Recurring</label>
-          </div>
-          <div id="reimbRecurringFields" class="reimb-recurring-fields" hidden>
-            <div class="row two">
-              <div>
-                <label for="reimbFrequency">Frequency</label>
-                <select id="reimbFrequency">
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="semiannual">Semi-Annual</option>
-                  <option value="annual">Annual</option>
-                </select>
-              </div>
-              <div><label for="reimbStartDateSeries">Start Date</label><input id="reimbStartDateSeries" type="date" /></div>
-            </div>
-            <div class="row two">
-              <div><label for="reimbEndDateSeries">End Date <span class="muted">(optional)</span></label><input id="reimbEndDateSeries" type="date" /></div>
-              <label class="reimb-auto-create"><input id="reimbAutoCreateFuture" type="checkbox" checked /> Automatically create future reimbursement items</label>
-            </div>
-          </div>
-          <div id="reimbApplyScope" class="reimb-apply-scope" hidden>
-            <label class="reimb-recurring-section__label">Apply changes to:</label>
-            <div class="reimb-type-options" role="radiogroup" aria-label="Recurring edit scope">
-              <label><input type="radio" name="reimbApplyScope" value="this" /> This expense only</label>
-              <label><input type="radio" name="reimbApplyScope" value="future" checked /> All future expenses in this series</label>
-            </div>
-          </div>
-        </div>
-        <div class="row two">
-          <div><label for="reimbStatus">Status</label><select id="reimbStatus"></select></div>
-          <div><label for="reimbDescription">Description</label><input id="reimbDescription" type="text" maxlength="500" placeholder="Optional" /></div>
-        </div>
-        <label for="reimbNotes">Notes</label>
-        <textarea id="reimbNotes" maxlength="1000" rows="3" placeholder="Submission details, receipt notes, or reminder"></textarea>
-        <p class="reimbursements-modal-note">This tracker does not create forecast transactions or reimbursement deposits.</p>
-        <div class="modal-actions reimbursements-modal-actions">
-          <button type="button" id="reimbDeleteBtn" class="secondary danger" hidden>Delete</button>
-          <button type="button" id="reimbCancelBtn" class="secondary">Cancel</button>
-          <button type="button" id="reimbSaveBtn">Save Expense</button>
-        </div>
-      </div>
-    </div>
-
+    
+    
+    
+    
     <div id="txAddModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--tx-add" role="dialog" aria-labelledby="txAddTitle">
         <h3 id="txAddTitle">Add transaction</h3>
@@ -2106,7 +1858,8 @@ Date,Vendor,Amount
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="../trial-status-notice.js?v=3"></script>
-    <script src="../app.js?v=523"></script>
+    <script src="../transaction-history-copy.js?v=6"></script>
+    <script src="../app.js?v=531"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=21" defer></script>
   </body>

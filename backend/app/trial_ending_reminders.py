@@ -44,7 +44,6 @@ def refusal_reason() -> str:
     """Empty when this process may send. Does not change billing or access."""
     from .main import (
         _database_identity,
-        _database_looks_like_staging,
         _host_label_matches,
         _is_staging_deployment,
         settings,
@@ -52,8 +51,6 @@ def refusal_reason() -> str:
 
     if not _enabled("TRIAL_ENDING_REMINDERS_ENABLED"):
         return "TRIAL_ENDING_REMINDERS_ENABLED is not 1"
-    if _is_staging_deployment() and not _database_looks_like_staging():
-        return "refusing a database that is not the staging database"
     if _host_label_matches(settings.PRODUCTION_DATABASE_HOST, _database_identity()):
         if not _enabled("TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION"):
             return "refusing the production database"
