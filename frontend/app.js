@@ -13904,22 +13904,13 @@ function renderCategoriesGrid(tree) {
   const pane = categoriesTree.closest("[data-cats-pane]") || document;
   const emptyEl = pane.querySelector("#categoriesEmpty");
   if (!groups.length) {
-    if (emptyEl) emptyEl.hidden = false;
-    categoriesTree.hidden = true;
+    applyCategoryListView(0);
     return;
   }
   if (emptyEl) emptyEl.hidden = true;
   categoriesTree.hidden = false;
 
   const collapsedGroupIds = readCollapsedCategoryGroupIds();
-  let maxCategoryUsage = 0;
-  for (const g of groups) {
-    for (const c of g.categories || []) {
-      maxCategoryUsage = Math.max(maxCategoryUsage, categoryAssignmentsForCategoryId(c.id));
-    }
-  }
-  const frequentUsageThreshold =
-    maxCategoryUsage > 0 ? Math.max(3, Math.ceil(maxCategoryUsage * 0.55)) : Infinity;
 
   function clearDragUi() {
     categoriesTree
@@ -14067,8 +14058,6 @@ function renderCategoriesGrid(tree) {
     handle.draggable = true;
 
     const nUse = categoryAssignmentsForCategoryId(c.id);
-    if (nUse === 0) row.classList.add("is-unused");
-    else if (nUse >= frequentUsageThreshold) row.classList.add("is-frequent");
 
     const meta = document.createElement("span");
     meta.className = "cats-cat__meta";
@@ -14503,6 +14492,7 @@ function renderCategoriesGrid(tree) {
   for (const g of groups) {
     categoriesTree.appendChild(mountGroupCard(g));
   }
+  applyCategoryListView(groups.length);
 }
 
 function categoryDisplayLabel(c) {
@@ -14591,18 +14581,95 @@ async function persistCategoryTreeFromDom() {
   }
 }
 
-async function loadCategories() {
+let categoryListStatus = "idle";
+let categoriesLoadInFlight = null;
+
+function applyCategoryListView(groupCount) {
+  const view = categoryListView(categoryListStatus, groupCount);
+  const pane = document.querySelector("[data-cats-pane]");
+  if (!pane) return view;
+  const tree = pane.querySelector("#categoriesTree");
+  const emptyEl = pane.querySelector("#categoriesEmpty");
+  let statusEl = pane.querySelector("#categoriesLoadStatus");
+  if (!statusEl && tree) {
+    statusEl = document.createElement("div");
+    statusEl.id = "categoriesLoadStatus";
+    statusEl.className = "cats-pane__status";
+    statusEl.setAttribute("role", "status");
+    tree.insertAdjacentElement("beforebegin", statusEl);
+  }
+  if (statusEl) {
+    statusEl.hidden = !(view.showLoading || view.showError);
+    statusEl.replaceChildren();
+    if (view.showLoading) {
+      const text = document.createElement("p");
+      text.className = "cats-pane__status-text";
+      text.textContent = "Loading your categories…";
+      statusEl.appendChild(text);
+    } else if (view.showError) {
+      const text = document.createElement("p");
+      text.className = "cats-pane__status-text";
+      text.textContent = "We couldn't load your categories. Please try again.";
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "cats-pane__action";
+      retry.textContent = "Retry";
+      retry.addEventListener("click", () => {
+        void loadCategories();
+      });
+      statusEl.appendChild(text);
+      statusEl.appendChild(retry);
+    }
+  }
+  if (emptyEl) emptyEl.hidden = !view.showEmpty;
+  if (tree && (view.showLoading || view.showError || view.showEmpty || view.showTree)) {
+    tree.hidden = !view.showTree;
+  }
+  const addGroup = document.getElementById("addCategoryGroupBtn");
+  const addCat = document.getElementById("focusNewCategoryBtn");
+  if (addGroup) addGroup.disabled = !view.allowAdd;
+  if (addCat) addCat.disabled = !view.allowAdd;
+  pane.setAttribute("aria-busy", view.showLoading ? "true" : "false");
+  return view;
+}
+
+async function loadCategoriesOnce() {
   if (!state.activeFamilyId) return;
-  await flushCategoryTreePersistIfPending();
-  let tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
-  tree = withoutEmptyUncategorizedGroup(tree);
-  applyCategoryTreeToState(tree);
-  await loadCategoryUsageSummary();
-  refreshCategoriesManagerChrome();
-  renderCategoriesGrid(state.categoryTree);
+  const initial = categoryListStatus !== "ready";
+  if (initial) {
+    categoryListStatus = "loading";
+    applyCategoryListView(0);
+  }
   try {
-    renderTxAddCategoryChips();
-  } catch (_) {}
+    await flushCategoryTreePersistIfPending();
+    let tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
+    tree = withoutEmptyUncategorizedGroup(tree);
+    categoryListStatus = "ready";
+    applyCategoryTreeToState(tree);
+    await loadCategoryUsageSummary();
+    refreshCategoriesManagerChrome();
+    renderCategoriesGrid(state.categoryTree);
+    try {
+      renderTxAddCategoryChips();
+    } catch (_) {}
+  } catch (e) {
+    if (categoryListStatus !== "ready") {
+      categoryListStatus = "error";
+      applyCategoryListView(0);
+    } else {
+      show(catErr, e?.message || "We couldn't refresh your categories. Please try again.");
+    }
+    throw e;
+  }
+}
+
+function loadCategories() {
+  if (categoriesLoadInFlight) return categoriesLoadInFlight;
+  const run = loadCategoriesOnce();
+  categoriesLoadInFlight = run.finally(() => {
+    categoriesLoadInFlight = null;
+  });
+  return categoriesLoadInFlight;
 }
 
 function categoryStyleFromId(categoryId) {
@@ -23175,6 +23242,8 @@ async function main() {
       } catch (_) {}
     }
   }
+  let categoriesBootstrap = null;
+  if (state.activeFamilyId) categoriesBootstrap = loadCategories();
   syncHouseholdSettingsUi();
   if (window.__BW_FORCE_VIEW === "settings") {
     try {
@@ -23214,7 +23283,7 @@ async function main() {
   } catch (_) {}
   if (state.activeFamilyId) {
     try {
-      await loadCategories();
+      await (categoriesBootstrap || loadCategories());
     } catch (e) {
       try {
         if (window.console && console.warn) console.warn("[categories]", e && e.message);

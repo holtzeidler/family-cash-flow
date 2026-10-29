@@ -15831,6 +15831,26 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
   outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
   outline-offset: 2px;
 }
+.cats-pane__action:disabled{
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cats-pane__status{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.cats-pane__status[hidden]{
+  display: none;
+}
+.cats-pane__status-text{
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(15, 23, 42, 0.78);
+}
 
 /* Inline "new group" form (legacy id #addGroupInline) */
 .cats-pane__inline-add{
@@ -16336,16 +16356,6 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="categories"] .c
 .cats-group__body:has(.cats-cat__menu[open]) .cats-cat:not(:has(.cats-cat__menu[open])):hover,
 .cats-group__body:has(.cats-cat__menu[open]) .cats-cat:not(:has(.cats-cat__menu[open])):focus-within{
   background: transparent;
-}
-.cats-cat.is-unused{
-  opacity: 0.72;
-}
-.cats-cat.is-unused .cats-cat__name{
-  color: rgba(71, 85, 105, 0.78);
-}
-.cats-cat.is-frequent .cats-cat__name{
-  font-weight: 600;
-  color: var(--cats-fg);
 }
 .cats-cat.is-dragging{
   opacity: 0.7;

@@ -75,6 +75,8 @@ jobs:
           node --check frontend/preview/sample-forecast-cta.js
           node --check frontend/transaction-history-copy.js
           node --check frontend/category-starter.test.js
+          node --check frontend/category-list-state.js
+          node --check frontend/category-list-state.test.js
 
       - name: Onboarding finish decisions
         run: |
@@ -82,3 +84,4 @@ jobs:
           node frontend/preview/sample-forecast-cta.test.js
           node frontend/transaction-history-copy.test.js
           node frontend/category-starter.test.js
+          node frontend/category-list-state.test.js
