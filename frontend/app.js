@@ -4343,6 +4343,44 @@ function categoryGroupIdForNewCategory(kind) {
   return defaultNewCategoryGroupId();
 }
 
+function categoryGroupNameById(gid) {
+  const g = (state.categoryTree?.groups || []).find((x) => Number(x?.id) === Number(gid));
+  return g ? String(g.name || "").trim() : "";
+}
+
+function categoryGroupLabelForNewCategory(kind) {
+  const gid = categoryGroupIdForNewCategory(kind);
+  return categoryGroupNameById(gid) || "your list";
+}
+
+function showCategoryFieldNote(fieldId, message) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  if (!st?.wrap) return;
+  let note = st.wrap.querySelector(".category-add-note");
+  if (!note) {
+    note = document.createElement("p");
+    note.className = "category-add-note";
+    note.setAttribute("role", "status");
+    st.wrap.appendChild(note);
+  }
+  note.textContent = message || "";
+}
+
+function showCategoryManagerNote(message) {
+  const pane = document.querySelector("[data-cats-pane]");
+  if (!pane) return;
+  let note = pane.querySelector(".category-manager-note");
+  if (!note) {
+    note = document.createElement("p");
+    note.className = "category-manager-note";
+    note.setAttribute("role", "status");
+    const tree = pane.querySelector("#categoriesTree");
+    if (tree) tree.insertAdjacentElement("beforebegin", note);
+    else pane.appendChild(note);
+  }
+  note.textContent = message || "";
+}
+
 function categoryKindForComboboxField(fieldId) {
   if (fieldId === "txAddCategoryId") return getRadioValue("txAddKind", "expense");
   if (fieldId === "txEditCategoryId") {
@@ -4352,8 +4390,16 @@ function categoryKindForComboboxField(fieldId) {
 }
 
 const TX_ADD_CATEGORY_CHIP_MAX = 3;
-const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Transfer In", "Bonus", "Reimbursement", "Other Income"];
-const TX_ADD_EXPENSE_CHIP_HINTS = ["Groceries", "Mortgage", "Utilities", "Credit Card", "Gas", "Subscription"];
+const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Other Income"];
+const TX_ADD_EXPENSE_CHIP_HINTS = [
+  "Mortgage / Rent",
+  "Utilities",
+  "Insurance",
+  "Subscriptions",
+  "Credit Card Payment",
+  "Loan Payment",
+  "Other Expense",
+];
 let txAddCategoryChipsBound = false;
 
 function categoryMatchesTransactionKind(cat, kind) {
@@ -4637,18 +4683,15 @@ if (seedDefaultCategoriesBtn) {
     try {
       show(catErr, "");
       if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
-      let force = false;
       try {
         await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults`, "POST");
       } catch (e) {
         const msg = String(e.message || "").toLowerCase();
-        if (msg.includes("already exist") || msg.includes("409")) {
-          if (!window.confirm("Replace all existing category groups and categories with the default list? This cannot be undone.")) return;
-          force = true;
-          await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults?force=true`, "POST");
-        } else {
-          throw e;
+        if (msg.includes("already exist") || msg.includes("409") || msg.includes("not changed")) {
+          showCategoryManagerNote("Your categories were left as they are. Defaults are only added when you don't have any yet.");
+          return;
         }
+        throw e;
       }
       await loadCategories();
       await loadMonthAndCalendar();
@@ -4730,27 +4773,11 @@ if (addCategoryGroupBtn) {
         await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults`, "POST");
         await loadCategories();
         await loadMonthAndCalendar();
+        showCategoryManagerNote("Starter categories added.");
       } catch (e) {
         const msg = String(e?.message || "").toLowerCase();
-        if (msg.includes("already exist") || msg.includes("409")) {
-          // Defaults are only meant for the empty-state surface, but if
-          // the user already has a structure, offer a clear choice
-          // before wiping it.
-          if (
-            window.confirm(
-              "You already have category groups. Replace them with the defaults? This cannot be undone."
-            )
-          ) {
-            try {
-              await api(`/api/families/${state.activeFamilyId}/categories/seed-defaults?force=true`, "POST");
-              await loadCategories();
-              await loadMonthAndCalendar();
-              return;
-            } catch (e2) {
-              show(catErr, e2?.message || "Failed to load default categories");
-              return;
-            }
-          }
+        if (msg.includes("already exist") || msg.includes("409") || msg.includes("not changed")) {
+          showCategoryManagerNote("Your categories were left as they are. Defaults are only added when you don't have any yet.");
           return;
         }
         show(catErr, e?.message || "Failed to load default categories");
@@ -12865,8 +12892,10 @@ function filterCategoryCombobox(fieldId) {
     addLi.className = "category-combobox__option category-combobox__option--create";
     addLi.setAttribute("role", "option");
     addLi.dataset.createName = rawQ;
+    const groupLabel = categoryGroupLabelForNewCategory(categoryKindForComboboxField(fieldId));
     const safe = escapeHtml(rawQ);
-    addLi.innerHTML = `<span class="category-combobox__plus" aria-hidden="true">+</span><span class="category-combobox__create-text">Add “${safe}” as new category</span>`;
+    const safeGroup = escapeHtml(groupLabel);
+    addLi.innerHTML = `<span class="category-combobox__plus" aria-hidden="true">+</span><span class="category-combobox__create-text">Add “${safe}” to ${safeGroup}</span>`;
     st.list.appendChild(addLi);
   }
 }
@@ -12904,13 +12933,17 @@ async function createCategoryFromCombobox(fieldId, rawName) {
     const kind = categoryKindForComboboxField(fieldId);
     const gid = categoryGroupIdForNewCategory(kind);
     if (gid == null || !Number.isFinite(Number(gid))) throw new Error("No category group available yet.");
+    const groupLabel = categoryGroupNameById(gid) || "your list";
     const created = await addCategoryToGroup(gid, name);
     if (!created) return;
     const pick =
       created && created.id != null
         ? created
         : (state.categories || []).find((c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name));
-    if (pick) selectCategoryComboboxChoice(fieldId, pick.id, categoryDisplayLabel(pick));
+    if (pick) {
+      selectCategoryComboboxChoice(fieldId, pick.id, categoryDisplayLabel(pick));
+      showCategoryFieldNote(fieldId, `Added ${name} to ${groupLabel}.`);
+    }
   } catch (err) {
     window.alert(err.message || "Failed to add category");
   } finally {
@@ -13194,19 +13227,12 @@ function isSystemUncategorizedGroupName(name) {
   return normalizeCategoryGroupName(name) === normalizeCategoryGroupName(SYSTEM_UNCATEGORIZED_GROUP_NAME);
 }
 
-async function maybeEnsureSystemUncategorizedGroup(tree) {
-  const groups = Array.isArray(tree?.groups) ? tree.groups.filter(Boolean) : [];
-  if (!state.activeFamilyId || groups.length === 0 || groups.some((g) => isSystemUncategorizedGroupName(g?.name))) {
-    return tree || { groups: [] };
-  }
-  try {
-    await api(`/api/families/${state.activeFamilyId}/category-groups`, "POST", {
-      name: SYSTEM_UNCATEGORIZED_GROUP_NAME,
-    });
-    return await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
-  } catch (_) {
-    return tree || { groups: [] };
-  }
+function withoutEmptyUncategorizedGroup(tree) {
+  const groups = (Array.isArray(tree?.groups) ? tree.groups : []).filter((g) => {
+    if (!g || !isSystemUncategorizedGroupName(g.name)) return !!g;
+    return (g.categories || []).length > 0;
+  });
+  return { ...(tree || {}), groups };
 }
 
 async function loadCategoryUsageSummary() {
@@ -14387,19 +14413,29 @@ function renderCategoriesGrid(tree) {
     const addRow = document.createElement("div");
     addRow.className = "cats-group__add-row";
 
+    const groupLabel = String(g.name || "this group").trim() || "this group";
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.className = "cats-group__add-trigger";
-    trigger.innerHTML = '<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category</span>';
+    trigger.setAttribute("aria-label", `Add a category to ${groupLabel}`);
+    trigger.innerHTML =
+      '<span class="cats-group__add-plus" aria-hidden="true">+</span><span>Add category to ' +
+      escapeHtml(groupLabel) +
+      "</span>";
 
     const form = document.createElement("form");
     form.className = "cats-group__add-form";
     form.hidden = true;
 
+    const target = document.createElement("p");
+    target.className = "cats-group__add-target";
+    target.textContent = `Adding to ${groupLabel}`;
+
     const input = document.createElement("input");
     input.type = "text";
     input.className = "cats-group__add-input";
-    input.placeholder = "New category";
+    input.placeholder = "Category name";
+    input.setAttribute("aria-label", `New category in ${groupLabel}`);
     input.autocomplete = "off";
 
     const submit = document.createElement("button");
@@ -14412,6 +14448,7 @@ function renderCategoriesGrid(tree) {
     cancel.className = "cats-group__add-cancel";
     cancel.textContent = "Cancel";
 
+    form.appendChild(target);
     form.appendChild(input);
     form.appendChild(submit);
     form.appendChild(cancel);
@@ -14440,6 +14477,7 @@ function renderCategoriesGrid(tree) {
         const ok = await addCategoryToGroup(Number(g.id), nm);
         if (ok) {
           input.value = "";
+          showCategoryManagerNote(`Added ${nm} to ${groupLabel}.`);
           try {
             input.focus();
           } catch (_) {}
@@ -14507,7 +14545,8 @@ async function flushCategoryTreePersistIfPending() {
 }
 
 function applyCategoryTreeToState(tree) {
-  state.categoryTree = tree || { groups: [] };
+  const visible = withoutEmptyUncategorizedGroup(tree);
+  state.categoryTree = visible;
   state.categories = flattenCategoryTree(state.categoryTree);
   renderCategoriesGrid(state.categoryTree);
   syncAllCategoryComboboxes(state.categories);
@@ -14556,7 +14595,7 @@ async function loadCategories() {
   if (!state.activeFamilyId) return;
   await flushCategoryTreePersistIfPending();
   let tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
-  tree = await maybeEnsureSystemUncategorizedGroup(tree);
+  tree = withoutEmptyUncategorizedGroup(tree);
   applyCategoryTreeToState(tree);
   await loadCategoryUsageSummary();
   refreshCategoriesManagerChrome();

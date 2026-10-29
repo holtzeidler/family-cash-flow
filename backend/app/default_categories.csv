@@ -1,24 +1,18 @@
 ,Group,Category,Current Category Mapping
 ,Income,,
 ,,Paycheck,
-,,Bonus,
-,,Tax Refund,
-,,Interest,
-,,Social Security,
-,,Annuity,
-,,Other Income,Reimbursement
-,Bills & Utilities,,
-,,Mortgage / Rent,Mortgage/Rent
-,,Utility,
-,,Internet,Internet & Cable
-,,Cell Phone,
+,,Other Income,
+,Housing & Bills,,
+,,Mortgage / Rent,
+,,Utilities,
 ,,Insurance,
-,Debt,,
+,,Subscriptions,
+,Debt & Payments,,
 ,,Credit Card Payment,
-,,Student Loan,
-,,Car Loan,
+,,Loan Payment,
 ,Savings & Transfers,,
 ,,Savings Transfer,
-,,Investment Transfer,Investment
-,Miscellaneous,,
-,,Other,Miscellaneous
+,,Investment Transfer,
+,,Other Transfer,
+,Other,,
+,,Other Expense,
