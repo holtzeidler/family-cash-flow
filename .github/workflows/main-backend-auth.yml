@@ -77,6 +77,7 @@ jobs:
           node --check frontend/category-starter.test.js
           node --check frontend/category-list-state.js
           node --check frontend/category-list-state.test.js
+          node --check frontend/category-recurrence.test.js
 
       - name: Onboarding finish decisions
         run: |
@@ -85,3 +86,4 @@ jobs:
           node frontend/transaction-history-copy.test.js
           node frontend/category-starter.test.js
           node frontend/category-list-state.test.js
+          node frontend/category-recurrence.test.js

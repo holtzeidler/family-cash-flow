@@ -2153,88 +2153,9 @@ function syncInstanceSecondYearlyDateDefault() {
   if (inferred) instanceSecondDayOfMonth.value = inferred;
 }
 
-/** Mortgage/rent, utilities, and credit card categories usually repeat monthly. */
-function categoryImpliesMonthlyRecurrence(cat) {
-  if (!cat) return false;
-  const n = normalizeNameForCompare(cat.name || "");
-  const g = normalizeNameForCompare(cat.group_name || "");
-  const d = normalizeNameForCompare(categoryDisplayLabel(cat));
-  if (n === "mortgage/rent" || n === "mortgage rent") return true;
-  if ((n.includes("mortgage") && n.includes("rent")) || (d.includes("mortgage") && d.includes("rent"))) return true;
-  if (g.includes("mortgage") && g.includes("rent")) return true;
-  if (n === "credit card payment" || n.includes("credit card")) return true;
-  if (d.includes("credit card")) return true;
-  if (n === "utility" || n.includes("utility")) return true;
-  if (d.includes("utility")) return true;
-  if (g.includes("utility") || g.includes("utilities")) return true;
-  return false;
-}
-
-/** Paycheck income usually repeats twice per month. */
-function categoryImpliesTwiceMonthlyRecurrence(cat) {
-  if (!cat) return false;
-  const n = normalizeNameForCompare(cat.name || "");
-  const d = normalizeNameForCompare(categoryDisplayLabel(cat));
-  return n === "paycheck" || n.includes("paycheck") || d.includes("paycheck");
-}
-
-function resolveCategoryById(categoryId) {
-  const id = Number(categoryId);
-  if (!Number.isFinite(id)) return null;
-  return (state.categories || []).find((c) => Number(c.id) === id) || null;
-}
-
-function applyTxAddRecurrenceValue(value) {
-  if (!txAddRecurrence) return;
-  if (txAddRecurrence.value === value) {
-    updateTxAddRepeatingUi();
-    return;
-  }
-  txAddRecurrence.value = value;
-  txAddRecurrence.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-function applyTxAddCategoryRecurrenceDefaults(categoryId) {
-  if (!txAddRecurrence) return;
-  const kind = getRadioValue("txAddKind", "income");
-  const cat = resolveCategoryById(categoryId);
-  if (kind === "expense" && categoryImpliesMonthlyRecurrence(cat)) {
-    applyTxAddRecurrenceValue("monthly");
-    return;
-  }
-  if (kind === "income" && categoryImpliesTwiceMonthlyRecurrence(cat)) {
-    applyTxAddRecurrenceValue("twice_monthly");
-  }
-}
-
 function txEditScheduleRecurrenceActive() {
   const v = String(instanceRecurrence?.value || "once").trim().toLowerCase();
   return !!v && v !== "once";
-}
-
-function applyTxEditRecurrenceValue(value) {
-  if (!instanceRecurrence) return;
-  if (instanceRecurrence.value === value) {
-    updateTxEditActualScheduleUi();
-    updateInstanceTwiceMonthlyVisibility();
-    return;
-  }
-  instanceRecurrence.value = value;
-  instanceRecurrence.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-function applyTxEditCategoryRecurrenceDefaults(categoryId) {
-  if (!instanceRecurrence || transactionEditMode !== "actual") return;
-  if (txEditScheduleRecurrenceActive()) return;
-  const kind = getRadioValue("txEditKind", "expense");
-  const cat = resolveCategoryById(categoryId);
-  if (kind === "expense" && categoryImpliesMonthlyRecurrence(cat)) {
-    applyTxEditRecurrenceValue("monthly");
-    return;
-  }
-  if (kind === "income" && categoryImpliesTwiceMonthlyRecurrence(cat)) {
-    applyTxEditRecurrenceValue("twice_monthly");
-  }
 }
 
 function updateTxEditActualScheduleUi() {
@@ -5224,7 +5145,6 @@ async function openTxEditModalAsync(tx) {
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
-  applyTxEditCategoryRecurrenceDefaults(tx.category_id);
   syncTransactionHistoryLink();
 }
 
@@ -12784,11 +12704,8 @@ function selectCategoryComboboxChoice(fieldId, catId, name) {
   st.input.value = name;
   hideCategoryComboboxList(st);
   if (fieldId === "txAddCategoryId") {
-    applyTxAddCategoryRecurrenceDefaults(catId);
     refreshTxAddCategoryChipActiveState();
     updateTxAddFormValidity();
-  } else if (fieldId === "txEditCategoryId") {
-    applyTxEditCategoryRecurrenceDefaults(catId);
   }
 }
 
@@ -12814,8 +12731,6 @@ function normalizeCategoryComboboxInput(fieldId) {
   if (exact.length === 1) {
     st.hidden.value = String(exact[0].id);
     st.input.value = categoryDisplayLabel(exact[0]);
-    if (fieldId === "txAddCategoryId") applyTxAddCategoryRecurrenceDefaults(exact[0].id);
-    else if (fieldId === "txEditCategoryId") applyTxEditCategoryRecurrenceDefaults(exact[0].id);
     return;
   }
   const subs = (st.categories || []).filter((c) => {
@@ -12827,8 +12742,6 @@ function normalizeCategoryComboboxInput(fieldId) {
   if (subs.length === 1) {
     st.hidden.value = String(subs[0].id);
     st.input.value = categoryDisplayLabel(subs[0]);
-    if (fieldId === "txAddCategoryId") applyTxAddCategoryRecurrenceDefaults(subs[0].id);
-    else if (fieldId === "txEditCategoryId") applyTxEditCategoryRecurrenceDefaults(subs[0].id);
     return;
   }
   st.input.value = "";
@@ -13189,20 +13102,14 @@ function setCategoryFieldValue(fieldId, categoryIdOrNull) {
       st.input.value = cat ? categoryDisplayLabel(cat) : "";
     }
     refreshTxCategoryColorPickers();
-    if (fieldId === "txAddCategoryId") {
-      if (categoryIdOrNull != null && categoryIdOrNull !== "") applyTxAddCategoryRecurrenceDefaults(categoryIdOrNull);
-      refreshTxAddCategoryChipActiveState();
-    }
+    if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
     return;
   }
   if (el instanceof HTMLSelectElement) {
     el.value = categoryIdOrNull != null && categoryIdOrNull !== "" ? String(categoryIdOrNull) : "";
   }
   refreshTxCategoryColorPickers();
-  if (fieldId === "txAddCategoryId") {
-    if (categoryIdOrNull != null && categoryIdOrNull !== "") applyTxAddCategoryRecurrenceDefaults(categoryIdOrNull);
-    refreshTxAddCategoryChipActiveState();
-  }
+  if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
 }
 
 function ensureCategoryComboDocClick() {
