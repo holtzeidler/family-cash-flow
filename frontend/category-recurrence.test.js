@@ -94,6 +94,7 @@ const sandbox = {
     },
   },
   hideCategoryComboboxList() {},
+  showCategoryFieldNote() {},
   refreshTxAddCategoryChipActiveState() {},
   updateTxAddFormValidity() {},
   refreshTxCategoryColorPickers() {},
