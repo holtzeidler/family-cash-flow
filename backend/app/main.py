@@ -6078,16 +6078,20 @@ def _backfill_category_groups_for_existing_families() -> None:
 
 
 def apply_default_category_seed(*, db, family_id: int, force: bool) -> CategoriesTreeOut:
+    """Add the starter list only when this family has no category groups yet.
+
+    ``force`` is still accepted so an older page does not fail validation.
+    It does not rename, delete, or reorganize categories that already exist.
+    """
+    del force
     existing = int(
         db.execute(select(func.count()).select_from(CategoryGroup).where(CategoryGroup.family_id == family_id)).scalar_one() or 0
     )
-    if existing > 0 and not force:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Category groups already exist for this family")
-
-    if force:
-        db.execute(delete(CategoryGroup).where(CategoryGroup.family_id == family_id))
-        db.execute(update(Category).where(Category.family_id == family_id).values(group_id=None))
-        db.flush()
+    if existing > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Category groups already exist for this family. Existing categories were not changed.",
+        )
 
     blueprint = _default_category_blueprint_rows()
     order_names: list[str] = []
