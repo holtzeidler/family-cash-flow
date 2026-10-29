@@ -3302,6 +3302,7 @@ def startup_populate_schema():
         jwt_secret=settings.JWT_SECRET,
         webhook_secret=settings.STRIPE_WEBHOOK_SECRET,
     )
+    assert_staging_database_isolated()
     # For a starter app we create tables on startup.
     # In a production app you'd typically use migrations (Alembic).
     if settings.DATABASE_URL.startswith("sqlite"):
