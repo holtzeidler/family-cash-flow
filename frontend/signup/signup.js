@@ -5087,24 +5087,6 @@ function renderAccountSetupSuccessSummary(listId) {
   }
 }
 
-/** When category implies a typical cadence, enable Repeats and set recurrence (account setup wizard). */
-function applyAccountSetupCategoryRecurrenceDefaults(categoryEl, prefix) {
-  if (!categoryEl) return;
-  const cat = String(categoryEl.value || "").trim();
-  const recSel = document.getElementById(prefix + "Recurrence");
-  if (!recSel) return;
-  let recurrence = null;
-  if (cat === "Mortgage/Rent" || cat === "Credit Card Payment" || cat === "Utility") {
-    recurrence = "monthly";
-  } else if (cat === "Paycheck") {
-    recurrence = "biweekly";
-  }
-  if (recurrence != null) {
-    recSel.value = recurrence;
-    recSel.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-}
-
 function initAccountSetupTransactionUi() {
   if (!isAccountSetupPath()) return;
   if (document.getElementById("accountSetupWizard")) {
@@ -5142,10 +5124,6 @@ function initAccountSetupTransactionUi() {
 
     bindScheduleUi("asTx");
     bindScheduleUi("asExp");
-    const txCat = document.getElementById("asTxCategory");
-    const expCat = document.getElementById("asExpTxCategory");
-    if (txCat) txCat.addEventListener("change", () => applyAccountSetupCategoryRecurrenceDefaults(txCat, "asTx"));
-    if (expCat) expCat.addEventListener("change", () => applyAccountSetupCategoryRecurrenceDefaults(expCat, "asExp"));
     initAccountSetupCategoryCombobox("asTxCategory", "asTxCategorySearch", "asTxCategoryList");
     initAccountSetupCategoryCombobox("asExpTxCategory", "asExpTxCategorySearch", "asExpTxCategoryList");
     initAccountSetupQuickChips();
