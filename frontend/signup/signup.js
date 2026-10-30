@@ -1187,14 +1187,42 @@ function getAccountSetupDisplayStepNumber(step) {
   return 4;
 }
 
+/** One sample link. "Back" only when this visit came from a sample forecast. */
+function syncAccountSetupSampleLink() {
+  const link = document.getElementById("accountSetupBackToSample");
+  if (!link) return;
+  let backHref = "";
+  try {
+    const ref = document.referrer || "";
+    if (ref) {
+      const url = new URL(ref);
+      if (url.origin === window.location.origin) {
+        const path = url.pathname || "";
+        if (path === "/preview" || path.indexOf("/preview/") === 0) {
+          backHref = path.endsWith("/") ? path : path + "/";
+          if (url.search) backHref += url.search;
+        }
+      }
+    }
+  } catch (_) {}
+  if (backHref) {
+    link.textContent = "Back to sample forecast";
+    link.setAttribute("href", backHref);
+  } else {
+    link.textContent = "Explore a sample forecast";
+    link.setAttribute("href", "/preview/");
+  }
+  link.hidden = false;
+}
+
 /** Per-step copy. Title + subtitle are intentionally outcome-oriented, not "now…". */
 function getAccountSetupStepCopy(step, ctx) {
   const phase3 = ctx && ctx.step3Phase;
   switch (step) {
     case 0:
       return {
-        title: "Create your login",
-        subtitle: "You're just a few minutes away from seeing your future checking balance.",
+        title: "Create your account",
+        subtitle: "Start your 14-day free trial. No credit card required.",
       };
     case 1:
       return {
@@ -1298,20 +1326,18 @@ function syncAccountSetupWizardShellButtons() {
     });
     if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
     if (eyebrow) eyebrow.textContent = copy.title;
-    if (reassurance) reassurance.hidden = s !== 0;
+    if (reassurance) reassurance.hidden = true;
     if (subEyebrow) {
       subEyebrow.textContent = copy.subtitle;
       subEyebrow.hidden = false;
     }
-    const sampleBack = document.getElementById("accountSetupBackToSample");
-    if (sampleBack) sampleBack.hidden = false;
+    syncAccountSetupSampleLink();
   } catch (_) {
     if (stepLabel) stepLabel.textContent = `Step ${getAccountSetupDisplayStepNumber(s)} of 4`;
     if (eyebrow) eyebrow.textContent = "Let’s build your forecast";
-    if (reassurance) reassurance.hidden = s !== 0;
+    if (reassurance) reassurance.hidden = true;
     if (subEyebrow) subEyebrow.hidden = false;
-    const sampleBack = document.getElementById("accountSetupBackToSample");
-    if (sampleBack) sampleBack.hidden = false;
+    syncAccountSetupSampleLink();
   }
 
   try {
