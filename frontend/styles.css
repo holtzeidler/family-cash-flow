@@ -530,8 +530,8 @@ body.account-setup-page #accountSetupVerifyRecovery a.email-check__resend{
   }
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
-  width: min(580px, 92vw);
-  max-width: 580px;
+  width: min(660px, 92vw);
+  max-width: 660px;
   padding: var(--as-below-nav) 0 clamp(28px, 5vh, 48px);
   margin-top: 0;
   margin-bottom: 0;
@@ -558,7 +558,7 @@ body.account-setup-page:has(#accountSetupWizard[data-step="4"]) .account-setup-w
   margin-top: clamp(4px, 1vh, 12px);
   margin-bottom: 0;
   flex-shrink: 0;
-  max-width: 580px;
+  max-width: 660px;
 }
 body.account-setup-page .container > .grid:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active){
   width: min(760px, 92vw);
@@ -19319,7 +19319,7 @@ body.account-setup-page .account-setup-survey__otherInput{
 }
 /* Step 4: final onboarding moment — upper-middle anchor, confident scale */
 body.account-setup-page #accountSetupWizard[data-step="4"]{
-  max-width: min(580px, 92vw);
+  max-width: min(660px, 92vw);
   margin-top: 0;
   margin-bottom: 0;
 }
@@ -19344,7 +19344,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   color: color-mix(in srgb, var(--accent) 94%, #0a2418);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
-  margin: var(--as-wizard-title-subtitle-gap) auto 0.55rem;
+  margin: var(--as-wizard-title-subtitle-gap) auto 0.7rem;
   max-width: 34rem;
   font-size: clamp(0.875rem, 1.4vw, 0.9375rem);
   font-weight: 500;
@@ -19380,10 +19380,10 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   flex: 0 0 auto;
   min-height: 0;
 }
-body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active{
+body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active.auth-section__body{
   min-height: 0;
   flex: 0 0 auto;
-  padding: 16px 32px 10px;
+  padding: 22px 36px 14px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell.auth-section.card{
   margin-top: 0;
@@ -19413,12 +19413,12 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey
   color: rgba(100, 116, 139, 0.72);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
-  gap: 9px 12px;
+  gap: 12px 14px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt{
-  min-height: 48px;
-  padding: 9px 12px;
-  gap: 9px;
+  min-height: 56px;
+  padding: 11px 16px;
+  gap: 10px;
   border-color: rgba(17, 24, 39, 0.16);
   border-radius: 11px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
@@ -19436,7 +19436,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey
   box-shadow:
     0 0 0 1px rgba(11, 61, 46, 0.08),
     0 2px 8px rgba(11, 61, 46, 0.1);
-  padding-right: 20px;
+  padding-right: 22px;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt.is-active::after{
   background: linear-gradient(145deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 82%, #000) 100%);
@@ -19450,19 +19450,19 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey
   color: rgba(11, 61, 46, 0.62);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__label{
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 550;
   line-height: 1.32;
   color: rgba(30, 41, 59, 0.9);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__icon{
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   color: rgba(71, 85, 105, 0.72);
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__icon svg{
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   stroke-width: 2;
 }
 body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__finish-note{
@@ -19480,7 +19480,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  padding: 12px 32px 14px;
+  padding: 12px 36px 14px;
   margin-top: 2px;
   min-height: 60px;
   display: flex;
@@ -19563,8 +19563,8 @@ body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard
     padding-top: 12px;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__opt{
-    min-height: 44px;
-    padding: 7px 10px;
+    min-height: 52px;
+    padding: 10px 14px;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-survey__grid{
     gap: 7px 9px;
@@ -19608,7 +19608,7 @@ body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trus
   body.account-setup-page .container > .grid:has(#accountSetupWizard[data-step="4"]){
     justify-content: flex-start;
     padding-top: 8px;
-    max-width: min(580px, 94vw);
+    max-width: min(660px, 94vw);
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__eyebrow{
     font-size: clamp(1.22rem, 4.5vw, 1.48rem);
@@ -19618,11 +19618,11 @@ body.account-setup-page #accountSetupWizard[data-step="4"] ~ .account-setup-trus
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__subeyebrow{
     max-width: 22rem;
   }
-  body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active{
-    padding: 14px 22px 8px;
+  body.account-setup-page #accountSetupWizardPanel4.account-setup-wizard__panel--active.auth-section__body{
+    padding: 16px 20px 10px;
   }
   body.account-setup-page #accountSetupWizard[data-step="4"] .account-setup-wizard__shell .account-setup-actions--shell{
-    padding: 10px 22px 12px;
+    padding: 10px 20px 12px;
     justify-content: space-between;
     flex-wrap: nowrap;
     gap: 12px;
