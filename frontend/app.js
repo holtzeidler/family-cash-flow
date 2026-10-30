@@ -4330,7 +4330,7 @@ function categoryKindForComboboxField(fieldId) {
 }
 
 const TX_ADD_CATEGORY_CHIP_MAX = 3;
-const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Other Income"];
+const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Other Income", "Cash & ATM"];
 const TX_ADD_EXPENSE_CHIP_HINTS = [
   "Mortgage / Rent",
   "Utilities",
@@ -4338,6 +4338,7 @@ const TX_ADD_EXPENSE_CHIP_HINTS = [
   "Subscriptions",
   "Credit Card Payment",
   "Loan Payment",
+  "Cash & ATM",
   "Other Expense",
 ];
 let txAddCategoryChipsBound = false;
@@ -4347,6 +4348,9 @@ function categoryMatchesTransactionKind(cat, kind) {
   const k = String(kind || "expense").toLowerCase();
   const g = normalizeNameForCompare(cat.group_name || "");
   const n = normalizeNameForCompare(cat.name || "");
+  // Withdrawals and deposits share this category. The selected transaction
+  // type decides the balance effect; the name does not.
+  if (n === "cash & atm") return true;
   const incomeGroup =
     g === "income" ||
     g.includes("income") ||

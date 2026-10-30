@@ -532,7 +532,7 @@ const ACCOUNT_SETUP_CATEGORY_ITEMS = [
   { kind: "expense", group: "Loans & payments", value: "Credit Card Payment", label: "Credit Card Payment" },
   { kind: "expense", group: "Transfers & investing", value: "Transfers", label: "Transfers" },
   { kind: "expense", group: "Transfers & investing", value: "Investment", label: "Investment" },
-  { kind: "expense", group: "Transfers & investing", value: "Cash & ATM", label: "Cash & ATM" },
+  { kind: "both", group: "Transfers & investing", value: "Cash & ATM", label: "Cash & ATM" },
   { kind: "expense", group: "Other", value: "Insurance", label: "Insurance" },
   { kind: "expense", group: "Other", value: "Subscription", label: "Subscription" },
   { kind: "expense", group: "Other", value: "Charity", label: "Charity" },
@@ -596,10 +596,17 @@ function getAccountSetupCategoryKindForHiddenId(hiddenId) {
   return "";
 }
 
+function accountSetupCategoryItemMatchesKind(item, kind) {
+  const itemKind = String(item && item.kind || "").trim().toLowerCase();
+  const normalized = String(kind || "").trim().toLowerCase();
+  if (!normalized) return true;
+  return itemKind === normalized || itemKind === "both";
+}
+
 function getAccountSetupCategoryItemsForKind(kind) {
   const normalized = String(kind || "").trim().toLowerCase();
   if (!normalized) return [...ACCOUNT_SETUP_CATEGORY_ITEMS];
-  return ACCOUNT_SETUP_CATEGORY_ITEMS.filter((item) => String(item.kind || "").trim().toLowerCase() === normalized);
+  return ACCOUNT_SETUP_CATEGORY_ITEMS.filter((item) => accountSetupCategoryItemMatchesKind(item, normalized));
 }
 
 /** Preset row must match txn kind; custom labels are bound via data-as-category-kind on the hidden input. */
@@ -611,7 +618,7 @@ function accountSetupStoredCategoryMatchesKind(hidden, kind) {
   const item =
     ACCOUNT_SETUP_CATEGORY_ITEMS.find((e) => e.value === current) ||
     ACCOUNT_SETUP_CATEGORY_ITEMS.find((e) => e.label.trim().toLowerCase() === current.toLowerCase());
-  if (item) return String(item.kind || "").trim().toLowerCase() === normalizedKind;
+  if (item) return accountSetupCategoryItemMatchesKind(item, normalizedKind);
   const bound = String(hidden.dataset.asCategoryKindForCustom || "").trim().toLowerCase();
   if (bound) return bound === normalizedKind;
   return true;

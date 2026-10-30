@@ -99,6 +99,87 @@ def test_projected_balance_includes_starting_balance_income_and_expense():
     assert _money(by_date["2026-09-02"]["end"]) == Decimal("1175.00")
 
 
+def test_cash_and_atm_follows_the_selected_transaction_type():
+    """A shared Cash & ATM category must not decide the sign by its name."""
+    with TestClient(app) as client:
+        created = signup_verified(
+            client,
+            email="bw-smoke-cash-atm@example.com",
+            password="SmokeOnly1!",
+            first_name="Smoke",
+            last_name="Cash",
+        )
+        assert created.status_code == 200, created.text
+        family_id = int(created.json()["family_id"])
+
+        tree = client.get(f"/api/families/{family_id}/categories/tree")
+        assert tree.status_code == 200, tree.text
+        cash = next(
+            category
+            for group in tree.json()["groups"]
+            if group["name"] == "Savings & Transfers"
+            for category in group["categories"]
+            if category["name"] == "Cash & ATM"
+        )
+
+        account = client.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "1000.00",
+                "starting_balance_date": "2026-10-01",
+            },
+        )
+        assert account.status_code == 200, account.text
+
+        withdrawal = client.post(
+            f"/api/families/{family_id}/transactions",
+            json={
+                "date": "2026-10-02",
+                "kind": "expense",
+                "amount": "100.00",
+                "description": "ATM withdrawal",
+                "category_id": cash["id"],
+            },
+        )
+        assert withdrawal.status_code == 200, withdrawal.text
+        assert withdrawal.json()["category"] == "Cash & ATM"
+        assert withdrawal.json()["kind"] == "expense"
+
+        after_withdrawal = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-10"},
+        )
+        assert after_withdrawal.status_code == 200, after_withdrawal.text
+        days = {row["date"]: row for row in after_withdrawal.json()["days"]}
+        assert _money(days["2026-10-01"]["end"]) == Decimal("1000.00")
+        assert _money(days["2026-10-02"]["end"]) == Decimal("900.00")
+
+        deposit = client.post(
+            f"/api/families/{family_id}/transactions",
+            json={
+                "date": "2026-10-03",
+                "kind": "income",
+                "amount": "100.00",
+                "description": "Cash deposit",
+                "category_id": cash["id"],
+            },
+        )
+        assert deposit.status_code == 200, deposit.text
+        assert deposit.json()["category"] == "Cash & ATM"
+        assert deposit.json()["kind"] == "income"
+
+        after_deposit = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-10"},
+        )
+        assert after_deposit.status_code == 200, after_deposit.text
+        days = {row["date"]: row for row in after_deposit.json()["days"]}
+        assert _money(days["2026-10-02"]["end"]) == Decimal("900.00")
+        assert _money(days["2026-10-03"]["end"]) == Decimal("1000.00")
+
+
 def test_moved_expected_occurrence_updates_earlier_month_balance():
     """Moving 10/3 onto 9/30 must change September's ending balance.
 

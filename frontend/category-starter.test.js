@@ -21,7 +21,7 @@ function arrayAfter(label) {
 const income = arrayAfter("const TX_ADD_INCOME_CHIP_HINTS = ");
 const expense = arrayAfter("const TX_ADD_EXPENSE_CHIP_HINTS = ");
 
-assert(JSON.stringify(income) === JSON.stringify(["Paycheck", "Other Income"]), "income chips");
+assert(JSON.stringify(income) === JSON.stringify(["Paycheck", "Other Income", "Cash & ATM"]), "income chips");
 assert(
   JSON.stringify(expense) ===
     JSON.stringify([
@@ -31,10 +31,12 @@ assert(
       "Subscriptions",
       "Credit Card Payment",
       "Loan Payment",
+      "Cash & ATM",
       "Other Expense",
     ]),
   "expense chips"
 );
+assert(src.includes('if (n === "cash & atm") return true;'), "Cash & ATM follows the selected transaction type");
 assert(!src.includes("seed-defaults?force=true"), "load defaults must not replace an existing list");
 assert(!src.includes("maybeEnsureSystemUncategorizedGroup"), "do not create an empty Uncategorized group");
 assert(src.includes("function withoutEmptyUncategorizedGroup"), "hide an empty Uncategorized group");
