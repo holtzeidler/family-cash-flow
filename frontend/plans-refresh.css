@@ -10,23 +10,23 @@ body.plans-page.plans-page--polished:not(.checkout-page) .container > .grid{
 }
 
 body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero{
-  margin: 0.35rem auto 1.15rem;
-  max-width: 38rem;
+  margin: 0.55rem auto 1.65rem;
+  max-width: 36rem;
 }
 
 body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero__eyebrow{
   margin-bottom: 0.55rem;
   color: #0b3d2e;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.14em;
 }
 
 body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero__title{
-  margin: 0 0 0.7rem;
-  font-size: clamp(1.7rem, 4.2vw, 2.25rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.12;
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.5rem, 3.1vw, 1.95rem);
+  font-weight: 750;
+  letter-spacing: -0.028em;
+  line-height: 1.18;
   color: #122033;
 }
 
@@ -46,6 +46,11 @@ body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--p
   border: 1px solid rgba(11, 61, 46, 0.12);
   border-radius: 18px;
   box-shadow: 0 10px 30px -24px rgba(11, 61, 46, 0.45);
+  padding: 1.75rem 1.6rem 1.6rem;
+  gap: 1.35rem;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-card__head{
   gap: 1rem;
 }
 
@@ -67,16 +72,30 @@ body.plans-page.plans-page--polished:not(.checkout-page) .plan-cycle__opt:has(in
 body.plans-page.plans-page--polished:not(.checkout-page) .plan-cycle__badge{
   background: rgba(11, 61, 46, 0.1);
   color: #0b3d2e;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-cta-block .plan-sample{
+  margin-top: 0.75rem;
+  color: #5d6f66;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-cta-reassurance{
+  margin-top: 0.55rem;
+  font-weight: 400;
 }
 
 body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-features--outcomes{
-  gap: 0.55rem;
-  margin-top: 0.15rem;
-  color: #243044;
-  font-size: 0.95rem;
-  font-weight: 550;
-  line-height: 1.4;
+  gap: 0.72rem;
+  margin-top: 0.2rem;
+  color: #3d4d60;
+  font-size: 0.94rem;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 body.plans-page.plans-page--polished:not(.checkout-page) .plan-features__icon{
@@ -85,13 +104,13 @@ body.plans-page.plans-page--polished:not(.checkout-page) .plan-features__icon{
 }
 
 body.plans-page.plans-page--polished:not(.checkout-page) .plans-trustline{
-  margin: 1.15rem auto 0;
+  margin: 1.4rem auto 0;
   max-width: 34rem;
   text-align: center;
-  font-size: 0.9rem;
-  font-weight: 550;
-  line-height: 1.45;
-  color: #3d4d60;
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #8b97a3;
 }
 
 body.plans-page.plans-page--polished:not(.checkout-page) .app-footer{
@@ -99,11 +118,27 @@ body.plans-page.plans-page--polished:not(.checkout-page) .app-footer{
 }
 
 @media (max-width: 560px){
+  body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero{
+    margin-bottom: 1.25rem;
+  }
   body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero__title{
-    font-size: clamp(1.55rem, 7.2vw, 1.85rem);
+    font-size: clamp(1.38rem, 6vw, 1.58rem);
+    line-height: 1.2;
   }
   body.plans-page.plans-page--polished:not(.checkout-page) .container > .grid{
-    width: min(100% - 1.4rem, 40rem);
-    margin-top: 0.85rem;
+    width: min(100% - 1.5rem, 40rem);
+    margin-top: 0.7rem;
+  }
+  body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished{
+    padding: 1.3rem 1.15rem 1.25rem;
+    gap: 1.15rem;
+  }
+  body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-features--outcomes{
+    gap: 0.62rem;
+    font-size: 0.92rem;
+  }
+  body.plans-page.plans-page--polished:not(.checkout-page) .plans-trustline{
+    margin-top: 1.15rem;
+    font-size: 0.78rem;
   }
 }
