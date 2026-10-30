@@ -1105,17 +1105,30 @@ function accountSetupSavedAmountLabel(amount) {
   }
 }
 
-function accountSetupStep3MoreGuidance(incomeCount, expenseCount) {
-  const income = Number(incomeCount) || 0;
-  const expense = Number(expenseCount) || 0;
+function accountSetupStep3MoreGuidance(txs) {
+  const list = Array.isArray(txs) ? txs : [];
+  let income = 0;
+  let expense = 0;
+  let paycheckOnly = true;
+  for (const tx of list) {
+    const kind = String((tx && tx.kind) || "").trim().toLowerCase();
+    if (kind === "income") {
+      income += 1;
+      const category = String((tx && tx.category) || "").trim().toLowerCase();
+      if (category !== "paycheck") paycheckOnly = false;
+    } else if (kind === "expense") {
+      expense += 1;
+    }
+  }
   if (income > 0 && expense > 0) {
-    return "You're ready to continue. You can always add more transactions later.";
+    return "You're ready to continue. You can always add more later.";
   }
   if (income > 0) {
-    return "Your first transaction is saved. Add a bill to make your forecast more useful, or continue for now.";
+    const lead = paycheckOnly ? "Paycheck saved!" : "Income saved!";
+    return `${lead} Add a bill for a more complete forecast, or continue for now.`;
   }
   if (expense > 0) {
-    return "Your first transaction is saved. Add income to make your forecast more useful, or continue for now.";
+    return "Bill saved! Add income for a more complete forecast, or continue for now.";
   }
   return "";
 }
@@ -1136,8 +1149,7 @@ function renderAccountSetupStep3SavedList() {
   if (lead) lead.hidden = hasAny;
   if (more) {
     if (hasAny) {
-      const { incomeCount, expenseCount } = getAccountSetupTransactionCounts();
-      more.textContent = accountSetupStep3MoreGuidance(incomeCount, expenseCount);
+      more.textContent = accountSetupStep3MoreGuidance(txs);
     }
     more.hidden = !hasAny;
   }
