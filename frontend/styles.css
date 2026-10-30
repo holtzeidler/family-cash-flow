@@ -18538,6 +18538,35 @@ body.account-setup-page .form-row-h__field .money-input.money-input--currency in
   color: rgba(148, 163, 184, 0.95);
   font-weight: 400;
 }
+body.account-setup-page .money-input:has(#accountStartingBalance:placeholder-shown) .money-input__prefix{
+  color: rgba(148, 163, 184, 0.95);
+  font-weight: 400;
+}
+body.account-setup-page #accountStartingBalance::placeholder{
+  color: rgba(148, 163, 184, 0.95);
+  font-weight: 400;
+}
+body.account-setup-page #accountStartingBalanceDate{
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: normal;
+  font-variant: normal;
+}
+body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit,
+body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit-fields-wrapper,
+body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit-text,
+body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit-month-field,
+body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit-day-field,
+body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit-year-field,
+body.account-setup-page #accountStartingBalanceDate::-webkit-date-and-time-value{
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: normal;
+}
 body.account-setup-page .form-row-h__field .money-input input{
   display: block;
   width: 100%;
