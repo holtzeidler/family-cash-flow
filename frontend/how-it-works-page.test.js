@@ -21,6 +21,20 @@ check("how it works links the forecasting article", learn.indexOf('href="/foreca
 check("how it works links the safe-to-spend article", learn.indexOf('href="/safe-to-spend/"') !== -1);
 check("how it works links the expenses article", learn.indexOf('href="/recurring-and-irregular-expenses/"') !== -1);
 check("how it works keeps a closing call to action", learn.indexOf("Ready to see") !== -1);
+check("how it works shortens the planning section", learn.indexOf("Focus on the paychecks, bills, and larger expenses that change your checking balance.") !== -1);
+check("how it works states the three planning benefits", learn.indexOf("Recurring income and bills carry forward automatically.") !== -1 && learn.indexOf("Update your actual balance to keep your forecast grounded.") !== -1 && learn.indexOf("when you know they&rsquo;re coming.") !== -1);
+check("how it works drops the bordered planning cards", learn.indexOf("learn-rhythm__card") === -1);
+check("how it works keeps deeper reading as links", learn.indexOf('href="/forecasting-vs-budgeting/"') !== -1 && learn.indexOf("learn-deeper__list") !== -1);
+
+var plans = fs.readFileSync(path.join(root, "frontend/plans/index.html"), "utf8");
+check("pricing leads with one simple price", plans.indexOf("A clearer picture of your checking balance. One simple price.") !== -1);
+check("pricing describes the checking forecast trial", plans.indexOf("Start free for 14 days, then choose the plan that works for you.") !== -1);
+check("pricing drops interest-account copy", plans.indexOf("interest") === -1);
+check("pricing keeps both prices", plans.indexOf(">5.99<") !== -1 && plans.indexOf(">59.99<") !== -1 && plans.indexOf("Save 17%") !== -1 && plans.indexOf("Equivalent to $5.00/month") !== -1);
+check("pricing keeps the signup and sample actions", plans.indexOf('href="/account-setup/?fresh=1"') !== -1 && plans.indexOf('href="/preview/"') !== -1 && plans.indexOf("Start my free forecast") !== -1 && plans.indexOf("Try a sample forecast") !== -1);
+check("pricing states the four benefits", plans.indexOf("See your projected checking balance by day") !== -1 && plans.indexOf("Spot low-balance days before they happen") !== -1);
+check("pricing keeps one reassurance line", plans.indexOf("No bank connection required · About 10 minutes to set up · Cancel anytime") !== -1 && plans.indexOf("Simple pricing. No surprises.") === -1);
+check("pricing still discloses the trial", plans.indexOf("Free for 14 days · No credit card required") !== -1);
 check("how it works drops the homepage balance card", learn.indexOf("Balance outlook") === -1);
 check("how it works drops the repeated bank comparison", learn.indexOf("$4,862") === -1);
 check("how it works menu control stays Menu", learn.indexOf(">Menu<") !== -1);
