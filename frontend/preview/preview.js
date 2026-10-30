@@ -519,7 +519,7 @@
       sidebarMoney(model.income) +
       '</div></div><div class="total total--expense"><div class="k">Expenses</div><div class="v danger" id="previewExpenses">' +
       sidebarMoney(model.expense) +
-      '</div></div><div class="total total--net"><div class="k">Net</div><div class="v ' +
+      '</div></div><div class="total total--net"><div class="k">Net cash flow</div><div class="v ' +
       (model.net >= 0 ? "ok" : "danger") +
       '" id="previewNet">' +
       sidebarMoney(model.net) +

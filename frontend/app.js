@@ -16536,7 +16536,7 @@ function renderTotals(totals) {
           <span class="totals-compact__v danger">$${fmtMoneySidebarSummary(expense)}</span>
         </div>
         <div class="totals-compact__row totals-compact__row--net">
-          <span class="totals-compact__k">Net</span>
+          <span class="totals-compact__k">Net cash flow</span>
           <span class="totals-compact__v ${net >= 0 ? "ok" : "danger"}">$${fmtMoneySidebarSummary(net)}</span>
         </div>
       </div>`;
@@ -16553,7 +16553,7 @@ function renderTotals(totals) {
 
   const netEl = document.createElement("div");
   netEl.className = "total total--net";
-  netEl.innerHTML = `<div class="k">Net</div><div class="v ${netTone}">$${fmtMoneySidebarSummary(net)}</div>`;
+  netEl.innerHTML = `<div class="k">Net cash flow</div><div class="v ${netTone}">$${fmtMoneySidebarSummary(net)}</div>`;
 
   totalsEl.appendChild(incomeEl);
   totalsEl.appendChild(expenseEl);
@@ -17850,6 +17850,31 @@ let fastTxnTipShowTimer = null;
 let fastTxnTipHideTimer = null;
 let fastTxnTipScrollBound = false;
 
+function calendarTxLabelIsClipped(labelEl, fullName) {
+  const full = String(fullName || "").trim();
+  if (!full || !labelEl) return false;
+  const shown = String(labelEl.textContent || "").replace(/\s+$/g, "");
+  if (shown !== full) return true;
+  if (labelEl.clientWidth <= 0) return false;
+  return labelEl.scrollWidth > labelEl.clientWidth + 1;
+}
+
+/** Full name (and notes, when present) via the existing hover tip. Measured on hover so CSS ellipsis is already laid out. Click still opens the transaction. */
+function revealClippedCalendarTxLabels(cell) {
+  if (!cell) return;
+  cell.querySelectorAll(".cal-day-tx-line").forEach((line) => {
+    const fullName = String(line._calTipName || "").trim();
+    const noteStr = String(line._calTipNote || "").trim();
+    if (!fullName && !noteStr) return;
+    bindFastTxnTipHover(line, () => {
+      const labelEl = line.querySelector(".cal-tx-label");
+      const clipped = calendarTxLabelIsClipped(labelEl, fullName);
+      if (clipped && fullName) return noteStr ? `${fullName}\n${noteStr}` : fullName;
+      return noteStr;
+    });
+  });
+}
+
 function hideFastTxnTipNow() {
   if (fastTxnTipShowTimer) {
     clearTimeout(fastTxnTipShowTimer);
@@ -17902,9 +17927,12 @@ function positionFastTxnTip(anchorEl) {
  * Avoids native `title` delay; do not set `title` for the same text on this node.
  */
 function bindFastTxnTipHover(anchorEl, text) {
-  const t = String(text ?? "").trim();
-  if (!anchorEl || !t) return;
+  if (!anchorEl || text == null || text === "") return;
+  const resolve = () => String(typeof text === "function" ? text() : text ?? "").trim();
+  if (typeof text !== "function" && !resolve()) return;
   const onEnter = () => {
+    const t = resolve();
+    if (!t) return;
     if (fastTxnTipHideTimer) {
       clearTimeout(fastTxnTipHideTimer);
       fastTxnTipHideTimer = null;
@@ -17912,8 +17940,10 @@ function bindFastTxnTipHover(anchorEl, text) {
     if (fastTxnTipShowTimer) clearTimeout(fastTxnTipShowTimer);
     fastTxnTipShowTimer = window.setTimeout(() => {
       fastTxnTipShowTimer = null;
+      const shown = resolve();
+      if (!shown) return;
       const tip = ensureFastTxnTipEl();
-      tip.textContent = t;
+      tip.textContent = shown;
       tip.hidden = false;
       tip.classList.remove("fast-txn-tip--visible");
       positionFastTxnTip(anchorEl);
@@ -18377,7 +18407,13 @@ function renderCalendar() {
     cell.dataset.iso = iso;
     if (isBeforeStart) {
       cell.classList.add("cal-cell--before-start");
-      cell.setAttribute("title", "Before your starting balance date");
+      const startLabel = fmtDateLongDisplay(earliestStartIso);
+      cell.setAttribute(
+        "title",
+        startLabel
+          ? `Your forecast starts on ${startLabel}, when you entered your starting balance.`
+          : "Before your starting balance date"
+      );
     }
     const todayIso = toISODate(new Date());
     const isToday = iso === todayIso;
@@ -18385,7 +18421,7 @@ function renderCalendar() {
     const isReconciled = state.reconciledDates && state.reconciledDates.has(iso);
     const isVerifiedBalance = !!(state.verifiedBalances && state.verifiedBalances.has(iso));
     cell.innerHTML = `
-      <div class="cal-daynum"><span class="cal-daynum-num${isToday ? " is-today" : ""}">${dObj.getDate()}</span></div>
+      <div class="cal-daynum"><span class="cal-daynum-num${isToday ? " is-today" : ""}"${isToday ? ' aria-current="date"' : ""}>${dObj.getDate()}</span></div>
       <div class="cal-cell-fill"></div>
       <div class="cal-cell-stack">
         <div class="cal-forecast-note" hidden></div>
@@ -18496,6 +18532,8 @@ function renderCalendar() {
         const labelSpan = document.createElement("span");
         labelSpan.className = "cal-tx-label";
         labelSpan.textContent = `${label} `;
+        const fullLabel = String(labelRaw || "").trim();
+        if (fullLabel) labelSpan.setAttribute("aria-label", fullLabel);
 
         const labelWrap = document.createElement("span");
         labelWrap.className = "cal-tx-label-wrap";
@@ -18512,12 +18550,8 @@ function renderCalendar() {
 
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);
-        line.title = String(labelRaw || "").trim();
-
-        {
-          const noteStr = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
-          if (noteStr) bindFastTxnTipHover(line, noteStr);
-        }
+        line._calTipName = String(labelRaw || "").trim();
+        line._calTipNote = row.notes && String(row.notes).trim() ? String(row.notes).trim() : "";
 
         if (isExpected) {
           line.addEventListener("click", (e) => {
@@ -18725,6 +18759,7 @@ function renderCalendar() {
 
     bindCalendarCellAddTxClick(cell, iso);
     wrapper.appendChild(cell);
+    revealClippedCalendarTxLabels(cell);
     cells.push(cell);
   }
 
