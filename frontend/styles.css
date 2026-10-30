@@ -22886,7 +22886,7 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
 .cal-cell--no-tx .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone):not(.cal-balance--risk){
   font-size: clamp(11.75px, 1.28vw, 12.75px);
   font-weight: 560;
-  color: rgba(100, 116, 139, 0.48);
+  color: rgba(71, 85, 105, 0.88);
 }
 
 .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-watch):not(.cal-cell--bal-warn):not(.cal-cell--bal-risk):hover{
@@ -22922,14 +22922,14 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.038);
 }
 .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--bal-watch){
-  background: color-mix(in srgb, var(--accent) 16%, #fff);
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
   border-color: rgba(11, 61, 46, 0.28);
   box-shadow:
     0 1px 3px rgba(11, 61, 46, 0.09),
     inset 0 0 0 1.5px rgba(11, 61, 46, 0.16);
 }
 .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--bal-watch):hover{
-  background: color-mix(in srgb, var(--accent) 20%, #fff);
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
   border-color: rgba(11, 61, 46, 0.32);
   box-shadow:
     0 4px 14px rgba(11, 61, 46, 0.08),
@@ -24366,11 +24366,11 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .cal-stat.cal-balance.cal-balance--quiet{
   font-weight: 560;
-  color: rgba(51, 65, 85, 0.74);
+  color: rgba(51, 65, 85, 0.9);
 }
 .cal-stat.cal-balance.cal-balance--past-day{
   font-weight: 520;
-  color: rgba(148, 163, 184, 0.72);
+  color: rgba(100, 116, 139, 0.92);
   padding: 0;
   background: none;
   border: none;
@@ -24387,7 +24387,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.cal-balance.cal-balance--past-day.cal-balance--strong-inflow{
   font-weight: 520;
   font-size: clamp(12.25px, 1.32vw, 13.75px);
-  color: rgba(148, 163, 184, 0.72);
+  color: rgba(100, 116, 139, 0.92);
   padding: 0;
   background: none;
   border: none;
@@ -30867,7 +30867,9 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .calendar--mobile .cal-stat.cal-balance{
     font-size: 12.75px;
     font-weight: 550;
-    color: rgba(100, 116, 139, 0.72);
+  }
+  .calendar--mobile .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--risk):not(.cal-balance--below-floor):not(.cal-balance--watch-zone){
+    color: rgba(71, 85, 105, 0.92);
   }
   .calendar--mobile .cal-cell--density-sparse .cal-stat.cal-balance{
     font-size: 13px;
@@ -30875,7 +30877,9 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .calendar--mobile .cal-cell--no-tx .cal-stat.cal-balance{
     font-size: 12.5px;
     font-weight: 540;
-    color: rgba(100, 116, 139, 0.48);
+  }
+  .calendar--mobile .cal-cell--no-tx .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone):not(.cal-balance--risk){
+    color: rgba(71, 85, 105, 0.88);
   }
 
   /* Keep today / status / risk treatments readable above the quieter default balance. */
