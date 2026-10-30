@@ -19774,6 +19774,110 @@ body.account-setup-page .account-setup-step3-summary{
 body.account-setup-page .account-setup-step3-summary:not([hidden]){
   margin: -0.2rem auto 0.02rem;
 }
+body.account-setup-page .account-setup-step3-lead{
+  width: 93%;
+  max-width: 93%;
+  margin: 0 auto;
+  text-align: center;
+}
+body.account-setup-page .account-setup-step3-lead__title{
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  color: #12261f;
+}
+body.account-setup-page .account-setup-step3-lead__text{
+  margin: 0.35rem auto 0;
+  max-width: 28rem;
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: #5c6b76;
+}
+body.account-setup-page .account-setup-step3-saved{
+  width: 93%;
+  max-width: 93%;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  background: #f8faf9;
+  border-radius: 12px;
+}
+body.account-setup-page .account-setup-step3-saved__item{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main amount"
+    "meta amount";
+  column-gap: 0.75rem;
+  row-gap: 0.1rem;
+  align-items: center;
+  padding: 0.72rem 0.9rem;
+}
+body.account-setup-page .account-setup-step3-saved__item + .account-setup-step3-saved__item{
+  border-top: 1px solid rgba(11, 61, 46, 0.08);
+}
+body.account-setup-page .account-setup-step3-saved__main{
+  grid-area: main;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.45rem;
+}
+body.account-setup-page .account-setup-step3-saved__kind{
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #6b7c74;
+}
+body.account-setup-page .account-setup-step3-saved__name{
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #12261f;
+  overflow-wrap: anywhere;
+}
+body.account-setup-page .account-setup-step3-saved__meta{
+  grid-area: meta;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.35;
+  color: #6b7c74;
+  overflow-wrap: anywhere;
+}
+body.account-setup-page .account-setup-step3-saved__meta:empty{
+  display: none;
+}
+body.account-setup-page .account-setup-step3-saved__amount{
+  grid-area: amount;
+  justify-self: end;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #12261f;
+  white-space: nowrap;
+}
+body.account-setup-page .account-setup-step3-more{
+  width: 93%;
+  max-width: 93%;
+  margin: 0 auto;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #8b97a3;
+}
+body.account-setup-page .account-setup-step3-lead[hidden],
+body.account-setup-page .account-setup-step3-saved[hidden],
+body.account-setup-page .account-setup-step3-more[hidden]{
+  display: none;
+}
 body.account-setup-page .account-setup-step3-intro .account-setup-tx-choice-wrap{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -20088,6 +20192,15 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
   body.account-setup-page .account-setup-step3-intro .account-setup-tx-choice-wrap{
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+  body.account-setup-page .account-setup-step3-saved__item{
+    grid-template-areas:
+      "main amount"
+      "meta meta";
+    align-items: start;
+  }
+  body.account-setup-page .account-setup-step3-saved__amount{
+    align-self: center;
   }
   body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions--shell{
     flex-wrap: wrap;
