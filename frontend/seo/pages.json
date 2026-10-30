@@ -14,8 +14,8 @@
       "ogType": "website"
     },
     "learn/index.html": {
-      "title": "See Your Cash Flow Before It Happens — BalanceWhiz",
-      "description": "See what you have, what’s already spoken for, and where your checking balance is headed—without tracking every purchase or building a detailed budget.",
+      "title": "How It Works — BalanceWhiz",
+      "description": "Enter your checking balance, add the income and expenses you expect, and see the projected balance by day.",
       "canonicalPath": "/learn/",
       "index": true
     },

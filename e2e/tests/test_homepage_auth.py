@@ -32,7 +32,7 @@ def _expect_logged_out(page) -> None:
     expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_be_visible()
     expect(page.locator("a.landing-offer__cta.home-cta--guest")).to_have_text("Start my free forecast")
     expect(page.locator("#homeForecastLink")).to_be_hidden()
-    expect(page.locator("a.public-nav__link", has_text="Learn more")).to_be_visible()
+    expect(page.locator("a.public-nav__link", has_text="How It Works")).to_be_visible()
     expect(page.locator("a.public-nav__link", has_text="Pricing")).to_be_visible()
     expect(page.locator("a.home-cta--member")).to_have_count(2)
     for cta in page.locator("a.home-cta--member").all():
@@ -53,7 +53,7 @@ def _expect_logged_in(page) -> None:
     expect(page.locator("#homeForecastLink")).to_be_visible()
     expect(page.locator("#homeForecastLink")).to_have_text("My Forecast")
     expect(page.locator("#homeForecastLink")).to_have_attribute("href", MEMBER_CTA)
-    expect(page.locator("a.public-nav__link", has_text="Learn more")).to_be_visible()
+    expect(page.locator("a.public-nav__link", has_text="How It Works")).to_be_visible()
     expect(page.locator("a.public-nav__link", has_text="Pricing")).to_be_visible()
     expect(page.locator("a.home-cta--guest")).to_have_count(2)
     for cta in page.locator("a.home-cta--guest").all():
