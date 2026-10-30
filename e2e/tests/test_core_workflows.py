@@ -174,7 +174,7 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
 
     ready = page.locator("#bwForecastReadyModal.modal-overlay--open")
     expect(ready).to_be_visible()
-    expect(ready.locator("#bwForecastReadyTitle")).to_have_text("Your forecast is ready")
+    expect(ready.locator("#bwForecastReadyTitle")).to_have_text("Your first forecast is ready!")
     ready.locator("#bwForecastReadyStartTourBtn").click()
 
     back = page.locator("[data-bw-tour-back]")

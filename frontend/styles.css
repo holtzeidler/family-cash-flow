@@ -28195,7 +28195,7 @@ body.account-setup-page
 #bwForecastReadyModal .modal--forecast-ready > h3{
   width: 100%;
   max-width: 100%;
-  margin: 0 0 6px;
+  margin: 0 0 10px;
   padding: 0;
   text-align: center;
   border-radius: 0;
@@ -28227,8 +28227,9 @@ body.account-setup-page
 
 #bwForecastReadyModal .modal--forecast-ready{
   overflow: hidden;
-  max-width: 420px;
-  padding: 18px 22px 14px;
+  width: min(480px, calc(100vw - 32px));
+  max-width: 480px;
+  padding: 24px 28px 20px;
   box-sizing: border-box;
 }
 #bwForecastReadyModal .bw-forecast-ready__body{
@@ -28238,11 +28239,11 @@ body.account-setup-page
   line-height: 1.45;
 }
 #bwForecastReadyModal .bw-forecast-ready__tagline{
-  margin: 0 0 20px;
-  font-size: 0.86rem;
+  margin: 0 0 22px;
+  font-size: 0.94rem;
   font-weight: 500;
-  line-height: 1.32;
-  color: rgba(17, 24, 39, 0.64);
+  line-height: 1.45;
+  color: rgba(17, 24, 39, 0.72);
   text-align: center;
 }
 #bwForecastReadyModal .bw-forecast-ready__can-list{
@@ -28316,7 +28317,8 @@ body.account-setup-page
   font-size: 0.94rem;
   font-weight: 650;
   line-height: 1.25;
-  padding: 8px 14px;
+  min-height: 44px;
+  padding: 10px 16px;
   border-radius: 11px;
   border: 1px solid color-mix(in srgb, var(--accent) 78%, #0d1f18);
   background: var(--accent);
@@ -28341,7 +28343,8 @@ body.account-setup-page
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.25;
-  padding: 7px 14px;
+  min-height: 44px;
+  padding: 10px 16px;
   border-radius: 11px;
   border: 1px solid rgba(11, 61, 46, 0.18);
   background: #fff;
@@ -28360,12 +28363,12 @@ body.account-setup-page
   outline-offset: 2px;
 }
 #bwForecastReadyModal .bw-forecast-ready__reassure{
-  margin: 20px 0 0;
+  margin: 16px 0 0;
   text-align: center;
-  font-size: 0.72rem;
-  line-height: 1.32;
+  font-size: 0.78rem;
+  line-height: 1.4;
   font-weight: 500;
-  color: rgba(100, 116, 139, 0.62);
+  color: rgba(100, 116, 139, 0.72);
 }
 
 /* ---------------------------------------------------------------------- */
