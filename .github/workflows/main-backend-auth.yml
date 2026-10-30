@@ -90,3 +90,4 @@ jobs:
           node frontend/category-list-state.test.js
           node frontend/category-recurrence.test.js
           node frontend/category-create-state.test.js
+          node frontend/how-it-works-page.test.js
