@@ -1,0 +1,109 @@
+/* Pricing page presentation. Checkout pages also use plans-page--polished. */
+body.plans-page.plans-page--polished:not(.checkout-page){
+  background: #f7f8f7;
+  color: #122033;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .container > .grid{
+  width: min(100% - 2rem, 40rem);
+  margin: 1.15rem auto 2rem;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero{
+  margin: 0.35rem auto 1.15rem;
+  max-width: 38rem;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero__eyebrow{
+  margin-bottom: 0.55rem;
+  color: #0b3d2e;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero__title{
+  margin: 0 0 0.7rem;
+  font-size: clamp(1.7rem, 4.2vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  color: #122033;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero__subtitle{
+  max-width: 36rem;
+  font-size: clamp(0.98rem, 1.6vw, 1.08rem);
+  font-weight: 500;
+  line-height: 1.5;
+  color: #3d4d60;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plans-grid{
+  width: min(100%, 28rem);
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished{
+  border: 1px solid rgba(11, 61, 46, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px -24px rgba(11, 61, 46, 0.45);
+  gap: 1rem;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-price__sub,
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-price__equiv,
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-cta-reassurance{
+  color: #3d4d60;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-price__main,
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-price__currency{
+  color: #0b3d2e;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-cycle__opt:has(input:checked) .plan-cycle__label{
+  color: #0b3d2e;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-cycle__badge{
+  background: rgba(11, 61, 46, 0.1);
+  color: #0b3d2e;
+  font-weight: 700;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-card.plan-card--polished .plan-features--outcomes{
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+  color: #243044;
+  font-size: 0.95rem;
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plan-features__icon{
+  color: #0b3d2e;
+  margin-top: 0.12rem;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .plans-trustline{
+  margin: 1.15rem auto 0;
+  max-width: 34rem;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 550;
+  line-height: 1.45;
+  color: #3d4d60;
+}
+
+body.plans-page.plans-page--polished:not(.checkout-page) .app-footer{
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 560px){
+  body.plans-page.plans-page--polished:not(.checkout-page) .plans-hero__title{
+    font-size: clamp(1.55rem, 7.2vw, 1.85rem);
+  }
+  body.plans-page.plans-page--polished:not(.checkout-page) .container > .grid{
+    width: min(100% - 1.4rem, 40rem);
+    margin-top: 0.85rem;
+  }
+}
