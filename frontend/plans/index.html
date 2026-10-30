@@ -75,8 +75,9 @@
     <script src="/homepage-auth.js?v=4"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css?v=825" />
+    <link rel="stylesheet" href="../plans-refresh.css?v=3" />
   </head>
   <body class="plans-page plans-page--polished">
     
@@ -118,10 +119,9 @@
       <main id="main-content" class="grid">
         <section class="plans-hero" aria-labelledby="plansHeroTitle">
           <p class="plans-hero__eyebrow">Pricing</p>
-          <h1 id="plansHeroTitle" class="plans-hero__title">Know what cash is safe to use.</h1>
+          <h1 id="plansHeroTitle" class="plans-hero__title">Simple pricing. A clearer picture of your money.</h1>
           <p class="plans-hero__subtitle">
-            BalanceWhiz forecasts your upcoming cash flow so you can avoid overdrafts and decide when you may be
-            able to move money into your own interest-earning accounts. BalanceWhiz does not pay interest or move money.
+            See what&rsquo;s coming in, what&rsquo;s going out, and what you&rsquo;ll have left.
           </p>
         </section>
 
@@ -156,10 +156,6 @@
                   </div>
                   <p class="plan-price__equiv" data-price-equiv hidden>Equivalent to $5.00/month</p>
                 </div>
-
-                <p class="plan-price__caption">
-                  <span class="plan-price__free">Free for 14 days</span>
-                </p>
               </header>
 
               <div class="plan-cta-block">
@@ -170,40 +166,27 @@
                   aria-label="Start my free forecast. Free for 14 days."
                 >Start my free forecast</a>
                 <a class="plan-sample" href="/preview/">Try a sample forecast</a>
-                <p class="plan-cta-reassurance">No credit card required during your 14-day trial. Then $5.99 a month or $59.99 a year.</p>
+                <p class="plan-cta-reassurance">Free for 14 days · No credit card required</p>
               </div>
 
               <ul class="plan-features plan-features--outcomes" aria-label="What's included">
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span>See upcoming cash pressure before it happens</span></li>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>See your projected checking balance by day</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span><a href="/safe-to-spend/">Know what money can safely leave checking</a></span></li>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>Plan for bills, paychecks, and one-time expenses</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span>Forecast bills, paychecks, and transfers together</span></li>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>Spot low-balance days before they happen</span></li>
                 <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span><a href="/safe-to-spend/">Catch low-balance periods early</a></span></li>
-                <li><span class="plan-features__icon" aria-hidden="true">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </span><span>See when extra cash could earn interest in your own accounts</span></li>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span><span>Know when you have room to spend, save, or transfer</span></li>
               </ul>
             </article>
           </div>
 
-          <ul class="plans-trust" aria-label="What to expect">
-            <li><span class="plans-trust__check" aria-hidden="true">✓</span>No bank connection required</li>
-            <li><span class="plans-trust__check" aria-hidden="true">✓</span>No credit card required</li>
-            <li><span class="plans-trust__check" aria-hidden="true">✓</span>First forecast takes about 10 minutes</li>
-            <li><span class="plans-trust__check" aria-hidden="true">✓</span>Cancel anytime</li>
-          </ul>
-        </section>
-
-        <section class="plans-reassure" aria-labelledby="plansReassureTitle">
-          <h2 id="plansReassureTitle" class="plans-reassure__title">Simple pricing. No surprises.</h2>
-          <p class="plans-reassure__copy">Try BalanceWhiz free for 14 days. No credit card required. If it works for you, choose monthly or annual billing. Cancel anytime.</p>
+          <p class="plans-trustline">No bank connection required · About 10 minutes to set up · Cancel anytime</p>
         </section>
       </main>
 

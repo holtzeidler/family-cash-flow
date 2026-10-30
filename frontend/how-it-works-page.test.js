@@ -21,6 +21,17 @@ check("how it works links the forecasting article", learn.indexOf('href="/foreca
 check("how it works links the safe-to-spend article", learn.indexOf('href="/safe-to-spend/"') !== -1);
 check("how it works links the expenses article", learn.indexOf('href="/recurring-and-irregular-expenses/"') !== -1);
 check("how it works keeps a closing call to action", learn.indexOf("Ready to see") !== -1);
+
+var plans = fs.readFileSync(path.join(root, "frontend/plans/index.html"), "utf8");
+check("pricing leads with simple pricing", plans.indexOf("Simple pricing. A clearer picture of your money.") !== -1);
+check("pricing supporting line names what is left", plans.indexOf("See what&rsquo;s coming in, what&rsquo;s going out, and what you&rsquo;ll have left.") !== -1);
+check("pricing drops interest-account copy", plans.indexOf("interest") === -1);
+check("pricing keeps both prices", plans.indexOf(">5.99<") !== -1 && plans.indexOf(">59.99<") !== -1 && plans.indexOf("Save 17%") !== -1 && plans.indexOf("Equivalent to $5.00/month") !== -1);
+check("pricing keeps the signup and sample actions", plans.indexOf('href="/account-setup/?fresh=1"') !== -1 && plans.indexOf('href="/preview/"') !== -1 && plans.indexOf("Start my free forecast") !== -1 && plans.indexOf("Try a sample forecast") !== -1);
+check("pricing states the four benefits", plans.indexOf("See your projected checking balance by day") !== -1 && plans.indexOf("Spot low-balance days before they happen") !== -1);
+check("pricing keeps one reassurance line", plans.indexOf("No bank connection required · About 10 minutes to set up · Cancel anytime") !== -1 && plans.indexOf("Simple pricing. No surprises.") === -1);
+check("pricing still discloses the trial", plans.indexOf("Free for 14 days · No credit card required") !== -1);
+
 check("how it works drops the homepage balance card", learn.indexOf("Balance outlook") === -1);
 check("how it works drops the repeated bank comparison", learn.indexOf("$4,862") === -1);
 check("how it works menu control stays Menu", learn.indexOf(">Menu<") !== -1);
