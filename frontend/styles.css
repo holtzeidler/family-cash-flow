@@ -20180,10 +20180,10 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   margin: 0;
   padding: 0;
   font-size: 0.72rem;
-  line-height: 1.28;
-  font-weight: 450;
-  letter-spacing: 0.008em;
-  color: rgba(100, 116, 139, 0.6);
+  line-height: 1.35;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #6b7c74;
   text-align: right;
   width: 100%;
   max-width: none;
