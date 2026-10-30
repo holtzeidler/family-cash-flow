@@ -27,8 +27,8 @@ check("how it works drops the bordered planning cards", learn.indexOf("learn-rhy
 check("how it works keeps deeper reading as links", learn.indexOf('href="/forecasting-vs-budgeting/"') !== -1 && learn.indexOf("learn-deeper__list") !== -1);
 
 var plans = fs.readFileSync(path.join(root, "frontend/plans/index.html"), "utf8");
-check("pricing leads with one simple price", plans.indexOf("A clearer picture of your checking balance. One simple price.") !== -1);
-check("pricing describes the checking forecast trial", plans.indexOf("Start free for 14 days, then choose the plan that works for you.") !== -1);
+check("pricing leads with simple pricing", plans.indexOf("Simple pricing. A clearer picture of your money.") !== -1);
+check("pricing supporting line names what is left", plans.indexOf("See what&rsquo;s coming in, what&rsquo;s going out, and what you&rsquo;ll have left.") !== -1);
 check("pricing drops interest-account copy", plans.indexOf("interest") === -1);
 check("pricing keeps both prices", plans.indexOf(">5.99<") !== -1 && plans.indexOf(">59.99<") !== -1 && plans.indexOf("Save 17%") !== -1 && plans.indexOf("Equivalent to $5.00/month") !== -1);
 check("pricing keeps the signup and sample actions", plans.indexOf('href="/account-setup/?fresh=1"') !== -1 && plans.indexOf('href="/preview/"') !== -1 && plans.indexOf("Start my free forecast") !== -1 && plans.indexOf("Try a sample forecast") !== -1);

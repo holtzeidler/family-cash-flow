@@ -60,7 +60,7 @@ def test_public_pages(page, guard):
 
     pricing = page.goto("/plans/")
     assert_route_ok(pricing, "/plans/")
-    expect(page.get_by_role("heading", name="A clearer picture of your checking balance. One simple price.")).to_be_visible()
+    expect(page.get_by_role("heading", name="Simple pricing. A clearer picture of your money.")).to_be_visible()
     assert_no_horizontal_overflow(page)
 
     origin = page.url.split("/plans/")[0]
