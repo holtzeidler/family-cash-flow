@@ -78,7 +78,6 @@
         lead: "Great for:",
         items: ["Credit card payments", "Utilities", "Other changing bills"],
       },
-      note: "Fixed amounts can stay on autopilot.",
       ctaLabel: "Next",
       placement: ["right", "left", "below", "above"],
       targetExtraClass: "bw-tour-target--needs-review",
@@ -95,7 +94,7 @@
       findTarget: findCashHealthTarget,
       title: "Know before your balance gets too low",
       body:
-        "BalanceWhiz watches your forecast against the minimum balance you chose.\n\nIf a future day falls below your target, we’ll flag it so you can plan ahead.",
+        "BalanceWhiz will alert you if a future projected balance falls below the minimum you chose.\n\nThat can happen later, even when your balance is healthy today.",
       helperExample: readTourMinimumBalanceExample,
       note: "You can change this anytime.",
       ctaLabel: "Next",
@@ -108,9 +107,8 @@
       findTarget: findExpectedCalendarConfirmAnchor,
       title: "Keep your forecast accurate",
       body:
-        "Keep your forecast accurate by checking it against your actual bank balance.\n\nEverything matches? Reconcile to mark a checkpoint.\n\nBalance is different? Update your balance to start fresh. You don't need to fix every missed transaction.",
+        "Keep your forecast useful by checking it against your actual bank balance.\n\nEverything matches? Mark your balance as reconciled.\n\nSomething changed? Update your balance to start fresh.\n\nYou don't need to fix every missed transaction.",
       reconcilePreview: readTourReconcilePreview,
-      note: "Stay current when you can. Catch up easily when you can\u2019t.",
       ctaLabel: "Finish Tour",
       placement: ["right", "left", "above", "below"],
       retryable: true,
@@ -701,7 +699,7 @@
       .forEach((part) => {
         const para = document.createElement("span");
         para.className = "bw-tour-tooltip__para";
-        const lead = part.match(/^(Everything matches\?|Balance is different\?|Fallen behind\?)\s+([\s\S]*)$/);
+        const lead = part.match(/^(Everything matches\?|Something changed\?)\s+([\s\S]*)$/);
         if (lead) {
           const strong = document.createElement("strong");
           strong.textContent = lead[1];

@@ -202,7 +202,7 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     nxt.click()
     _expect_tour_step(page, "Keep your forecast accurate", "4 of 4", "bw-tour-target--reconcile-head")
     expect(nxt).to_have_text("Finish Tour")
-    expect(page.locator("[data-bw-tour-body]")).to_contain_text("Balance is different?")
+    expect(page.locator("[data-bw-tour-body]")).to_contain_text("Something changed?")
     expect(back).to_be_visible()
     expect(page.locator("[data-bw-tour-skip-link]")).to_be_visible()
     assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')") is None
