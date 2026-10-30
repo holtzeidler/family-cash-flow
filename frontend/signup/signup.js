@@ -1121,7 +1121,7 @@ function accountSetupStep3MoreGuidance(txs) {
     }
   }
   if (income > 0 && expense > 0) {
-    return "You're ready to continue. You can always add more later.";
+    return "You're ready to see your first forecast! You can always add more transactions later.";
   }
   if (income > 0) {
     const lead = paycheckOnly ? "Paycheck saved!" : "Income saved!";
@@ -1490,7 +1490,7 @@ function syncAccountSetupWizardShellButtons() {
         signupBtn.classList.remove("secondary");
         signupBtn.classList.add("top-nav__logout");
         signupBtn.disabled = totalCount < 1;
-        if (forecastReadyHint) forecastReadyHint.hidden = !hasMinForForecast;
+        if (forecastReadyHint) forecastReadyHint.hidden = true;
         if (continueGateHint) {
           continueGateHint.hidden = totalCount >= 1;
         }
@@ -1498,7 +1498,7 @@ function syncAccountSetupWizardShellButtons() {
         if (totalCount < 1) {
           signupBtn.setAttribute("aria-describedby", "accountSetupContinueGateHint");
         } else if (hasMinForForecast) {
-          signupBtn.setAttribute("aria-describedby", "accountSetupStep3ForecastReady");
+          signupBtn.setAttribute("aria-describedby", "accountSetupStep3More");
         }
       }
       if (accountSetupSkipBtn) accountSetupSkipBtn.style.display = "none";
