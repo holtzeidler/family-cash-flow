@@ -37,7 +37,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=843" />
+    <link rel="stylesheet" href="../styles.css?v=844" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -325,6 +325,11 @@
                   data-step3-phase="intro"
                 >
                   <div id="accountSetupWizardStep3Intro" class="account-setup-step3-intro">
+                    <div class="account-setup-step3-lead" id="accountSetupStep3Lead">
+                      <h2 class="account-setup-step3-lead__title">What would you like to add first?</h2>
+                      <p class="account-setup-step3-lead__text">Start with a regular paycheck or an upcoming bill. You can always add more later.</p>
+                    </div>
+                    <ul id="accountSetupStep3List" class="account-setup-step3-saved" hidden></ul>
                     <p id="accountSetupStep3Summary" class="account-setup-step3-summary" aria-live="polite" hidden></p>
                     <section class="account-setup-step3-section account-setup-step3-section--actions" aria-label="Add income or bill">
                       <div class="account-setup-tx-choice-wrap">
@@ -342,6 +347,7 @@
                         </button>
                       </div>
                     </section>
+                    <p class="account-setup-step3-more" id="accountSetupStep3More" hidden>You can add more anytime.</p>
                   </div>
                   <div id="accountSetupWizardStep3Form" class="account-setup-step3-form" hidden>
                   <div class="account-setup-step3-form__body">
@@ -745,7 +751,7 @@
               </div>
               <div class="account-setup-actions__forward">
                 <p id="accountSetupContinueGateHint" class="account-setup-continue-gateHint" hidden>
-                  Add at least one item to continue.
+                  Add your first transaction to continue.
                 </p>
                 <div class="account-setup-actions__txFormBtns">
                   <button type="button" id="asTxSaveIncomeBtn" class="top-nav__logout" style="display: none">
@@ -831,6 +837,6 @@
     </div>
 
     <script src="../signup/account-setup-finish-decision.js?v=3"></script>
-    <script src="../signup/signup.js?v=150"></script>
+    <script src="../signup/signup.js?v=151"></script>
   </body>
 </html>

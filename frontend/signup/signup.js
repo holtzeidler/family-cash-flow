@@ -1072,6 +1072,85 @@ function getAccountSetupTransactionCounts() {
   };
 }
 
+function accountSetupSavedRecurrenceLabel(value) {
+  const labels = {
+    monthly: "Every month",
+    twice_monthly: "Twice monthly",
+    biweekly: "Every 2 weeks",
+    weekly: "Every week",
+    quarterly: "Every 3 months",
+    semiannual: "Twice Yearly",
+    yearly: "Every year",
+  };
+  return labels[String(value || "").trim()] || "";
+}
+
+function accountSetupSavedDateLabel(iso) {
+  const date = parseAccountSetupIsoDate(iso);
+  if (!date) return "";
+  try {
+    return ACCOUNT_SETUP_LONG_DATE_FORMATTER.format(date);
+  } catch (_) {
+    return "";
+  }
+}
+
+function accountSetupSavedAmountLabel(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return "";
+  try {
+    return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  } catch (_) {
+    return `$${n}`;
+  }
+}
+
+function renderAccountSetupStep3SavedList() {
+  const list = document.getElementById("accountSetupStep3List");
+  const lead = document.getElementById("accountSetupStep3Lead");
+  const more = document.getElementById("accountSetupStep3More");
+  const summary = document.getElementById("accountSetupStep3Summary");
+  if (summary) {
+    summary.textContent = "";
+    summary.hidden = true;
+  }
+  let draft = {};
+  try { draft = readAccountSetupDraftRaw() || {}; } catch (_) { draft = {}; }
+  const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
+  const hasAny = txs.length > 0;
+  if (lead) lead.hidden = hasAny;
+  if (more) more.hidden = !hasAny;
+  if (!list) return;
+  list.replaceChildren();
+  list.hidden = !hasAny;
+  for (const tx of txs) {
+    const kind = String((tx && tx.kind) || "").trim().toLowerCase() === "income" ? "Income" : "Bill";
+    const name = String((tx && tx.category) || "").trim() || "Uncategorized";
+    const meta = [accountSetupSavedDateLabel(tx && tx.date), accountSetupSavedRecurrenceLabel(tx && tx.recurrence)]
+      .filter(Boolean)
+      .join(" · ");
+    const item = document.createElement("li");
+    item.className = "account-setup-step3-saved__item";
+    const main = document.createElement("div");
+    main.className = "account-setup-step3-saved__main";
+    const kindEl = document.createElement("span");
+    kindEl.className = "account-setup-step3-saved__kind";
+    kindEl.textContent = kind;
+    const nameEl = document.createElement("span");
+    nameEl.className = "account-setup-step3-saved__name";
+    nameEl.textContent = name;
+    main.append(kindEl, nameEl);
+    const metaEl = document.createElement("div");
+    metaEl.className = "account-setup-step3-saved__meta";
+    metaEl.textContent = meta;
+    const amountEl = document.createElement("div");
+    amountEl.className = "account-setup-step3-saved__amount";
+    amountEl.textContent = accountSetupSavedAmountLabel(tx && tx.amount);
+    item.append(main, metaEl, amountEl);
+    list.appendChild(item);
+  }
+}
+
 function formatAccountSetupStep3Summary(incomeCount, expenseCount) {
   const i = Number(incomeCount) || 0;
   const e = Number(expenseCount) || 0;
@@ -1096,24 +1175,23 @@ function syncAccountSetupStep3HubState() {
   const intro = document.getElementById("accountSetupWizardStep3Intro");
   if (!panel || !intro) return;
   const summary = document.getElementById("accountSetupStep3Summary");
-  const { incomeCount, expenseCount } = getAccountSetupTransactionCounts();
 
   if (summary) {
-    const text = formatAccountSetupStep3Summary(incomeCount, expenseCount);
-    summary.textContent = text;
-    summary.hidden = !text;
+    summary.textContent = "";
+    summary.hidden = true;
   }
+  try { renderAccountSetupStep3SavedList(); } catch (_) {}
 
-  const syncAction = (buttonId, count) => {
+  const syncAction = (buttonId) => {
     const button = document.getElementById(buttonId);
     if (button) {
       button.disabled = false;
-      button.classList.toggle("is-complete", count > 0);
+      button.classList.remove("is-complete");
     }
   };
 
-  syncAction("asTxHubAddIncomeBtn", incomeCount);
-  syncAction("asTxHubAddExpenseBtn", expenseCount);
+  syncAction("asTxHubAddIncomeBtn");
+  syncAction("asTxHubAddExpenseBtn");
 }
 
 function getAccountSetupExpensePhase() {
@@ -1238,7 +1316,7 @@ function getAccountSetupStepCopy(step, ctx) {
       }
       return {
         title: "Add your first income & expenses",
-        subtitle: "Add a paycheck and a bill or two to get started. You can add more later.",
+        subtitle: "Start building your checking forecast.",
       };
     }
     case 3:
@@ -1362,7 +1440,7 @@ function syncAccountSetupWizardShellButtons() {
       if (saveInc) saveInc.style.display = "inline-flex";
       if (cancelInc) cancelInc.style.display = "inline-flex";
       if (signupBtn) signupBtn.style.display = "none";
-      if (saveInc) saveInc.textContent = "Next";
+      if (saveInc) saveInc.textContent = isAccountSetupStep3AfterSave() ? "Next" : "Save transaction";
       if (cancelInc) cancelInc.textContent = "Cancel";
       if (addMoreTxBtn) addMoreTxBtn.style.display = "none";
       const msg = document.getElementById("accountSetupStep3Success");
@@ -4803,6 +4881,10 @@ try {
   }
 } catch (_) {}
 function handleAccountSetupBack(e) {
+  // pointerdown and click both reach this handler. One gesture should move one step.
+  const now = Date.now();
+  if (now - (handleAccountSetupBack._at || 0) < 400) return;
+  handleAccountSetupBack._at = now;
   // Avoid preventDefault here: on some browsers it can cancel the subsequent click,
   // making the Back button feel unresponsive.
   if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return;
