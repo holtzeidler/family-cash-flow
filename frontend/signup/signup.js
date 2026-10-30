@@ -1238,7 +1238,7 @@ function getAccountSetupStepCopy(step, ctx) {
       }
       return {
         title: "Add your first income & expenses",
-        subtitle: "Start with a few upcoming transactions. You can add the rest later.",
+        subtitle: "Add a paycheck and a bill or two to get started. You can add more later.",
       };
     }
     case 3:
