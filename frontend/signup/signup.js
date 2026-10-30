@@ -1105,6 +1105,21 @@ function accountSetupSavedAmountLabel(amount) {
   }
 }
 
+function accountSetupStep3MoreGuidance(incomeCount, expenseCount) {
+  const income = Number(incomeCount) || 0;
+  const expense = Number(expenseCount) || 0;
+  if (income > 0 && expense > 0) {
+    return "You're ready to continue. You can always add more transactions later.";
+  }
+  if (income > 0) {
+    return "Your first transaction is saved. Add a bill to make your forecast more useful, or continue for now.";
+  }
+  if (expense > 0) {
+    return "Your first transaction is saved. Add income to make your forecast more useful, or continue for now.";
+  }
+  return "";
+}
+
 function renderAccountSetupStep3SavedList() {
   const list = document.getElementById("accountSetupStep3List");
   const lead = document.getElementById("accountSetupStep3Lead");
@@ -1119,7 +1134,13 @@ function renderAccountSetupStep3SavedList() {
   const txs = Array.isArray(draft.transactions) ? draft.transactions : [];
   const hasAny = txs.length > 0;
   if (lead) lead.hidden = hasAny;
-  if (more) more.hidden = !hasAny;
+  if (more) {
+    if (hasAny) {
+      const { incomeCount, expenseCount } = getAccountSetupTransactionCounts();
+      more.textContent = accountSetupStep3MoreGuidance(incomeCount, expenseCount);
+    }
+    more.hidden = !hasAny;
+  }
   if (!list) return;
   list.replaceChildren();
   list.hidden = !hasAny;

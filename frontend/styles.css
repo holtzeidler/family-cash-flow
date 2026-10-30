@@ -20095,30 +20095,6 @@ body.account-setup-page .account-setup-step3-actionBtn__label{
   font-weight: 650;
   letter-spacing: 0.01em;
 }
-body.account-setup-page .account-setup-step3-intro:has(#accountSetupStep3List:not([hidden])) #asTxHubAddIncomeBtn.account-setup-step3-actionBtn,
-body.account-setup-page .account-setup-step3-intro:has(#accountSetupStep3List:not([hidden])) #asTxHubAddExpenseBtn.account-setup-step3-actionBtn{
-  min-height: 44px;
-  border-width: 1px;
-  border-color: rgba(11, 61, 46, 0.2);
-  background: transparent;
-  color: #5d6f66;
-  font-weight: 500;
-  box-shadow: none;
-}
-body.account-setup-page .account-setup-step3-intro:has(#accountSetupStep3List:not([hidden])) #asTxHubAddIncomeBtn .account-setup-step3-actionBtn__plus,
-body.account-setup-page .account-setup-step3-intro:has(#accountSetupStep3List:not([hidden])) #asTxHubAddExpenseBtn .account-setup-step3-actionBtn__plus,
-body.account-setup-page .account-setup-step3-intro:has(#accountSetupStep3List:not([hidden])) #asTxHubAddIncomeBtn .account-setup-step3-actionBtn__label,
-body.account-setup-page .account-setup-step3-intro:has(#accountSetupStep3List:not([hidden])) #asTxHubAddExpenseBtn .account-setup-step3-actionBtn__label{
-  color: #5d6f66;
-  font-weight: 500;
-}
-body.account-setup-page .account-setup-step3-intro:has(#accountSetupStep3List:not([hidden])) #asTxHubAddIncomeBtn.account-setup-step3-actionBtn:hover:not(:disabled),
-body.account-setup-page .account-setup-step3-intro:has(#accountSetupStep3List:not([hidden])) #asTxHubAddExpenseBtn.account-setup-step3-actionBtn:hover:not(:disabled){
-  background: rgba(11, 61, 46, 0.04);
-  border-color: rgba(11, 61, 46, 0.32);
-  transform: none;
-  filter: none;
-}
 body.account-setup-page .account-setup-actions__cluster{
   display: flex;
   flex-wrap: wrap;
