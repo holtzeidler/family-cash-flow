@@ -22803,14 +22803,14 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
 }
 .cal-daynum-num.is-today{
   /* Filled rounded-rect — visually distinct from circular reconcile marks */
-  background: color-mix(in srgb, var(--accent) 24%, #fff);
+  background: color-mix(in srgb, var(--accent) 34%, #fff);
   color: rgba(11, 61, 46, 0.98);
   font-weight: 700;
   height: 24px;
   min-width: 28px;
   padding: 0 9px;
   border-radius: 10px;
-  border: 1.5px solid rgba(11, 61, 46, 0.32);
+  border: 1.5px solid rgba(11, 61, 46, 0.5);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.58),
     0 1px 3px rgba(11, 61, 46, 0.12);
@@ -22921,19 +22921,19 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   border-color: rgba(17, 24, 39, 0.068);
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.038);
 }
-.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start){
-  background: color-mix(in srgb, var(--accent) 12%, #fff);
-  border-color: rgba(11, 61, 46, 0.24);
-  box-shadow:
-    0 1px 3px rgba(11, 61, 46, 0.09),
-    inset 0 0 0 1.5px rgba(11, 61, 46, 0.11);
-}
-.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  background: color-mix(in srgb, var(--accent) 15%, #fff);
+.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--bal-watch){
+  background: color-mix(in srgb, var(--accent) 16%, #fff);
   border-color: rgba(11, 61, 46, 0.28);
   box-shadow:
+    0 1px 3px rgba(11, 61, 46, 0.09),
+    inset 0 0 0 1.5px rgba(11, 61, 46, 0.16);
+}
+.cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn):not(.cal-cell--bal-watch):hover{
+  background: color-mix(in srgb, var(--accent) 20%, #fff);
+  border-color: rgba(11, 61, 46, 0.32);
+  box-shadow:
     0 4px 14px rgba(11, 61, 46, 0.08),
-    inset 0 0 0 1.5px rgba(11, 61, 46, 0.13);
+    inset 0 0 0 1.5px rgba(11, 61, 46, 0.18);
 }
 .cal-cell.cal-cell--payday:not(.cal-cell--out):not(.cal-cell--before-start):not(.cal-cell--bal-risk):not(.cal-cell--bal-warn){
   background: color-mix(in srgb, #ecfdf5 16%, #fff);
@@ -24524,6 +24524,7 @@ body[data-bw-view="transactions"] .tm__field label{
   opacity: 0;
   transition: opacity 70ms ease;
   word-wrap: break-word;
+  white-space: pre-line;
 }
 .fast-txn-tip.fast-txn-tip--visible{
   opacity: 1;
@@ -30726,9 +30727,9 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     display: inline-block;
     padding: 2px 8px;
     border-radius: 10px;
-    background: color-mix(in srgb, var(--accent) 24%, #fff);
+    background: color-mix(in srgb, var(--accent) 34%, #fff);
     color: rgba(11, 61, 46, 0.98);
-    border: 1.5px solid rgba(11, 61, 46, 0.32);
+    border: 1.5px solid rgba(11, 61, 46, 0.5);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.58),
       0 1px 3px rgba(11, 61, 46, 0.12);
