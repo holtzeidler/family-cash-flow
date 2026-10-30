@@ -40,7 +40,7 @@ assert(!src.includes("maybeEnsureSystemUncategorizedGroup"), "do not create an e
 assert(src.includes("function withoutEmptyUncategorizedGroup"), "hide an empty Uncategorized group");
 assert(src.includes("Add “${safe}” to ${safeGroup}"), "new category row names its group");
 assert(src.includes("function categoryMatchesTransactionKind"), "kind matching stays in place");
-assert(src.includes("function categoryImpliesMonthlyRecurrence"), "recurrence rules stay in place");
-assert(src.includes("function categoryImpliesTwiceMonthlyRecurrence"), "paycheck recurrence stays in place");
+assert(!src.includes("categoryImpliesMonthlyRecurrence"), "category names do not choose a monthly schedule");
+assert(!src.includes("categoryImpliesTwiceMonthlyRecurrence"), "paycheck does not choose a twice-monthly schedule");
 
 console.log("category starter checks ok");

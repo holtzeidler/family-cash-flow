@@ -8,14 +8,14 @@
   "pages": {
     "index.html": {
       "title": "BalanceWhiz — Checking Balance Forecast & Cash Flow Calendar",
-      "description": "See where your checking balance is headed before you spend, save, or move money. No bank connection or detailed budget. Free for 14 days.",
+      "description": "See what’s coming in, what’s going out, and what you’ll have left—before you spend or move money. No bank connection required. Free for 14 days.",
       "canonicalPath": "/",
       "index": true,
       "ogType": "website"
     },
     "learn/index.html": {
-      "title": "See Your Cash Flow Before It Happens — BalanceWhiz",
-      "description": "See what you have, what’s already spoken for, and where your checking balance is headed—without tracking every purchase or building a detailed budget.",
+      "title": "How It Works — BalanceWhiz",
+      "description": "Enter your checking balance, add the income and expenses you expect, and see the projected balance by day.",
       "canonicalPath": "/learn/",
       "index": true
     },

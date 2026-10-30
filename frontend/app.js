@@ -2154,88 +2154,9 @@ function syncInstanceSecondYearlyDateDefault() {
   if (inferred) instanceSecondDayOfMonth.value = inferred;
 }
 
-/** Mortgage/rent, utilities, and credit card categories usually repeat monthly. */
-function categoryImpliesMonthlyRecurrence(cat) {
-  if (!cat) return false;
-  const n = normalizeNameForCompare(cat.name || "");
-  const g = normalizeNameForCompare(cat.group_name || "");
-  const d = normalizeNameForCompare(categoryDisplayLabel(cat));
-  if (n === "mortgage/rent" || n === "mortgage rent") return true;
-  if ((n.includes("mortgage") && n.includes("rent")) || (d.includes("mortgage") && d.includes("rent"))) return true;
-  if (g.includes("mortgage") && g.includes("rent")) return true;
-  if (n === "credit card payment" || n.includes("credit card")) return true;
-  if (d.includes("credit card")) return true;
-  if (n === "utility" || n.includes("utility")) return true;
-  if (d.includes("utility")) return true;
-  if (g.includes("utility") || g.includes("utilities")) return true;
-  return false;
-}
-
-/** Paycheck income usually repeats twice per month. */
-function categoryImpliesTwiceMonthlyRecurrence(cat) {
-  if (!cat) return false;
-  const n = normalizeNameForCompare(cat.name || "");
-  const d = normalizeNameForCompare(categoryDisplayLabel(cat));
-  return n === "paycheck" || n.includes("paycheck") || d.includes("paycheck");
-}
-
-function resolveCategoryById(categoryId) {
-  const id = Number(categoryId);
-  if (!Number.isFinite(id)) return null;
-  return (state.categories || []).find((c) => Number(c.id) === id) || null;
-}
-
-function applyTxAddRecurrenceValue(value) {
-  if (!txAddRecurrence) return;
-  if (txAddRecurrence.value === value) {
-    updateTxAddRepeatingUi();
-    return;
-  }
-  txAddRecurrence.value = value;
-  txAddRecurrence.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-function applyTxAddCategoryRecurrenceDefaults(categoryId) {
-  if (!txAddRecurrence) return;
-  const kind = getRadioValue("txAddKind", "income");
-  const cat = resolveCategoryById(categoryId);
-  if (kind === "expense" && categoryImpliesMonthlyRecurrence(cat)) {
-    applyTxAddRecurrenceValue("monthly");
-    return;
-  }
-  if (kind === "income" && categoryImpliesTwiceMonthlyRecurrence(cat)) {
-    applyTxAddRecurrenceValue("twice_monthly");
-  }
-}
-
 function txEditScheduleRecurrenceActive() {
   const v = String(instanceRecurrence?.value || "once").trim().toLowerCase();
   return !!v && v !== "once";
-}
-
-function applyTxEditRecurrenceValue(value) {
-  if (!instanceRecurrence) return;
-  if (instanceRecurrence.value === value) {
-    updateTxEditActualScheduleUi();
-    updateInstanceTwiceMonthlyVisibility();
-    return;
-  }
-  instanceRecurrence.value = value;
-  instanceRecurrence.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-function applyTxEditCategoryRecurrenceDefaults(categoryId) {
-  if (!instanceRecurrence || transactionEditMode !== "actual") return;
-  if (txEditScheduleRecurrenceActive()) return;
-  const kind = getRadioValue("txEditKind", "expense");
-  const cat = resolveCategoryById(categoryId);
-  if (kind === "expense" && categoryImpliesMonthlyRecurrence(cat)) {
-    applyTxEditRecurrenceValue("monthly");
-    return;
-  }
-  if (kind === "income" && categoryImpliesTwiceMonthlyRecurrence(cat)) {
-    applyTxEditRecurrenceValue("twice_monthly");
-  }
 }
 
 function updateTxEditActualScheduleUi() {
@@ -4369,7 +4290,7 @@ function categoryGroupLabelForNewCategory(kind) {
   return categoryGroupNameById(gid) || "your list";
 }
 
-function showCategoryFieldNote(fieldId, message) {
+function showCategoryFieldNote(fieldId, message, opts = {}) {
   const st = categoryComboboxRegistry.get(fieldId);
   if (!st?.wrap) return;
   let note = st.wrap.querySelector(".category-add-note");
@@ -4379,7 +4300,26 @@ function showCategoryFieldNote(fieldId, message) {
     note.setAttribute("role", "status");
     st.wrap.appendChild(note);
   }
-  note.textContent = message || "";
+  note.replaceChildren();
+  const text = String(message || "");
+  note.dataset.categoryName = opts.categoryName || "";
+  if (!text) {
+    note.dataset.categoryName = "";
+    return;
+  }
+  const span = document.createElement("span");
+  span.textContent = text;
+  note.appendChild(span);
+  if (opts.retryName) {
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "category-add-note__retry";
+    retry.textContent = "Try again";
+    retry.addEventListener("click", () => {
+      void createCategoryFromCombobox(fieldId, opts.retryName);
+    });
+    note.appendChild(retry);
+  }
 }
 
 function showCategoryManagerNote(message) {
@@ -5240,7 +5180,6 @@ async function openTxEditModalAsync(tx) {
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("actual");
-  applyTxEditCategoryRecurrenceDefaults(tx.category_id);
   syncTransactionHistoryLink();
 }
 
@@ -12786,7 +12725,112 @@ function hideCategoryComboboxList(st) {
 function showCategoryComboboxList(st) {
   st.list.hidden = false;
   st.input.setAttribute("aria-expanded", "true");
+  fitCategoryComboboxList(st);
 }
+
+function fitCategoryComboboxList(st) {
+  if (!st?.list || !st.input) return;
+  const modal = st.wrap?.closest(".modal") || st.wrap?.closest(".modal-overlay");
+  st.list.style.top = "";
+  st.list.style.bottom = "";
+  st.list.style.maxHeight = "";
+  if (!modal) return;
+  const inputRect = st.input.getBoundingClientRect();
+  const modalRect = modal.getBoundingClientRect();
+  const below = modalRect.bottom - inputRect.bottom - 16;
+  const above = inputRect.top - modalRect.top - 16;
+  const cap = 12 * 16;
+  if (below >= 120 || below >= above) {
+    st.list.style.maxHeight = Math.max(88, Math.min(cap, below)) + "px";
+  } else {
+    st.list.style.top = "auto";
+    st.list.style.bottom = "calc(100% + 4px)";
+    st.list.style.maxHeight = Math.max(88, Math.min(cap, above)) + "px";
+  }
+}
+
+function setCategoryCreateSaveLock(locked) {
+  for (const id of ["txAddSave", "txEditSave"]) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    if (locked) {
+      if (btn.dataset.categoryCreateLock !== "1") {
+        btn.dataset.categoryCreatePrevDisabled = btn.disabled ? "1" : "0";
+      }
+      btn.dataset.categoryCreateLock = "1";
+      btn.disabled = true;
+    } else if (btn.dataset.categoryCreateLock === "1") {
+      btn.disabled = btn.dataset.categoryCreatePrevDisabled === "1";
+      delete btn.dataset.categoryCreateLock;
+      delete btn.dataset.categoryCreatePrevDisabled;
+    }
+  }
+}
+
+const CATEGORY_MANAGE_HELP_TEXT =
+  "You can add a new category here. To rename, delete, or organize existing categories, go to Settings → Categories.";
+
+function closeCategoryManageHelps(exceptPop) {
+  document.querySelectorAll(".category-manage-help__popover").forEach((pop) => {
+    const show = pop === exceptPop;
+    pop.hidden = !show;
+    const btn = pop.parentElement?.querySelector(".category-manage-help__btn");
+    if (btn) btn.setAttribute("aria-expanded", show ? "true" : "false");
+  });
+}
+
+function categoryManageHelpIsOpen() {
+  return !!document.querySelector(".category-manage-help__popover:not([hidden])");
+}
+
+function ensureCategoryManageHelp(fieldId) {
+  const label = document.querySelector(`label[for="${fieldId}"]`);
+  const host = label?.parentElement;
+  if (!host || host.querySelector(".category-manage-help")) return;
+  const helpId = `${fieldId}ManageHelp`;
+  const wrap = document.createElement("span");
+  wrap.className = "category-manage-help";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "category-manage-help__btn";
+  btn.textContent = "Manage categories?";
+  btn.setAttribute("aria-expanded", "false");
+  btn.setAttribute("aria-controls", helpId);
+  const pop = document.createElement("p");
+  pop.id = helpId;
+  pop.className = "category-manage-help__popover";
+  pop.hidden = true;
+  pop.setAttribute("role", "note");
+  pop.textContent = CATEGORY_MANAGE_HELP_TEXT;
+  wrap.appendChild(btn);
+  wrap.appendChild(pop);
+  host.appendChild(wrap);
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeCategoryManageHelps(pop.hidden ? pop : null);
+  });
+}
+
+for (const fieldId of ["txAddCategoryId", "txEditCategoryId"]) ensureCategoryManageHelp(fieldId);
+
+document.addEventListener("click", (e) => {
+  if (!categoryManageHelpIsOpen()) return;
+  const target = e.target;
+  if (target && target.closest && target.closest(".category-manage-help")) return;
+  closeCategoryManageHelps(null);
+});
+
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key !== "Escape" || !categoryManageHelpIsOpen()) return;
+    closeCategoryManageHelps(null);
+    e.preventDefault();
+    e.stopPropagation();
+  },
+  true
+);
 
 function getCategoryComboboxActiveIndex(st) {
   const els = Array.from(st.list.querySelectorAll("li.category-combobox__option"));
@@ -12808,12 +12852,10 @@ function selectCategoryComboboxChoice(fieldId, catId, name) {
   st.hidden.value = String(catId);
   st.input.value = name;
   hideCategoryComboboxList(st);
+  showCategoryFieldNote(fieldId, "");
   if (fieldId === "txAddCategoryId") {
-    applyTxAddCategoryRecurrenceDefaults(catId);
     refreshTxAddCategoryChipActiveState();
     updateTxAddFormValidity();
-  } else if (fieldId === "txEditCategoryId") {
-    applyTxEditCategoryRecurrenceDefaults(catId);
   }
 }
 
@@ -12839,8 +12881,6 @@ function normalizeCategoryComboboxInput(fieldId) {
   if (exact.length === 1) {
     st.hidden.value = String(exact[0].id);
     st.input.value = categoryDisplayLabel(exact[0]);
-    if (fieldId === "txAddCategoryId") applyTxAddCategoryRecurrenceDefaults(exact[0].id);
-    else if (fieldId === "txEditCategoryId") applyTxEditCategoryRecurrenceDefaults(exact[0].id);
     return;
   }
   const subs = (st.categories || []).filter((c) => {
@@ -12852,8 +12892,6 @@ function normalizeCategoryComboboxInput(fieldId) {
   if (subs.length === 1) {
     st.hidden.value = String(subs[0].id);
     st.input.value = categoryDisplayLabel(subs[0]);
-    if (fieldId === "txAddCategoryId") applyTxAddCategoryRecurrenceDefaults(subs[0].id);
-    else if (fieldId === "txEditCategoryId") applyTxEditCategoryRecurrenceDefaults(subs[0].id);
     return;
   }
   st.input.value = "";
@@ -12939,40 +12977,81 @@ function applyCategoryComboboxPickFromLi(fieldId, li) {
 
 async function createCategoryFromCombobox(fieldId, rawName) {
   const name = String(rawName || "").trim();
-  if (!name) return;
-  if (categoryComboboxCreateInFlight.has(fieldId)) return;
+  const session = beginCategoryCreate(categoryComboboxCreateInFlight.has(fieldId), name);
+  if (!session.started) return;
 
-  const existingAnywhere = (state.categories || []).find(
-    (c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name),
-  );
-  if (existingAnywhere) {
-    selectCategoryComboboxChoice(fieldId, existingAnywhere.id, categoryDisplayLabel(existingAnywhere));
+  const kind = categoryKindForComboboxField(fieldId);
+  const gid = categoryGroupIdForNewCategory(kind);
+  const resolution = categoryCreateResolution(name, state.categories || [], gid);
+  if (resolution.action === "reuse" && resolution.category) {
+    selectCategoryComboboxChoice(fieldId, resolution.category.id, categoryDisplayLabel(resolution.category));
     return;
   }
 
   const st = categoryComboboxRegistry.get(fieldId);
-  if (st) hideCategoryComboboxList(st);
   categoryComboboxCreateInFlight.add(fieldId);
+  if (st) {
+    hideCategoryComboboxList(st);
+    st.hidden.value = "";
+    st.input.value = name;
+    st.input.readOnly = true;
+    st.input.setAttribute("aria-busy", "true");
+  }
+  showCategoryFieldNote(fieldId, session.note || "Creating category…", { categoryName: name });
+  setCategoryCreateSaveLock(true);
   try {
     if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
-    const kind = categoryKindForComboboxField(fieldId);
-    const gid = categoryGroupIdForNewCategory(kind);
     if (gid == null || !Number.isFinite(Number(gid))) throw new Error("No category group available yet.");
     const groupLabel = categoryGroupNameById(gid) || "your list";
     const created = await addCategoryToGroup(gid, name);
-    if (!created) return;
+    if (!created) {
+      if (st) st.input.value = name;
+      showCategoryFieldNote(fieldId, "");
+      return;
+    }
     const pick =
       created && created.id != null
         ? created
         : (state.categories || []).find((c) => normalizeNameForCompare(c?.name) === normalizeNameForCompare(name));
+    const done = finishCategoryCreate(session, {
+      ok: !!pick,
+      category: pick,
+      groupLabel,
+      error: pick ? "" : `Couldn't create ${name}.`,
+    });
     if (pick) {
       selectCategoryComboboxChoice(fieldId, pick.id, categoryDisplayLabel(pick));
-      showCategoryFieldNote(fieldId, `Added ${name} to ${groupLabel}.`);
+      showCategoryFieldNote(fieldId, done.note, { categoryName: name });
+    } else if (st) {
+      st.hidden.value = "";
+      st.input.value = name;
+      showCategoryFieldNote(fieldId, done.note, { categoryName: name, retryName: name });
     }
   } catch (err) {
-    window.alert(err.message || "Failed to add category");
+    try {
+      await loadCategories();
+    } catch (_) {}
+    const again = categoryCreateResolution(name, state.categories || [], gid);
+    if (again.action === "reuse" && again.category) {
+      selectCategoryComboboxChoice(fieldId, again.category.id, categoryDisplayLabel(again.category));
+      return;
+    }
+    const done = finishCategoryCreate(session, {
+      ok: false,
+      error: err.message || `Couldn't create ${name}.`,
+    });
+    if (st) {
+      st.hidden.value = "";
+      st.input.value = name;
+    }
+    showCategoryFieldNote(fieldId, done.note, { categoryName: name, retryName: name });
   } finally {
     categoryComboboxCreateInFlight.delete(fieldId);
+    if (st) {
+      st.input.readOnly = false;
+      st.input.removeAttribute("aria-busy");
+    }
+    setCategoryCreateSaveLock(false);
   }
 }
 
@@ -13032,6 +13111,10 @@ function onCategoryComboboxKeydown(e, fieldId) {
 function onCategoryComboboxInput(fieldId) {
   const st = categoryComboboxRegistry.get(fieldId);
   if (!st) return;
+  if (categoryComboboxCreateInFlight.has(fieldId)) return;
+  const note = st.wrap?.querySelector(".category-add-note");
+  const confirmedName = note?.dataset?.categoryName || "";
+  if (categoryNoteAfterTyping(confirmedName, st.input.value) === "") showCategoryFieldNote(fieldId, "");
   const raw = st.input.value.trim();
   if (!raw) {
     st.hidden.value = "";
@@ -13079,6 +13162,7 @@ function mountCategoryComboboxFromSelect(selectEl) {
   list.hidden = true;
 
   selectEl.replaceWith(wrap);
+
   wrap.appendChild(input);
   wrap.appendChild(hidden);
   wrap.appendChild(list);
@@ -13214,20 +13298,14 @@ function setCategoryFieldValue(fieldId, categoryIdOrNull) {
       st.input.value = cat ? categoryDisplayLabel(cat) : "";
     }
     refreshTxCategoryColorPickers();
-    if (fieldId === "txAddCategoryId") {
-      if (categoryIdOrNull != null && categoryIdOrNull !== "") applyTxAddCategoryRecurrenceDefaults(categoryIdOrNull);
-      refreshTxAddCategoryChipActiveState();
-    }
+    if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
     return;
   }
   if (el instanceof HTMLSelectElement) {
     el.value = categoryIdOrNull != null && categoryIdOrNull !== "" ? String(categoryIdOrNull) : "";
   }
   refreshTxCategoryColorPickers();
-  if (fieldId === "txAddCategoryId") {
-    if (categoryIdOrNull != null && categoryIdOrNull !== "") applyTxAddCategoryRecurrenceDefaults(categoryIdOrNull);
-    refreshTxAddCategoryChipActiveState();
-  }
+  if (fieldId === "txAddCategoryId") refreshTxAddCategoryChipActiveState();
 }
 
 function ensureCategoryComboDocClick() {
@@ -13929,22 +14007,13 @@ function renderCategoriesGrid(tree) {
   const pane = categoriesTree.closest("[data-cats-pane]") || document;
   const emptyEl = pane.querySelector("#categoriesEmpty");
   if (!groups.length) {
-    if (emptyEl) emptyEl.hidden = false;
-    categoriesTree.hidden = true;
+    applyCategoryListView(0);
     return;
   }
   if (emptyEl) emptyEl.hidden = true;
   categoriesTree.hidden = false;
 
   const collapsedGroupIds = readCollapsedCategoryGroupIds();
-  let maxCategoryUsage = 0;
-  for (const g of groups) {
-    for (const c of g.categories || []) {
-      maxCategoryUsage = Math.max(maxCategoryUsage, categoryAssignmentsForCategoryId(c.id));
-    }
-  }
-  const frequentUsageThreshold =
-    maxCategoryUsage > 0 ? Math.max(3, Math.ceil(maxCategoryUsage * 0.55)) : Infinity;
 
   function clearDragUi() {
     categoriesTree
@@ -14092,8 +14161,6 @@ function renderCategoriesGrid(tree) {
     handle.draggable = true;
 
     const nUse = categoryAssignmentsForCategoryId(c.id);
-    if (nUse === 0) row.classList.add("is-unused");
-    else if (nUse >= frequentUsageThreshold) row.classList.add("is-frequent");
 
     const meta = document.createElement("span");
     meta.className = "cats-cat__meta";
@@ -14528,6 +14595,7 @@ function renderCategoriesGrid(tree) {
   for (const g of groups) {
     categoriesTree.appendChild(mountGroupCard(g));
   }
+  applyCategoryListView(groups.length);
 }
 
 function categoryDisplayLabel(c) {
@@ -14616,18 +14684,95 @@ async function persistCategoryTreeFromDom() {
   }
 }
 
-async function loadCategories() {
+let categoryListStatus = "idle";
+let categoriesLoadInFlight = null;
+
+function applyCategoryListView(groupCount) {
+  const view = categoryListView(categoryListStatus, groupCount);
+  const pane = document.querySelector("[data-cats-pane]");
+  if (!pane) return view;
+  const tree = pane.querySelector("#categoriesTree");
+  const emptyEl = pane.querySelector("#categoriesEmpty");
+  let statusEl = pane.querySelector("#categoriesLoadStatus");
+  if (!statusEl && tree) {
+    statusEl = document.createElement("div");
+    statusEl.id = "categoriesLoadStatus";
+    statusEl.className = "cats-pane__status";
+    statusEl.setAttribute("role", "status");
+    tree.insertAdjacentElement("beforebegin", statusEl);
+  }
+  if (statusEl) {
+    statusEl.hidden = !(view.showLoading || view.showError);
+    statusEl.replaceChildren();
+    if (view.showLoading) {
+      const text = document.createElement("p");
+      text.className = "cats-pane__status-text";
+      text.textContent = "Loading your categories…";
+      statusEl.appendChild(text);
+    } else if (view.showError) {
+      const text = document.createElement("p");
+      text.className = "cats-pane__status-text";
+      text.textContent = "We couldn't load your categories. Please try again.";
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "cats-pane__action";
+      retry.textContent = "Retry";
+      retry.addEventListener("click", () => {
+        void loadCategories();
+      });
+      statusEl.appendChild(text);
+      statusEl.appendChild(retry);
+    }
+  }
+  if (emptyEl) emptyEl.hidden = !view.showEmpty;
+  if (tree && (view.showLoading || view.showError || view.showEmpty || view.showTree)) {
+    tree.hidden = !view.showTree;
+  }
+  const addGroup = document.getElementById("addCategoryGroupBtn");
+  const addCat = document.getElementById("focusNewCategoryBtn");
+  if (addGroup) addGroup.disabled = !view.allowAdd;
+  if (addCat) addCat.disabled = !view.allowAdd;
+  pane.setAttribute("aria-busy", view.showLoading ? "true" : "false");
+  return view;
+}
+
+async function loadCategoriesOnce() {
   if (!state.activeFamilyId) return;
-  await flushCategoryTreePersistIfPending();
-  let tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
-  tree = withoutEmptyUncategorizedGroup(tree);
-  applyCategoryTreeToState(tree);
-  await loadCategoryUsageSummary();
-  refreshCategoriesManagerChrome();
-  renderCategoriesGrid(state.categoryTree);
+  const initial = categoryListStatus !== "ready";
+  if (initial) {
+    categoryListStatus = "loading";
+    applyCategoryListView(0);
+  }
   try {
-    renderTxAddCategoryChips();
-  } catch (_) {}
+    await flushCategoryTreePersistIfPending();
+    let tree = await api(`/api/families/${state.activeFamilyId}/categories/tree`, "GET");
+    tree = withoutEmptyUncategorizedGroup(tree);
+    categoryListStatus = "ready";
+    applyCategoryTreeToState(tree);
+    await loadCategoryUsageSummary();
+    refreshCategoriesManagerChrome();
+    renderCategoriesGrid(state.categoryTree);
+    try {
+      renderTxAddCategoryChips();
+    } catch (_) {}
+  } catch (e) {
+    if (categoryListStatus !== "ready") {
+      categoryListStatus = "error";
+      applyCategoryListView(0);
+    } else {
+      show(catErr, e?.message || "We couldn't refresh your categories. Please try again.");
+    }
+    throw e;
+  }
+}
+
+function loadCategories() {
+  if (categoriesLoadInFlight) return categoriesLoadInFlight;
+  const run = loadCategoriesOnce();
+  categoriesLoadInFlight = run.finally(() => {
+    categoriesLoadInFlight = null;
+  });
+  return categoriesLoadInFlight;
 }
 
 function categoryStyleFromId(categoryId) {
@@ -23200,6 +23345,8 @@ async function main() {
       } catch (_) {}
     }
   }
+  let categoriesBootstrap = null;
+  if (state.activeFamilyId) categoriesBootstrap = loadCategories();
   syncHouseholdSettingsUi();
   if (window.__BW_FORCE_VIEW === "settings") {
     try {
@@ -23239,7 +23386,7 @@ async function main() {
   } catch (_) {}
   if (state.activeFamilyId) {
     try {
-      await loadCategories();
+      await (categoriesBootstrap || loadCategories());
     } catch (e) {
       try {
         if (window.console && console.warn) console.warn("[categories]", e && e.message);

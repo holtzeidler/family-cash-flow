@@ -6,13 +6,13 @@
     <script src="/ga.js?v=6"></script>
     <title>BalanceWhiz — Checking Balance Forecast & Cash Flow Calendar</title>
     <!-- bw:seo-head -->
-    <meta name="description" content="See where your checking balance is headed before you spend, save, or move money. No bank connection or detailed budget. Free for 14 days." />
+    <meta name="description" content="See what’s coming in, what’s going out, and what you’ll have left—before you spend or move money. No bank connection required. Free for 14 days." />
     <link rel="canonical" href="https://balancewhiz.com/" />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#0B3D2E" />
     <meta property="og:site_name" content="BalanceWhiz" />
     <meta property="og:title" content="BalanceWhiz — Checking Balance Forecast &amp; Cash Flow Calendar" />
-    <meta property="og:description" content="See where your checking balance is headed before you spend, save, or move money. No bank connection or detailed budget. Free for 14 days." />
+    <meta property="og:description" content="See what’s coming in, what’s going out, and what you’ll have left—before you spend or move money. No bank connection required. Free for 14 days." />
     <meta property="og:url" content="https://balancewhiz.com/" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://balancewhiz.com/assets/og-image.png" />
@@ -22,7 +22,7 @@
     <meta property="og:locale" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="BalanceWhiz — Checking Balance Forecast &amp; Cash Flow Calendar" />
-    <meta name="twitter:description" content="See where your checking balance is headed before you spend, save, or move money. No bank connection or detailed budget. Free for 14 days." />
+    <meta name="twitter:description" content="See what’s coming in, what’s going out, and what you’ll have left—before you spend or move money. No bank connection required. Free for 14 days." />
     <meta name="twitter:image" content="https://balancewhiz.com/assets/og-image.png" />
     <meta name="twitter:image:alt" content="BalanceWhiz — know your future checking balance. Cash flow forecasting with no bank connection required." />
     <link rel="icon" href="./favicon.ico" sizes="any" />
@@ -79,8 +79,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=825" />
-    <link rel="stylesheet" href="./public-auth.css?v=3" />
-    <link rel="stylesheet" href="./landing-marketing.css?v=22" />
+    <link rel="stylesheet" href="./public-auth.css?v=4" />
+    <link rel="stylesheet" href="./landing-marketing.css?v=27" />
     <script>window.API_BASE = "__API_BASE__";</script>
     <style>
       html:not([data-bw-home-auth="in"]) #homeLogoutBtn,
@@ -98,47 +98,47 @@
         justify-content: center;
         margin: 0;
       }
-      body.landing-page .landing-hero__cta,
-      body.landing-page .landing-hero__sample {
+      body.landing-page .landing-hero__cta {
         box-sizing: border-box;
         width: min(100%, 20rem);
         max-width: 20rem;
       }
       body.landing-page .landing-hero__sample {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin: 8px 0 0;
-        padding: 0 1.45rem;
+        display: inline;
+        width: auto;
+        max-width: none;
         min-height: 44px;
-        background: #fff;
-        color: #0b3d2e;
-        font-size: 0.98rem;
-        font-weight: 700;
-        letter-spacing: 0.012em;
-        line-height: 1.2;
-        text-align: center;
-        text-decoration: none;
-        border-radius: 11px;
-        border: 1px solid rgba(11, 61, 46, 0.28);
+        margin: 0.55rem 0 0;
+        padding: 0.4rem 0;
+        background: none;
+        border: none;
+        border-radius: 0;
         box-shadow: none;
+        color: #0b3d2e;
+        font-size: 0.95rem;
+        font-weight: 650;
+        line-height: 1.3;
+        text-align: inherit;
+        text-decoration: underline;
+        text-underline-offset: 0.18em;
       }
-      body.landing-page .landing-hero__sample:hover {
-        background: rgba(11, 61, 46, 0.04);
-        text-decoration: none;
+      body.landing-page .landing-hero__sample:hover,
+      body.landing-page .landing-hero__sample:focus-visible {
+        background: none;
+        color: #0b3d2e;
+        text-decoration: underline;
       }
       body.landing-page .landing-hero__sample:focus-visible {
         outline: 2px solid #0b3d2e;
         outline-offset: 3px;
-        text-decoration: none;
       }
       body.landing-page .landing-hero__trial {
-        margin: 1.15rem 0 0;
+        margin: 0.35rem 0 0;
         color: #243044;
         font-size: 0.84rem;
         font-weight: 650;
         line-height: 1.35;
-        text-align: center;
+        text-align: inherit;
       }
     </style>
     <script>
@@ -178,7 +178,7 @@
               <button type="button" class="public-nav__toggle" aria-expanded="false" aria-controls="publicNavMenu">Menu</button>
               <div class="public-nav__panel" id="publicNavMenu">
                 <a class="public-nav__link" href="/" aria-current="page">Home</a>
-                <a class="public-nav__link" href="/learn/">Learn more</a>
+                <a class="public-nav__link" href="/learn/">How It Works</a>
                 <a class="public-nav__link" href="/plans/">Pricing</a>
                 <a class="public-nav__link" id="homeForecastLink" href="/calendar/">My Forecast</a>
               </div>
@@ -196,166 +196,72 @@
           <div class="landing-hero__stack">
             <header class="landing-hero__copy">
               <h1 class="landing-hero__text">Never get surprised by your checking account again.</h1>
-              <p class="landing-hero__sub">See where your checking balance is headed before you spend, save, or move money.</p>
+              <p class="landing-hero__sub">See what&rsquo;s coming in, what&rsquo;s going out, and what you&rsquo;ll have left—before you spend or move money.</p>
               <div class="landing-hero__ctaGroup">
                 <a href="/account-setup/?fresh=1" class="landing-hero__cta home-cta--guest">Start my free forecast</a>
                 <a class="landing-hero__cta home-cta--member">Go to my forecast</a>
                 <a class="landing-hero__sample" href="/preview/">Try a sample forecast</a>
                 <p class="landing-hero__trial">Free for 14 days · No credit card required</p>
-                <p class="landing-hero__microtrust" aria-label="What to expect">
-                  <span class="landing-hero__microtrust-item">
-                    <span class="landing-hero__microtrust-check" aria-hidden="true">✓</span>
-                    No bank connection required
-                  </span>
-                  <span class="landing-hero__microtrust__sep" aria-hidden="true">·</span>
-                  <span class="landing-hero__microtrust-item">
-                    <span class="landing-hero__microtrust-check" aria-hidden="true">✓</span>
-                    First forecast takes about 10 minutes
-                  </span>
+                <p class="landing-hero__microtrust">
+                  <span class="landing-hero__microtrust-item">No bank connection required</span>
+                  <span class="home-trust-sep" aria-hidden="true">·</span>
+                  <span class="landing-hero__microtrust-item">About 10 minutes to set up</span>
                 </p>
               </div>
             </header>
-
-            <div id="landingHeroForecast" class="landing-hero-forecast" aria-label="Example forecast preview">
-              <div class="landing-hero-forecast__demo">
-                <div class="landing-hero-viz landing-hero-cal">
-                  <div class="landing-hero-viz__hdr">
-                    <span class="landing-hero-viz__title">Balance outlook</span>
-                    <span class="landing-hero-viz__sub">Projected checking balance by day</span>
+            <div class="landing-hero__proof" aria-label="Example: today&rsquo;s bank balance compared with the projected balance">
+              <div class="landing-bank-compare__grid" role="group" aria-label="Bank app vs BalanceWhiz comparison">
+                <article class="landing-bank-compare__card landing-bank-compare__card--bank">
+                  <h2 class="landing-bank-compare__cardTitle">Your bank</h2>
+                  <div class="landing-bank-compare__bankOnly">
+                    <span class="landing-bank-compare__flowLabel">Today</span>
+                    <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
                   </div>
-                  <div
-                    id="landingHeroCalWeek"
-                    class="landing-hero-viz__week"
-                    role="list"
-                    aria-label="Projected balances for key forecast days"
-                  ></div>
-                  <ul class="landing-hero-cal__markers" aria-label="Upcoming transactions">
-                    <li class="landing-hero-cal__marker landing-hero-cal__marker--bill">
-                      <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
-                      <span id="landingHeroBillLabel">Credit card &middot; Jun 4</span>
-                    </li>
-                    <li class="landing-hero-cal__marker landing-hero-cal__marker--pay">
-                      <span class="landing-hero-cal__marker-dot" aria-hidden="true"></span>
-                      <span id="landingHeroPayLabel">Paycheck &middot; Jun 5</span>
-                    </li>
-                  </ul>
-                  <p class="landing-hero-cal__insight" role="note">
-                    <span id="landingHeroAlertCopy">Safe to spend or move after your next paycheck</span>
-                  </p>
-                </div>
+                </article>
+                <article class="landing-bank-compare__card landing-bank-compare__card--bw">
+                  <h2 class="landing-bank-compare__cardTitle">BalanceWhiz</h2>
+                  <div class="landing-bank-compare__forecast">
+                    <div class="landing-bank-compare__flowStep">
+                      <span class="landing-bank-compare__flowLabel">Today</span>
+                      <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
+                    </div>
+                    <div class="cal-day-txns landing-bank-compare__txns" aria-label="Upcoming expenses">
+                      <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary cal-day-tx-line--flow-out">
+                        <span class="cal-tx-label-wrap cal-tx-label-wrap--category-fill" style="--cal-tx-fill-bg: #fde8e8; --cal-tx-fill-fg: #7f1d1d">
+                          <span class="cal-tx-label">Property Tax </span>
+                        </span>
+                        <span class="cal-amt expense">-$2,100</span>
+                      </div>
+                      <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--secondary cal-day-tx-line--flow-out">
+                        <span class="cal-tx-label-wrap cal-tx-label-wrap--category-fill" style="--cal-tx-fill-bg: #ffedd5; --cal-tx-fill-fg: #9a3412">
+                          <span class="cal-tx-label">Vacation Deposit </span>
+                        </span>
+                        <span class="cal-amt expense">-$2,000</span>
+                      </div>
+                    </div>
+                    <div class="landing-bank-compare__flowStep landing-bank-compare__flowStep--future">
+                      <span class="landing-bank-compare__flowLabel">Next Friday</span>
+                      <span class="cal-stat cal-balance cal-balance--watch-zone landing-bank-compare__balance landing-bank-compare__balance--future">$731</span>
+                    </div>
+                  </div>
+                </article>
               </div>
+              <p class="landing-bank-compare__support">Your bank shows today&rsquo;s balance. BalanceWhiz shows what&rsquo;s ahead.</p>
             </div>
           </div>
         </div>
 
-        <section
-          id="features"
-          class="landing-bank-compare landing-section landing-section--tint-neutral landing-reveal"
-          aria-labelledby="landingApproachTitle"
-        >
-          <div class="landing-bank-compare__intro">
-            <h2 id="landingApproachTitle" class="landing-bank-compare__title">The big picture, without a detailed budget.</h2>
-            <p class="landing-bank-compare__lede">Skip the day-to-day categorizing and focus on what matters: what you have now, what&rsquo;s coming up, and what you&rsquo;ll have left.</p>
-          </div>
-          <div class="landing-bank-compare__visual">
-            <div class="landing-bank-compare__grid" role="group" aria-label="Bank app vs BalanceWhiz comparison">
-              <article class="landing-bank-compare__card landing-bank-compare__card--bank">
-                <h3 class="landing-bank-compare__cardTitle">Your bank</h3>
-                <div class="landing-bank-compare__bankOnly">
-                  <span class="landing-bank-compare__flowLabel">Today</span>
-                  <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
-                </div>
-              </article>
-              <article class="landing-bank-compare__card landing-bank-compare__card--bw">
-                <h3 class="landing-bank-compare__cardTitle">BalanceWhiz</h3>
-                <div class="landing-bank-compare__forecast">
-                  <div class="landing-bank-compare__flowStep">
-                    <span class="landing-bank-compare__flowLabel">Today</span>
-                    <span class="cal-stat cal-balance landing-bank-compare__balance">$4,862</span>
-                  </div>
-                  <div class="cal-day-txns landing-bank-compare__txns" aria-label="Upcoming expenses">
-                    <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--primary cal-day-tx-line--flow-out">
-                      <span
-                        class="cal-tx-label-wrap cal-tx-label-wrap--category-fill"
-                        style="--cal-tx-fill-bg: #fde8e8; --cal-tx-fill-fg: #7f1d1d"
-                      >
-                        <span class="cal-tx-label">Property Tax </span>
-                      </span>
-                      <span class="cal-amt expense">-$2,100</span>
-                    </div>
-                    <div class="cal-day-tx-line cal-day-tx-line--expected cal-day-tx-line--secondary cal-day-tx-line--flow-out">
-                      <span
-                        class="cal-tx-label-wrap cal-tx-label-wrap--category-fill"
-                        style="--cal-tx-fill-bg: #ffedd5; --cal-tx-fill-fg: #9a3412"
-                      >
-                        <span class="cal-tx-label">Vacation Deposit </span>
-                      </span>
-                      <span class="cal-amt expense">-$2,000</span>
-                    </div>
-                  </div>
-                  <div class="landing-bank-compare__flowStep landing-bank-compare__flowStep--future">
-                    <span class="landing-bank-compare__flowLabel">Next Friday</span>
-                    <span class="cal-stat cal-balance cal-balance--watch-zone landing-bank-compare__balance landing-bank-compare__balance--future">$731</span>
-                  </div>
-                </div>
-              </article>
-            </div>
-            <p class="landing-bank-compare__support">Your bank shows today. BalanceWhiz shows what&rsquo;s coming.</p>
-          </div>
+        <section class="home-next" aria-labelledby="homeNextTitle">
+          <h2 id="homeNextTitle" class="home-next__title">Plan ahead without a complicated budget.</h2>
+          <p class="home-next__body">Skip tracking every purchase. Focus on the paychecks, bills, and bigger expenses that actually affect your checking balance.</p>
+          <p class="home-next__more"><a href="/learn/">How It Works</a></p>
         </section>
 
-        <section id="how" class="landing-how landing-section landing-section--tint-neutral landing-reveal" aria-label="How it works">
-          <div class="landing-how__copy">
-            <h2 class="landing-how__title">How it works</h2>
-            <div class="landing-how__grid" role="list">
-              <article class="landing-how__card" role="listitem">
-                <div class="landing-how__stepTop">
-                  <span class="landing-how__stepIcon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M8 2v4M16 2v4M4 8h16M6 4h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-                    </svg>
-                  </span>
-                  <div class="landing-how__stepMark" aria-hidden="true">1</div>
-                </div>
-                <h3 class="landing-how__cardTitle">Add what you know</h3>
-                <p class="landing-how__cardBody">Your primary checking balance, income &amp; what’s coming up</p>
-              </article>
-              <article class="landing-how__card" role="listitem">
-                <div class="landing-how__stepTop">
-                  <span class="landing-how__stepIcon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 12a8 8 0 1116 0 8 8 0 01-16 0z" stroke="currentColor" stroke-width="1.6" />
-                      <path d="M12 8v4l2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-                    </svg>
-                  </span>
-                  <div class="landing-how__stepMark" aria-hidden="true">2</div>
-                </div>
-                <h3 class="landing-how__cardTitle">See what’s ahead</h3>
-                <p class="landing-how__cardBody">BalanceWhiz projects your checking balance forward</p>
-              </article>
-              <article class="landing-how__card landing-how__card--featured" role="listitem">
-                <div class="landing-how__stepTop">
-                  <span class="landing-how__stepIcon landing-how__stepIcon--featured" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 10h8l-2.5-2.5M15 10l-2.5 2.5" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" />
-                      <path d="M17 14H9l2.5 2.5M9 14l2.5-2.5" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </span>
-                  <div class="landing-how__stepMark landing-how__stepMark--featured" aria-hidden="true">3</div>
-                </div>
-                <h3 class="landing-how__cardTitle">Make your move</h3>
-                <p class="landing-how__cardBody">Know when you can spend, save, or move money</p>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section class="landing-offer landing-offer--calm landing-offer--simple landing-reveal" aria-label="Get started">
+        <section class="landing-offer landing-offer--calm landing-offer--simple" aria-label="Get started">
           <div class="landing-offer__panel">
             <div class="landing-offer__main">
               <div class="landing-offer__content">
-                <h2 class="landing-offer__heading">Your first forecast takes about 10 minutes.</h2>
-                <p class="landing-offer__subhead">Add today’s balance and what’s coming up. See where your money is headed.</p>
+                <h2 class="landing-offer__heading">See it with your own numbers.</h2>
               </div>
               <div class="landing-offer__action">
                 <a class="landing-offer__cta home-cta--guest" href="/account-setup/?fresh=1">Start my free forecast</a>
@@ -391,7 +297,7 @@
               <nav class="app-footer__col" aria-label="Product">
                 <h2 class="app-footer__heading">Product</h2>
                 <ul class="app-footer__list">
-                  <li><a class="app-footer__link" href="/learn/">Learn more</a></li>
+                  <li><a class="app-footer__link" href="/learn/">How It Works</a></li>
                   <li><a class="app-footer__link" href="/plans/">Pricing</a></li>
                   <li><a class="app-footer__link" href="/help.html">FAQ</a></li>
                 </ul>
@@ -412,8 +318,6 @@
       </footer>
     </div>
     <script src="./homepage-auth.js?v=4"></script>
-    <script src="./landing-hero-dates.js?v=17" defer></script>
-    <script src="./landing-hero-demo.js?v=4" defer></script>
     <script>
       (function () {
         var body = document.body;
