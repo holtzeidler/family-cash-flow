@@ -414,6 +414,73 @@ body.account-setup-page .email-check__spam{
   font-weight: 400;
   line-height: 1.4;
 }
+body.account-setup-page #accountSetupEmailCheck.email-check{
+  padding: 20px 26px 14px;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__icon{
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 8px;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__icon svg{
+  width: 22px;
+  height: 22px;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__lead{
+  margin-top: 10px;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__address{
+  margin-top: 2px;
+  font-size: 1rem;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__next{
+  margin-top: 12px;
+  color: #3d4a55;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__expire{
+  margin-top: 4px;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__actions{
+  align-items: center;
+  gap: 0;
+  margin-top: 12px;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__resend{
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1.5px solid rgba(11, 61, 46, 0.45);
+  border-radius: 10px;
+  background: #fff;
+  color: #0B3D2E;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__resend:hover:not(:disabled){
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+  border-color: rgba(11, 61, 46, 0.62);
+  filter: none;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__resend:disabled,
+body.account-setup-page #accountSetupEmailCheck .email-check__resend:disabled:hover{
+  background: #fff;
+  color: #8b97a3;
+  border-color: rgba(11, 61, 46, 0.16);
+  font-weight: 500;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__change{
+  margin-top: 0;
+  min-height: 40px;
+  padding: 6px 10px;
+  text-decoration: none;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__note{
+  margin-top: 8px;
+}
+body.account-setup-page #accountSetupEmailCheck .email-check__spam{
+  margin-top: 2px;
+}
 body.account-setup-page #accountSetupVerifyRecovery .email-check__next{
   max-width: 34rem;
   margin-left: auto;
@@ -431,7 +498,9 @@ body.account-setup-page #accountSetupVerifyRecovery a.email-check__resend{
     padding-top: 14px;
     padding-bottom: 16px;
   }
-  body.account-setup-page #accountSetupEmailCheck.email-check,
+  body.account-setup-page #accountSetupEmailCheck.email-check{
+    padding: 18px 18px 12px;
+  }
   body.account-setup-page #accountSetupVerifyRecovery.email-check{
     padding: 22px 16px 16px;
   }
@@ -20140,10 +20209,10 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   margin: 0;
   padding: 0;
   font-size: 0.72rem;
-  line-height: 1.28;
-  font-weight: 450;
-  letter-spacing: 0.008em;
-  color: rgba(100, 116, 139, 0.6);
+  line-height: 1.35;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #6b7c74;
   text-align: right;
   width: 100%;
   max-width: none;
