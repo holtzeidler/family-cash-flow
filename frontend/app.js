@@ -12742,6 +12742,71 @@ function setCategoryCreateSaveLock(locked) {
   }
 }
 
+const CATEGORY_MANAGE_HELP_TEXT =
+  "You can add a new category here. To rename, delete, or organize existing categories, go to Settings → Categories.";
+
+function closeCategoryManageHelps(exceptPop) {
+  document.querySelectorAll(".category-manage-help__popover").forEach((pop) => {
+    const show = pop === exceptPop;
+    pop.hidden = !show;
+    const btn = pop.parentElement?.querySelector(".category-manage-help__btn");
+    if (btn) btn.setAttribute("aria-expanded", show ? "true" : "false");
+  });
+}
+
+function categoryManageHelpIsOpen() {
+  return !!document.querySelector(".category-manage-help__popover:not([hidden])");
+}
+
+function ensureCategoryManageHelp(fieldId) {
+  const label = document.querySelector(`label[for="${fieldId}"]`);
+  const host = label?.parentElement;
+  if (!host || host.querySelector(".category-manage-help")) return;
+  const helpId = `${fieldId}ManageHelp`;
+  const wrap = document.createElement("span");
+  wrap.className = "category-manage-help";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "category-manage-help__btn";
+  btn.textContent = "Manage categories?";
+  btn.setAttribute("aria-expanded", "false");
+  btn.setAttribute("aria-controls", helpId);
+  const pop = document.createElement("p");
+  pop.id = helpId;
+  pop.className = "category-manage-help__popover";
+  pop.hidden = true;
+  pop.setAttribute("role", "note");
+  pop.textContent = CATEGORY_MANAGE_HELP_TEXT;
+  wrap.appendChild(btn);
+  wrap.appendChild(pop);
+  host.appendChild(wrap);
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeCategoryManageHelps(pop.hidden ? pop : null);
+  });
+}
+
+for (const fieldId of ["txAddCategoryId", "txEditCategoryId"]) ensureCategoryManageHelp(fieldId);
+
+document.addEventListener("click", (e) => {
+  if (!categoryManageHelpIsOpen()) return;
+  const target = e.target;
+  if (target && target.closest && target.closest(".category-manage-help")) return;
+  closeCategoryManageHelps(null);
+});
+
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key !== "Escape" || !categoryManageHelpIsOpen()) return;
+    closeCategoryManageHelps(null);
+    e.preventDefault();
+    e.stopPropagation();
+  },
+  true
+);
+
 function getCategoryComboboxActiveIndex(st) {
   const els = Array.from(st.list.querySelectorAll("li.category-combobox__option"));
   return els.findIndex((li) => li.classList.contains("is-active"));

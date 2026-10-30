@@ -60,6 +60,16 @@ const appSrc = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
 assert(appSrc.includes('note: "Creating category…"') || appSrc.includes("Creating category…"), "the editor shows the pending message");
 assert(!appSrc.includes("Manage categories…"), "the transaction editor does not offer category management");
 assert(!appSrc.includes("Your transaction is waiting"), "the transaction editor does not park itself on the categories screen");
+assert(appSrc.includes("Manage categories?"), "the category label offers a help link");
+assert(
+  appSrc.includes("You can add a new category here. To rename, delete, or organize existing categories, go to Settings → Categories."),
+  "the help explains where to organize categories"
+);
+const helpStart = appSrc.indexOf("function ensureCategoryManageHelp");
+const helpEnd = appSrc.indexOf("function getCategoryComboboxActiveIndex", helpStart);
+const helpBody = appSrc.slice(helpStart, helpEnd);
+assert(helpStart > 0 && helpBody.includes("aria-expanded"), "the help link exposes whether it is open");
+assert(!helpBody.includes("location") && !helpBody.includes("setActiveTopView"), "category help stays on the transaction");
 assert(appSrc.includes("setCategoryCreateSaveLock(true)"), "save is disabled while a category is being created");
 assert(appSrc.includes("retryName: name"), "a failed create can be retried");
 assert(!appSrc.includes("window.alert(err.message || \"Failed to add category\")"), "category creation does not use a blocking alert");
