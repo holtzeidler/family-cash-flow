@@ -1142,7 +1142,13 @@ body.landing-page:not(.learn-page) .home-next__body{
   line-height: 1.5;
   color: rgba(51, 65, 85, 0.9);
 }
-body.landing-page:not(.learn-page) .home-next__body a{
+body.landing-page:not(.learn-page) .home-next__more{
+  margin: 0.85rem 0 0;
+  font-size: 1.02rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+body.landing-page:not(.learn-page) .home-next__more a{
   color: #0b3d2e;
   font-weight: 650;
   text-decoration: underline;
@@ -1156,5 +1162,14 @@ body.landing-page:not(.learn-page) .landing-shell > .landing-offer .landing-offe
   box-shadow: none;
   padding: 1.15rem 0 0.15rem;
   max-width: 36rem;
+}
+@media (min-width: 900px){
+  body.landing-page:not(.learn-page) .landing-shell > .landing-offer .landing-offer__panel{
+    padding-top: 2rem;
+    padding-bottom: 0.55rem;
+  }
+  body.landing-page:not(.learn-page) .landing-shell > .landing-offer.landing-offer--simple .landing-offer__main{
+    row-gap: 0.9rem;
+  }
 }
 

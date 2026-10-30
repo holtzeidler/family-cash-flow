@@ -32,6 +32,8 @@ check("home drops the five-day outlook", home.indexOf("Balance outlook") === -1)
 check("home drops the three-step cards", home.indexOf("Add what you know") === -1);
 check("home keeps the bank comparison", home.indexOf("$4,862") !== -1 && home.indexOf("-$2,100") !== -1 && home.indexOf("-$2,000") !== -1 && home.indexOf("$731") !== -1);
 check("home links to how it works", home.indexOf('href="/learn/">How It Works<') !== -1);
+check("home caption distinguishes the bank from the forecast", home.indexOf("Your bank shows today&rsquo;s balance. BalanceWhiz shows what&rsquo;s ahead.") !== -1);
+check("home benefit skips purchase tracking", home.indexOf("Skip tracking every purchase.") !== -1);
 check("home keeps one sample forecast link", home.indexOf("Try a sample forecast") !== -1);
 check("home menu control stays Menu", home.indexOf(">Menu<") !== -1);
 
