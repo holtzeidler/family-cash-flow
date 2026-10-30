@@ -1360,7 +1360,9 @@ function getAccountSetupStepCopy(step, ctx) {
     case 4:
       return {
         title: "What matters most to you?",
-        subtitle: "What would you most like BalanceWhiz to help with?",
+        subtitle: "Choose what you'd most like help with.",
+        subtitleMore: "You can select more than one.",
+        optionalMark: "(optional)",
       };
     default:
       return { title: "Let’s build your forecast", subtitle: "Start simple. You can refine everything later." };
@@ -1439,7 +1441,30 @@ function syncAccountSetupWizardShellButtons() {
     if (eyebrow) eyebrow.textContent = copy.title;
     if (reassurance) reassurance.hidden = true;
     if (subEyebrow) {
-      subEyebrow.textContent = copy.subtitle;
+      subEyebrow.replaceChildren();
+      if (copy.subtitleMore) {
+        const first = document.createElement("span");
+        first.className = "account-setup-wizard__subline";
+        first.textContent = copy.subtitle;
+        const second = document.createElement("span");
+        second.className = "account-setup-wizard__subline";
+        second.textContent = copy.subtitleMore;
+        if (copy.optionalMark) {
+          const mark = document.createElement("span");
+          mark.className = "account-setup-wizard__optional";
+          mark.textContent = copy.optionalMark;
+          second.append(" ", mark);
+        }
+        subEyebrow.append(first, second);
+      } else {
+        subEyebrow.textContent = copy.subtitle;
+        if (copy.optionalMark) {
+          const mark = document.createElement("span");
+          mark.className = "account-setup-wizard__optional";
+          mark.textContent = copy.optionalMark;
+          subEyebrow.append(" ", mark);
+        }
+      }
       subEyebrow.hidden = false;
     }
     syncAccountSetupSampleLink();
