@@ -38,7 +38,8 @@ assert(
 assert(!src.includes("seed-defaults?force=true"), "load defaults must not replace an existing list");
 assert(!src.includes("maybeEnsureSystemUncategorizedGroup"), "do not create an empty Uncategorized group");
 assert(src.includes("function withoutEmptyUncategorizedGroup"), "hide an empty Uncategorized group");
-assert(src.includes("Add “${safe}” to ${safeGroup}"), "new category row names its group");
+assert(src.includes("Create new category “${safe}”"), "new category row asks for a group instead of assigning one");
+assert(!src.includes("Add “${safe}” to ${safeGroup}"), "new category row does not name a group up front");
 assert(src.includes("function categoryMatchesTransactionKind"), "kind matching stays in place");
 const affinityStart = src.indexOf("function categoryFlowAffinity");
 const affinityEnd = src.indexOf("function collectRecentCategoryIdsForKind");
