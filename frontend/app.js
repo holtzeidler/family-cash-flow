@@ -13353,26 +13353,66 @@ function setCategoryGroupCollapsed(groupId, collapsed) {
 }
 
 function ensureCategoriesScanTips() {
-  const pane = document.querySelector("[data-cats-pane]");
-  if (!pane) return;
-  let tips = pane.querySelector(".cats-pane__scan-tips");
-  if (!tips) {
-    tips = document.createElement("p");
-    tips.className = "cats-pane__scan-tips";
-    tips.setAttribute("role", "note");
-  }
-  const head = pane.querySelector(".categories-manager__head");
-  if (head) head.insertAdjacentElement("afterend", tips);
-  else if (!tips.parentElement) {
-    const toolbar = pane.querySelector(".cats-pane__toolbar");
-    if (toolbar) toolbar.insertAdjacentElement("beforebegin", tips);
-    else pane.querySelector(".categories-manager__shell")?.prepend(tips);
-  }
-  tips.textContent = "Drag to reorder";
+  document.querySelectorAll(".cats-pane__scan-tips").forEach((el) => el.remove());
+}
+
+function applyCategoriesSearch(raw) {
+  const tree = document.getElementById("categoriesTree");
+  const empty = document.getElementById("categoriesSearchEmpty");
+  if (!tree) return;
+  const q = String(raw || "").trim().toLowerCase();
+  const searching = q.length > 0;
+  tree.classList.toggle("is-searching", searching);
+  let matches = 0;
+  tree.querySelectorAll(".cats-group").forEach((card) => {
+    let groupMatches = 0;
+    card.querySelectorAll(".cats-cat").forEach((row) => {
+      const name = row.querySelector(".cats-cat__name")?.textContent || "";
+      const hit = !searching || name.toLowerCase().includes(q);
+      row.hidden = !hit;
+      if (hit) groupMatches += 1;
+    });
+    card.hidden = searching && groupMatches === 0;
+    card.classList.toggle("is-search-open", searching && groupMatches > 0);
+    if (searching) matches += groupMatches;
+    card.querySelectorAll(".cats-cat__handle, .cats-group__drag").forEach((handle) => {
+      handle.draggable = !searching;
+    });
+  });
+  if (empty) empty.hidden = !searching || matches > 0;
+}
+
+function setAllCategoryGroupsCollapsed(collapsed) {
+  const ids = new Set();
+  document.querySelectorAll("#categoriesTree .cats-group").forEach((card) => {
+    const id = String(card.dataset.groupId || "");
+    card.classList.toggle("is-collapsed", !!collapsed);
+    if (collapsed && id) ids.add(id);
+    const btn = card.querySelector(".cats-group__collapse");
+    const name = card.querySelector(".cats-group__name-text")?.textContent?.trim() || "group";
+    if (btn) btn.setAttribute("aria-label", `${collapsed ? "Expand" : "Collapse"} ${name}`);
+  });
+  writeCollapsedCategoryGroupIds(ids);
+  const input = document.getElementById("categoriesSearch");
+  applyCategoriesSearch(input ? input.value : "");
+}
+
+let categoriesSearchBound = false;
+function bindCategoriesSearchControls() {
+  if (categoriesSearchBound) return;
+  const input = document.getElementById("categoriesSearch");
+  const expand = document.getElementById("categoriesExpandAll");
+  const collapse = document.getElementById("categoriesCollapseAll");
+  if (!input && !expand && !collapse) return;
+  categoriesSearchBound = true;
+  input?.addEventListener("input", () => applyCategoriesSearch(input.value));
+  expand?.addEventListener("click", () => setAllCategoryGroupsCollapsed(false));
+  collapse?.addEventListener("click", () => setAllCategoryGroupsCollapsed(true));
 }
 
 function refreshCategoriesManagerChrome() {
   ensureCategoriesScanTips();
+  bindCategoriesSearchControls();
   const tree = state.categoryTree;
   const groups = (tree?.groups || []).filter(Boolean);
   const elG = document.getElementById("categoriesStatGroups");
@@ -14089,7 +14129,7 @@ function renderCategoriesGrid(tree) {
       })
     );
     menuPanel.appendChild(
-      mkItem("Move", "", () => {
+      mkItem("Move to group", "", () => {
         openCategoryMoveModal({
           categoryId: c.id,
           currentGroupId: grp?.id,
@@ -14130,21 +14170,43 @@ function renderCategoriesGrid(tree) {
     meta.className = "cats-cat__meta";
     meta.textContent = nUse > 0 ? `${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
 
+    const editHint = document.createElement("button");
+    editHint.type = "button";
+    editHint.className = "cats-cat__edit-hint";
+    editHint.setAttribute("aria-label", `Rename ${c.name}`);
+    editHint.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 2.5 13.5 5.5 5.5 13.5H2.5v-3L10.5 2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+    editHint.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      selectEditableText(nameEl);
+    });
+
     row.appendChild(handle);
     row.appendChild(nameEl);
     row.appendChild(meta);
+    row.appendChild(editHint);
     row.appendChild(menu);
 
     row.addEventListener("click", (ev) => {
       const t = ev.target;
       if (!(t instanceof Element)) return;
-      if (t.closest(".cats-cat__menu") || t.closest(".cats-cat__handle") || t.closest(".cats-cat__name")) {
+      if (
+        t.closest(".cats-cat__menu") ||
+        t.closest(".cats-cat__handle") ||
+        t.closest(".cats-cat__edit-hint") ||
+        t.closest(".cats-cat__name")
+      ) {
         return;
       }
       selectEditableText(nameEl);
     });
 
     handle.addEventListener("dragstart", (e) => {
+      if (categoriesTree.classList.contains("is-searching")) {
+        e.preventDefault();
+        return;
+      }
       try {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", `cat:${row.dataset.categoryId}`);
@@ -14358,8 +14420,18 @@ function renderCategoriesGrid(tree) {
         `${collapsed ? "Expand" : "Collapse"} ${g.name}`
       );
     });
+    head.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      if (t.closest(".cats-group__menu, .cats-group__drag, .cats-group__name-text, .cats-group__collapse")) return;
+      collapseBtn.click();
+    });
 
     groupDragHandle.addEventListener("dragstart", (e) => {
+      if (categoriesTree.classList.contains("is-searching")) {
+        e.preventDefault();
+        return;
+      }
       try {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", `group:${card.dataset.groupId}`);
@@ -14542,6 +14614,9 @@ function renderCategoriesGrid(tree) {
     categoriesTree.appendChild(mountGroupCard(g));
   }
   applyCategoryListView(groups.length);
+  bindCategoriesSearchControls();
+  const searchInput = document.getElementById("categoriesSearch");
+  applyCategoriesSearch(searchInput ? searchInput.value : "");
 }
 
 function categoryDisplayLabel(c) {
