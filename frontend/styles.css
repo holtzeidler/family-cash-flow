@@ -24420,10 +24420,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.cal-balance.cal-balance--month-low-mark{
   font-weight: 620;
   color: rgba(71, 85, 105, 0.72);
-  text-decoration: underline;
-  text-decoration-color: rgba(180, 83, 9, 0.28);
-  text-underline-offset: 2px;
-  text-decoration-thickness: 1px;
+  text-decoration: none;
 }
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
