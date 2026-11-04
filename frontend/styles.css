@@ -34066,13 +34066,46 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   background: #fff;
   box-shadow: 0 12px 32px rgba(17, 24, 39, 0.16);
 }
+.fav-menu__head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+}
 .fav-menu__title{
-  margin: 2px 4px 8px;
+  margin: 0 0 0 4px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(100, 116, 139, 0.9);
+}
+.fav-menu__close{
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  margin: -4px -2px -4px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(100, 116, 139, 0.95);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.fav-menu__close:hover{
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.88);
+}
+.fav-menu__close:focus-visible{
+  outline: 2px solid rgba(4, 120, 87, 0.35);
+  outline-offset: 2px;
 }
 .fav-menu__empty,
 .fav-menu__error{
@@ -34203,6 +34236,11 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   .tx-edit-foot-leading .tx-fav-action{
     order: 2;
     flex: 0 1 auto;
+  }
+  .fav-menu__close{
+    width: 44px;
+    height: 44px;
+    margin: -8px -6px -8px 0;
   }
   .fav-menu__item{
     grid-template-columns: minmax(0, 1fr);
