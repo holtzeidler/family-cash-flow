@@ -51,7 +51,7 @@ assert(affinity.includes('"investment transfer"'), "investment transfer works fo
 assert(affinity.includes('"other transfer"'), "other transfer works for income or expense shortcuts");
 assert(affinity.includes('"cash & atm"'), "cash and atm works for income or expense shortcuts");
 assert(!src.includes("Browse all"), "the category field is the way to browse every category");
-assert(src.includes("cats-cat__edit-hint"), "category rows show a rename pencil on hover");
+assert(!src.includes("cats-cat__edit-hint"), "category rows rename from the name or menu, without a pencil");
 assert(src.includes('mkItem("Rename"'), "category menu still offers rename");
 assert(src.includes('mkItem("Move to group"'), "category menu offers move to group");
 assert(!src.includes("categoryImpliesMonthlyRecurrence"), "category names do not choose a monthly schedule");
