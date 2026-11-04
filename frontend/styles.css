@@ -33978,17 +33978,18 @@ body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+.tx-add-actions-primary{
+  display: inline-flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
-}
-.modal--tx-add .tx-add-actions-row .tx-fav-action{
-  order: 1;
-}
-.modal--tx-add .tx-add-actions-row #txAddCancel{
-  order: 2;
-}
-.modal--tx-add .tx-add-actions-row .tx-add-btn-primary{
-  order: 3;
+  margin-left: auto;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 button.secondary.tx-fav-action{
   display: inline-flex;
@@ -34246,12 +34247,24 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   button.secondary.tx-fav-action{
     min-height: 40px;
   }
-  .modal--tx-add .tx-add-actions-row .tx-add-btn-primary{
-    order: -1;
-    flex: 1 1 100%;
+  .modal--tx-add .tx-add-actions-row .tx-add-btn-primary,
+  #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave,
+  #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditRecurringUpdateBtn{
+    width: auto;
+    flex: 0 0 auto;
+    order: 0;
   }
-  #txEditInner > .modal-actions #txEditFooterSecondary .tx-fav-action{
-    flex: 1 1 auto;
+  .modal--tx-add .tx-add-actions-primary,
+  #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row.tx-edit-actions-row--main{
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    margin-left: auto;
+    width: auto;
+    flex: 0 1 auto;
+  }
+  .tx-edit-foot-leading .tx-fav-action{
+    order: 2;
+    flex: 0 1 auto;
   }
   .fav-menu__item{
     grid-template-columns: minmax(0, 1fr);

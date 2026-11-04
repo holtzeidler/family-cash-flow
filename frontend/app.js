@@ -5153,6 +5153,7 @@ async function openTxEditModalAsync(tx) {
   show(txEditErr, "");
   closeFavoriteNamePrompt();
   txEditLinkedFavoriteId = null;
+  txEditLinkedFavorite = null;
   ensureFavoriteStar("edit");
   syncFavoriteStar("edit");
   resetTxEditModalPosition();
@@ -5288,6 +5289,7 @@ function closeTxEditModal() {
   if (!txEditModal) return;
   closeFavoriteNamePrompt();
   txEditLinkedFavoriteId = null;
+  txEditLinkedFavorite = null;
   syncFavoriteStar("edit");
   try { closeTxEditApplyScopeModal(); } catch (_) {}
   try { closeTxEditDeleteScopeModal(); } catch (_) {}
@@ -5488,6 +5490,9 @@ let favoriteTransactions = [];
 let favoriteTransactionsFamilyId = null;
 let txAddLinkedFavoriteId = null;
 let txEditLinkedFavoriteId = null;
+let txAddLinkedFavorite = null;
+let txEditLinkedFavorite = null;
+let txAddOpenToken = 0;
 let favoritePromptMode = null;
 let suppressModalEscape = false;
 let favoritesMenuOwner = null;
@@ -5511,6 +5516,16 @@ function closeFavoriteNamePrompt(fromEscape) {
   return true;
 }
 
+function linkedFavoriteRecord(mode) {
+  const id = mode === "edit" ? txEditLinkedFavoriteId : txAddLinkedFavoriteId;
+  const linkedId = Number(id);
+  if (!Number.isFinite(linkedId) || linkedId <= 0) return null;
+  const fromList = favoriteTransactions.find((item) => Number(item.id) === linkedId);
+  if (fromList) return fromList;
+  const snapshot = mode === "edit" ? txEditLinkedFavorite : txAddLinkedFavorite;
+  return snapshot && Number(snapshot.id) === linkedId ? snapshot : null;
+}
+
 function syncFavoriteStar(mode) {
   const btn = document.getElementById(mode === "edit" ? "txEditFavoriteBtn" : "txAddFavoriteBtn");
   if (!btn) return;
@@ -5524,15 +5539,35 @@ function syncFavoriteStar(mode) {
   btn.append(glyph, document.createTextNode(on ? " Update favorite" : " Save favorite"));
 }
 
+function placeAddFavoriteButton(btn) {
+  const row = document.querySelector(".tx-add-actions-row");
+  if (!row || !btn) return;
+  let group = row.querySelector(".tx-add-actions-primary");
+  if (!group) {
+    group = document.createElement("div");
+    group.className = "tx-add-actions-primary";
+    const cancel = document.getElementById("txAddCancel");
+    const save = document.getElementById("txAddSave");
+    if (cancel) group.appendChild(cancel);
+    if (save) group.appendChild(save);
+    row.appendChild(group);
+  }
+  if (btn.parentElement !== row || btn.nextElementSibling !== group) row.insertBefore(btn, group);
+}
+
+function placeEditFavoriteButton(btn) {
+  const leading = document.querySelector("#txEditModal .tx-edit-foot-leading");
+  const foot = document.querySelector("#txEditModal .modal-actions--tx-edit-foot");
+  const host = leading || foot;
+  if (!host || !btn) return;
+  if (btn.parentElement !== host) host.appendChild(btn);
+}
+
 function ensureFavoriteStar(mode) {
   document.querySelectorAll(".tx-fav-star").forEach((el) => el.remove());
   const id = mode === "edit" ? "txEditFavoriteBtn" : "txAddFavoriteBtn";
   let btn = document.getElementById(id);
   if (!btn) {
-    const host = mode === "edit"
-      ? document.getElementById("txEditFooterSecondary")
-      : document.querySelector(".tx-add-actions-row");
-    if (!host) return;
     btn = document.createElement("button");
     btn.type = "button";
     btn.id = id;
@@ -5542,13 +5577,13 @@ function ensureFavoriteStar(mode) {
       event.stopPropagation();
       openFavoriteNamePrompt(mode);
     });
-    if (mode === "edit") {
-      const cancel = document.getElementById("txEditCancel");
-      if (cancel && cancel.parentElement === host) host.insertBefore(btn, cancel);
-      else host.prepend(btn);
-    } else {
-      host.appendChild(btn);
-    }
+  }
+  if (mode === "edit") {
+    if (!document.querySelector("#txEditModal .tx-edit-foot-leading, #txEditModal .modal-actions--tx-edit-foot")) return;
+    placeEditFavoriteButton(btn);
+  } else {
+    if (!document.querySelector(".tx-add-actions-row")) return;
+    placeAddFavoriteButton(btn);
   }
   syncFavoriteStar(mode);
 }
@@ -5620,7 +5655,7 @@ function openFavoriteNamePrompt(mode) {
   favoritePromptMode = mode;
   const form = readFavoriteForm(mode);
   const linkedId = mode === "edit" ? txEditLinkedFavoriteId : txAddLinkedFavoriteId;
-  const existing = favoriteTransactions.find((item) => Number(item.id) === Number(linkedId));
+  const existing = linkedFavoriteRecord(mode);
   const updating = Number(linkedId) > 0;
   const input = panel.querySelector("#txFavoriteNameInput");
   const err = panel.querySelector("#txFavoriteNameErr");
@@ -5687,8 +5722,13 @@ async function saveFavoriteFromPrompt() {
       ? await api(`${base}/${linkedId}`, "PUT", built.body)
       : await api(base, "POST", built.body);
     if (!saved || saved.id == null) throw new Error("Could not save that favorite.");
-    if (mode === "edit") txEditLinkedFavoriteId = Number(saved.id);
-    else txAddLinkedFavoriteId = Number(saved.id);
+    if (mode === "edit") {
+      txEditLinkedFavoriteId = Number(saved.id);
+      txEditLinkedFavorite = saved;
+    } else {
+      txAddLinkedFavoriteId = Number(saved.id);
+      txAddLinkedFavorite = saved;
+    }
     syncFavoriteStar(mode);
     favoriteTransactionsFamilyId = Number(state.activeFamilyId);
     const next = favoriteTransactions.filter((item) => Number(item.id) !== Number(saved.id));
@@ -5705,8 +5745,12 @@ async function saveFavoriteFromPrompt() {
 }
 
 function applyFavoriteToOpenAddForm(favorite) {
+  const linkedId = typeof favoriteLinkId === "function" ? favoriteLinkId(favorite && favorite.id) : null;
+  txAddLinkedFavoriteId = linkedId;
+  txAddLinkedFavorite = linkedId ? favorite : null;
+  syncFavoriteStar("add");
   const helpers = favoriteHelpers();
-  if (!helpers || !favorite) return;
+  if (!helpers || !favorite || !linkedId) return;
   const today = toISODate(new Date());
   const plan = helpers.planFavoriteFormFill(favorite, {
     categories: state.categories || [],
@@ -5735,7 +5779,8 @@ function applyFavoriteToOpenAddForm(favorite) {
     renderTxAddCategoryChips();
   } catch (_) {}
   setCategoryFieldValue("txAddCategoryId", plan.categoryId);
-  txAddLinkedFavoriteId = Number(favorite.id) || null;
+  txAddLinkedFavoriteId = linkedId;
+  txAddLinkedFavorite = favorite;
   syncFavoriteStar("add");
   show(txAddErr, plan.notices.join(" "));
   updateTxAddFormValidity();
@@ -5912,10 +5957,12 @@ async function confirmDeleteFavorite(fav) {
     await api(`/api/families/${state.activeFamilyId}/favorite-transactions/${fav.id}`, "DELETE");
     if (Number(txAddLinkedFavoriteId) === Number(fav.id)) {
       txAddLinkedFavoriteId = null;
+      txAddLinkedFavorite = null;
       syncFavoriteStar("add");
     }
     if (Number(txEditLinkedFavoriteId) === Number(fav.id)) {
       txEditLinkedFavoriteId = null;
+      txEditLinkedFavorite = null;
       syncFavoriteStar("edit");
     }
     await openFavoritesMenu(favoritesMenuOwner);
@@ -6023,8 +6070,9 @@ function openTxAddModal(opts = {}) {
 }
 
 async function openTxAddModalAsync(opts = {}) {
+  const token = ++txAddOpenToken;
   if (await guardBillingWriteAsync()) return;
-  if (txAddSaveInFlight) return;
+  if (token !== txAddOpenToken || txAddSaveInFlight) return;
   const modalEl = txAddModal || document.getElementById("txAddModal");
   const dateEl = txAddDate || document.getElementById("txAddDate");
   if (!modalEl || !dateEl) {
@@ -6075,19 +6123,29 @@ async function openTxAddModalAsync(opts = {}) {
   }
   closeFavoriteNamePrompt();
   ensureFavoriteStar("add");
-  if (opts.favorite) applyFavoriteToOpenAddForm(opts.favorite);
+  if (token !== txAddOpenToken) return;
+  const linkedId = typeof addFavoriteLinkForOpen === "function" ? addFavoriteLinkForOpen(opts) : null;
+  if (opts.favorite && linkedId) applyFavoriteToOpenAddForm(opts.favorite);
   else {
     txAddLinkedFavoriteId = null;
+    txAddLinkedFavorite = null;
     syncFavoriteStar("add");
   }
+  if (token !== txAddOpenToken) return;
   updateTxAddFormValidity();
-  requestAnimationFrame(() => (txAddAmount ? txAddAmount.focus() : dateEl.focus()));
+  requestAnimationFrame(() => {
+    if (token !== txAddOpenToken) return;
+    if (txAddAmount) txAddAmount.focus();
+    else dateEl.focus();
+  });
 }
 
 function closeTxAddModal() {
   if (!txAddModal) return;
+  txAddOpenToken += 1;
   closeFavoriteNamePrompt();
   txAddLinkedFavoriteId = null;
+  txAddLinkedFavorite = null;
   syncFavoriteStar("add");
   resetTxAddFormValidation();
   if (!txAddSaveInFlight) setTxAddSaveBusy(false);
@@ -24460,6 +24518,7 @@ function ensureTxHistoryUi() {
       "@media (max-width:640px){.tx-history-panel{width:calc(100vw - 1rem);max-height:calc(100dvh - 1.25rem);padding:.8rem .8rem .9rem}.tx-history-title{font-size:.9rem}}";
     document.head.appendChild(style);
   }
+  placeEditFavoriteButton(document.getElementById("txEditFavoriteBtn"));
   if (!document.getElementById("txHistoryModal")) {
     const modal = document.createElement("div");
     modal.id = "txHistoryModal";
