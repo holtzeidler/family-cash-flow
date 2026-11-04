@@ -14225,6 +14225,9 @@ function renderCategoriesGrid(tree) {
     row.addEventListener("dragleave", () => row.classList.remove("is-drag-over"));
     row.addEventListener("drop", (e) => {
       e.preventDefault();
+      // The group list also listens for drops and appends the row. Stop here so
+      // a drop on a category stays where it was placed instead of snapping to the end.
+      e.stopPropagation();
       row.classList.remove("is-drag-over");
       const raw = (() => {
         try {
@@ -14505,6 +14508,7 @@ function renderCategoriesGrid(tree) {
     body.addEventListener("drop", (e) => {
       e.preventDefault();
       body.classList.remove("is-drag-over");
+      if (e.target instanceof Element && e.target.closest(".cats-cat")) return;
       const raw = (() => {
         try {
           return e.dataTransfer.getData("text/plain");
