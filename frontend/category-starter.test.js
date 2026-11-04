@@ -36,7 +36,7 @@ assert(
     ]),
   "expense chips"
 );
-assert(src.includes('if (n === "cash & atm") return true;'), "Cash & ATM follows the selected transaction type");
+assert(src.includes('if (flexible.has(n)) return "either";'), "Cash & ATM follows the selected transaction type");
 assert(!src.includes("seed-defaults?force=true"), "load defaults must not replace an existing list");
 assert(!src.includes("maybeEnsureSystemUncategorizedGroup"), "do not create an empty Uncategorized group");
 assert(src.includes("function withoutEmptyUncategorizedGroup"), "hide an empty Uncategorized group");
