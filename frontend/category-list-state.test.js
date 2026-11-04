@@ -1,6 +1,12 @@
 const fs = require("fs");
 const path = require("path");
-const { categoryListView } = require("./category-list-state.js");
+const {
+  categoryListView,
+  categoryIsUnused,
+  categoryRowMatchesListFilter,
+  categoryFilterEmptyMessage,
+  formatCategoryUnusedSummary,
+} = require("./category-list-state.js");
 
 function assert(condition, message) {
   if (!condition) {
@@ -33,5 +39,24 @@ assert(!app.includes('row.classList.add("is-unused")'), "unused categories are n
 
 const css = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
 assert(!css.includes(".cats-cat.is-unused"), "unused category fade is removed");
+
+const summary = { by_category_id: { "1": 2, "2": 1 } };
+assert(!categoryIsUnused(null, 3), "unknown usage does not mark every category unused");
+assert(!categoryIsUnused(summary, 1), "a referenced category is in use");
+assert(categoryIsUnused(summary, 9), "a category with no references is unused");
+assert(categoryRowMatchesListFilter("Paycheck", false, "", false), "all categories includes used rows");
+assert(!categoryRowMatchesListFilter("Paycheck", false, "", true), "unused only hides used rows");
+assert(categoryRowMatchesListFilter("Allowance", true, "all", true), "search applies inside unused only");
+assert(!categoryRowMatchesListFilter("Allowance", true, "rent", true), "search can hide an unused row");
+assert(
+  categoryFilterEmptyMessage({ searching: false, unusedOnly: true, unusedTotal: 0, visible: 0, usageKnown: true }) === "Every category is in use.",
+  "empty unused filter"
+);
+assert(
+  categoryFilterEmptyMessage({ searching: true, unusedOnly: true, unusedTotal: 2, visible: 0 }) === "No unused categories match that search.",
+  "empty unused search"
+);
+assert(formatCategoryUnusedSummary(32, 8) === "8 unused of 32 categories", "unused summary");
+assert(formatCategoryUnusedSummary(1, 1) === "1 unused of 1 category", "unused summary singular");
 
 console.log("category list state checks ok");

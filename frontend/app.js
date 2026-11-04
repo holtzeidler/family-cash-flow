@@ -13343,11 +13343,7 @@ async function loadCategoryUsageSummary() {
 }
 
 function categoryAssignmentsForCategoryId(catId) {
-  const s = state.categoryUsageSummary;
-  if (!s || catId == null) return 0;
-  const m = s.by_category_id || {};
-  const v = m[String(catId)] ?? m[String(Number(catId))];
-  return Number(v) || 0;
+  return categoryAssignmentCount(state.categoryUsageSummary, catId);
 }
 
 const CATS_GROUP_COLLAPSED_KEY = "familyCashFlow:catsGroupCollapsed";
@@ -13381,30 +13377,50 @@ function ensureCategoriesScanTips() {
   document.querySelectorAll(".cats-pane__scan-tips").forEach((el) => el.remove());
 }
 
+let categoriesUnusedOnly = false;
+
 function applyCategoriesSearch(raw) {
   const tree = document.getElementById("categoriesTree");
   const empty = document.getElementById("categoriesSearchEmpty");
   if (!tree) return;
-  const q = String(raw || "").trim().toLowerCase();
-  const searching = q.length > 0;
+  const q = String(raw || "");
+  const searching = q.trim().length > 0;
+  const unusedOnly = categoriesUnusedOnly;
+  const narrowing = searching || unusedOnly;
   tree.classList.toggle("is-searching", searching);
+  tree.classList.toggle("is-filtering", narrowing);
   let matches = 0;
+  let unusedTotal = 0;
+  tree.querySelectorAll(".cats-cat").forEach((row) => {
+    if (row.dataset.unused === "1") unusedTotal += 1;
+  });
   tree.querySelectorAll(".cats-group").forEach((card) => {
     let groupMatches = 0;
     card.querySelectorAll(".cats-cat").forEach((row) => {
       const name = row.querySelector(".cats-cat__name")?.textContent || "";
-      const hit = !searching || name.toLowerCase().includes(q);
+      const unused = row.dataset.unused === "1";
+      const hit = categoryRowMatchesListFilter(name, unused, q, unusedOnly);
       row.hidden = !hit;
       if (hit) groupMatches += 1;
     });
-    card.hidden = searching && groupMatches === 0;
-    card.classList.toggle("is-search-open", searching && groupMatches > 0);
-    if (searching) matches += groupMatches;
+    card.hidden = narrowing && groupMatches === 0;
+    card.classList.toggle("is-search-open", narrowing && groupMatches > 0);
+    matches += groupMatches;
     card.querySelectorAll(".cats-cat__handle, .cats-group__drag").forEach((handle) => {
-      handle.draggable = !searching;
+      handle.draggable = !narrowing;
     });
   });
-  if (empty) empty.hidden = !searching || matches > 0;
+  if (empty) {
+    const message = categoryFilterEmptyMessage({
+      searching,
+      unusedOnly,
+      unusedTotal,
+      visible: matches,
+      usageKnown: categoryUsageIsKnown(state.categoryUsageSummary),
+    });
+    empty.textContent = message;
+    empty.hidden = !message;
+  }
 }
 
 function setAllCategoryGroupsCollapsed(collapsed) {
@@ -13422,6 +13438,62 @@ function setAllCategoryGroupsCollapsed(collapsed) {
   applyCategoriesSearch(input ? input.value : "");
 }
 
+function syncCategoryUnusedMarkers() {
+  document.querySelectorAll("#categoriesTree .cats-cat").forEach((row) => {
+    const unused = categoryIsUnused(state.categoryUsageSummary, row.dataset.categoryId);
+    row.dataset.unused = unused ? "1" : "0";
+    let label = row.querySelector(".cats-cat__unused");
+    if (!label && unused) {
+      label = document.createElement("span");
+      label.className = "cats-cat__unused";
+      label.textContent = "Unused";
+      const menu = row.querySelector(".cats-cat__menu");
+      if (menu) row.insertBefore(label, menu);
+      else row.appendChild(label);
+    }
+    if (label) label.hidden = !unused;
+  });
+}
+
+function updateCategoriesUnusedSummary() {
+  const el = document.getElementById("categoriesUnusedSummary");
+  if (!el) return;
+  const ids = [...document.querySelectorAll("#categoriesTree .cats-cat")].map((row) => row.dataset.categoryId);
+  if (!categoryUsageIsKnown(state.categoryUsageSummary)) {
+    el.textContent = "";
+    el.hidden = true;
+    return;
+  }
+  const unused = ids.filter((id) => categoryIsUnused(state.categoryUsageSummary, id)).length;
+  el.hidden = false;
+  el.textContent = formatCategoryUnusedSummary(ids.length, unused);
+}
+
+function ensureCategoriesUsageControls() {
+  const tools = document.querySelector("[data-cats-pane] .cats-pane__tools");
+  if (!tools || document.getElementById("categoriesUsageFilter")) return;
+  const bar = document.createElement("div");
+  bar.className = "cats-pane__usage";
+  bar.id = "categoriesUsageFilter";
+  bar.innerHTML =
+    '<div class="cats-pane__filter" role="group" aria-label="Filter categories">' +
+    '<button type="button" class="cats-pane__filter-btn" data-cats-filter="all" aria-pressed="true">All categories</button>' +
+    '<button type="button" class="cats-pane__filter-btn" data-cats-filter="unused" aria-pressed="false">Unused only</button>' +
+    "</div>" +
+    '<p class="cats-pane__usage-count" id="categoriesUnusedSummary"></p>';
+  tools.insertAdjacentElement("afterend", bar);
+  bar.querySelectorAll("[data-cats-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      categoriesUnusedOnly = btn.dataset.catsFilter === "unused";
+      bar.querySelectorAll("[data-cats-filter]").forEach((other) => {
+        other.setAttribute("aria-pressed", other === btn ? "true" : "false");
+      });
+      const input = document.getElementById("categoriesSearch");
+      applyCategoriesSearch(input ? input.value : "");
+    });
+  });
+}
+
 let categoriesSearchBound = false;
 function bindCategoriesSearchControls() {
   if (categoriesSearchBound) return;
@@ -13430,6 +13502,7 @@ function bindCategoriesSearchControls() {
   const collapse = document.getElementById("categoriesCollapseAll");
   if (!input && !expand && !collapse) return;
   categoriesSearchBound = true;
+  ensureCategoriesUsageControls();
   input?.addEventListener("input", () => applyCategoriesSearch(input.value));
   expand?.addEventListener("click", () => setAllCategoryGroupsCollapsed(false));
   collapse?.addEventListener("click", () => setAllCategoryGroupsCollapsed(true));
@@ -13438,6 +13511,8 @@ function bindCategoriesSearchControls() {
 function refreshCategoriesManagerChrome() {
   ensureCategoriesScanTips();
   bindCategoriesSearchControls();
+  syncCategoryUnusedMarkers();
+  updateCategoriesUnusedSummary();
   const tree = state.categoryTree;
   const groups = (tree?.groups || []).filter(Boolean);
   const elG = document.getElementById("categoriesStatGroups");
@@ -13473,6 +13548,10 @@ function refreshCategoriesManagerChrome() {
   const uTx = s ? Number(s.uncategorized_transactions) || 0 : 0;
   if (callout) callout.hidden = !uTx;
   if (countEl) countEl.textContent = String(uTx);
+  const searchInput = document.getElementById("categoriesSearch");
+  if (document.querySelector("#categoriesTree .cats-cat")) {
+    applyCategoriesSearch(searchInput ? searchInput.value : "");
+  }
 }
 
 let _categoryDeleteReassignModalEl = null;
@@ -14190,14 +14269,22 @@ function renderCategoriesGrid(tree) {
     handle.draggable = true;
 
     const nUse = categoryAssignmentsForCategoryId(c.id);
+    const unused = categoryIsUnused(state.categoryUsageSummary, c.id);
+    row.dataset.unused = unused ? "1" : "0";
 
     const meta = document.createElement("span");
     meta.className = "cats-cat__meta";
     meta.textContent = nUse > 0 ? `${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
 
+    const unusedLabel = document.createElement("span");
+    unusedLabel.className = "cats-cat__unused";
+    unusedLabel.textContent = "Unused";
+    unusedLabel.hidden = !unused;
+
     row.appendChild(handle);
     row.appendChild(nameEl);
     row.appendChild(meta);
+    row.appendChild(unusedLabel);
     row.appendChild(menu);
 
     row.addEventListener("click", (ev) => {
@@ -14210,7 +14297,7 @@ function renderCategoriesGrid(tree) {
     });
 
     handle.addEventListener("dragstart", (e) => {
-      if (categoriesTree.classList.contains("is-searching")) {
+      if (categoriesTree.classList.contains("is-searching") || categoriesTree.classList.contains("is-filtering")) {
         e.preventDefault();
         return;
       }
@@ -14438,7 +14525,7 @@ function renderCategoriesGrid(tree) {
     });
 
     groupDragHandle.addEventListener("dragstart", (e) => {
-      if (categoriesTree.classList.contains("is-searching")) {
+      if (categoriesTree.classList.contains("is-searching") || categoriesTree.classList.contains("is-filtering")) {
         e.preventDefault();
         return;
       }
@@ -14626,6 +14713,8 @@ function renderCategoriesGrid(tree) {
   }
   applyCategoryListView(groups.length);
   bindCategoriesSearchControls();
+  syncCategoryUnusedMarkers();
+  updateCategoriesUnusedSummary();
   const searchInput = document.getElementById("categoriesSearch");
   applyCategoriesSearch(searchInput ? searchInput.value : "");
 }
