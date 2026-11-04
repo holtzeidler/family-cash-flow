@@ -3354,7 +3354,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "10";
+const BW_FORECAST_READY_MODAL_VERSION = "11";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -4342,7 +4342,7 @@ function categoryKindForComboboxField(fieldId) {
 }
 
 const TX_ADD_CATEGORY_CHIP_MAX = 3;
-const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Other Income"];
+const TX_ADD_INCOME_CHIP_HINTS = ["Paycheck", "Other Income", "Cash & ATM"];
 const TX_ADD_EXPENSE_CHIP_HINTS = [
   "Mortgage / Rent",
   "Utilities",
@@ -4350,6 +4350,7 @@ const TX_ADD_EXPENSE_CHIP_HINTS = [
   "Subscriptions",
   "Credit Card Payment",
   "Loan Payment",
+  "Cash & ATM",
   "Other Expense",
 ];
 let txAddCategoryChipsBound = false;
@@ -22966,14 +22967,14 @@ function ensureForecastReadyModal() {
   wrap.setAttribute("aria-hidden", "true");
   wrap.innerHTML = `
     <div class="modal modal--choice modal--forecast-ready" role="dialog" aria-modal="true" aria-labelledby="bwForecastReadyTitle" aria-describedby="bwForecastReadyDesc">
-      <h3 id="bwForecastReadyTitle">Your forecast is ready</h3>
+      <h3 id="bwForecastReadyTitle">Your first forecast is ready!</h3>
       <div id="bwForecastReadyDesc" class="bw-forecast-ready__body">
-        <p class="bw-forecast-ready__tagline">Take a 60-second tour to get the most from your forecast.</p>
+        <p class="bw-forecast-ready__tagline">See how your income and bills affect your checking balance — and what’s coming next.</p>
       </div>
       <div class="modal-actions bw-forecast-ready__actions">
         <button type="button" class="bw-forecast-ready__cta" id="bwForecastReadyStartTourBtn">Take the Tour</button>
         <button type="button" class="bw-forecast-ready__skip" id="bwForecastReadySkipBtn">Explore on My Own</button>
-        <p class="bw-forecast-ready__reassure">You can reopen the tour anytime in Settings, under Preferences.</p>
+        <p class="bw-forecast-ready__reassure">You can take the tour anytime from Settings.</p>
       </div>
     </div>
   `;

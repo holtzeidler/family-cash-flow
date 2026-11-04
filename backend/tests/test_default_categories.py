@@ -45,7 +45,7 @@ EXPECTED = [
     ("Income", ["Paycheck", "Other Income"]),
     ("Housing & Bills", ["Mortgage / Rent", "Utilities", "Insurance", "Subscriptions"]),
     ("Debt & Payments", ["Credit Card Payment", "Loan Payment"]),
-    ("Savings & Transfers", ["Savings Transfer", "Investment Transfer", "Other Transfer"]),
+    ("Savings & Transfers", ["Savings Transfer", "Investment Transfer", "Other Transfer", "Cash & ATM"]),
     ("Other", ["Other Expense"]),
 ]
 
@@ -57,7 +57,7 @@ def _names(tree: dict) -> list[tuple[str, list[str]]]:
     ]
 
 
-def test_blueprint_is_the_twelve_starter_categories_without_renames():
+def test_blueprint_matches_the_starter_categories_without_renames():
     rows = _default_category_blueprint_rows()
     assert [(group, name) for group, name, _old in rows] == [
         (group, name) for group, names in EXPECTED for name in names
@@ -112,4 +112,6 @@ def test_new_account_gets_starters_and_later_seeds_leave_them_alone():
         assert names[-1][0] == "Other"
         assert "Dog food" in names[-1][1]
         assert "Paycheck" not in [name for _group, cats in names for name in cats]
+        savings = next(cats for group, cats in names if group == "Savings & Transfers")
+        assert savings.count("Cash & ATM") == 1
         assert [group for group, _cats in names] == [group for group, _cats in EXPECTED]
