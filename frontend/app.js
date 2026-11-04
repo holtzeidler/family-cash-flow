@@ -5821,13 +5821,30 @@ function positionFavoritesMenu(button) {
   menu.style.top = `${top}px`;
 }
 
-function renderFavoritesMenu(menu, rows, errorText) {
-  const helpers = favoriteHelpers();
-  menu.innerHTML = "";
+function favoritesMenuHead() {
+  const head = document.createElement("div");
+  head.className = "fav-menu__head";
   const title = document.createElement("p");
   title.className = "fav-menu__title";
   title.textContent = "Favorites";
-  menu.appendChild(title);
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "fav-menu__close";
+  close.setAttribute("aria-label", "Close favorites");
+  close.textContent = "×";
+  close.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeFavoritesMenu();
+  });
+  head.append(title, close);
+  return head;
+}
+
+function renderFavoritesMenu(menu, rows, errorText) {
+  const helpers = favoriteHelpers();
+  menu.innerHTML = "";
+  menu.appendChild(favoritesMenuHead());
   if (errorText) {
     const err = document.createElement("p");
     err.className = "fav-menu__error";
@@ -5988,6 +6005,7 @@ async function openFavoritesMenu(button) {
   favoritesMenuOwner = button;
   button.setAttribute("aria-expanded", "true");
   menu.innerHTML = "";
+  menu.appendChild(favoritesMenuHead());
   const loading = document.createElement("p");
   loading.className = "fav-menu__empty";
   loading.textContent = "Loading favorites…";
@@ -6058,6 +6076,21 @@ function ensureFavoriteLaunchers() {
     if (menu.contains(target)) return;
     if (target.closest && target.closest("[data-favorites-toggle], #bwFavoritesMenu, #bwConfirmModal")) return;
     closeFavoritesMenu();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const menu = document.getElementById("bwFavoritesMenu");
+    if (!menu || menu.hidden) return;
+    if (document.getElementById("bwConfirmModal")?.classList.contains("modal-overlay--open")) return;
+    const namePanel = document.getElementById("txFavoriteNamePanel");
+    if (namePanel && !namePanel.hidden) return;
+    closeFavoritesMenu();
+    const modalOpen = document.getElementById("txAddModal")?.classList.contains("modal-overlay--open")
+      || document.getElementById("txEditModal")?.classList.contains("modal-overlay--open");
+    if (!modalOpen) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
   });
   ensureFavoriteStar("add");
   ensureFavoriteStar("edit");
