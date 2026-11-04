@@ -14170,33 +14170,15 @@ function renderCategoriesGrid(tree) {
     meta.className = "cats-cat__meta";
     meta.textContent = nUse > 0 ? `${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
 
-    const editHint = document.createElement("button");
-    editHint.type = "button";
-    editHint.className = "cats-cat__edit-hint";
-    editHint.setAttribute("aria-label", `Rename ${c.name}`);
-    editHint.innerHTML =
-      '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 2.5 13.5 5.5 5.5 13.5H2.5v-3L10.5 2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
-    editHint.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      selectEditableText(nameEl);
-    });
-
     row.appendChild(handle);
     row.appendChild(nameEl);
     row.appendChild(meta);
-    row.appendChild(editHint);
     row.appendChild(menu);
 
     row.addEventListener("click", (ev) => {
       const t = ev.target;
       if (!(t instanceof Element)) return;
-      if (
-        t.closest(".cats-cat__menu") ||
-        t.closest(".cats-cat__handle") ||
-        t.closest(".cats-cat__edit-hint") ||
-        t.closest(".cats-cat__name")
-      ) {
+      if (t.closest(".cats-cat__menu") || t.closest(".cats-cat__handle") || t.closest(".cats-cat__name")) {
         return;
       }
       selectEditableText(nameEl);
@@ -14265,7 +14247,7 @@ function renderCategoriesGrid(tree) {
     collapseBtn.className = "cats-group__collapse";
     collapseBtn.setAttribute("aria-label", `Collapse ${g.name}`);
     collapseBtn.innerHTML =
-      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="m5 3.5 6 4.5-6 4.5V3.5Z" fill="currentColor"/></svg>';
+      '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4.5 6.25 8 9.75 11.5 6.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     const nameWrap = document.createElement("h4");
     nameWrap.className = "cats-group__name";
@@ -14297,6 +14279,7 @@ function renderCategoriesGrid(tree) {
 
     nameWrap.appendChild(nameText);
     nameWrap.appendChild(count);
+    nameWrap.appendChild(collapseBtn);
 
     const groupDragHandle = document.createElement("span");
     groupDragHandle.className = "cats-group__drag";
@@ -14402,7 +14385,6 @@ function renderCategoriesGrid(tree) {
     const body = document.createElement("div");
     body.className = "cats-group__body";
 
-    head.appendChild(collapseBtn);
     head.appendChild(groupDragHandle);
     head.appendChild(nameWrap);
     head.appendChild(menu);
