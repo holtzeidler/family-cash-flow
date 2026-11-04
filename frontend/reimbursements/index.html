@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=862" />
+    <link rel="stylesheet" href="../styles.css?v=863" />
   </head>
   <body>
     <h1 class="sr-only">Reimbursements</h1>
@@ -614,10 +614,14 @@
                 <div class="settings-pane cats-pane categories-manager" data-settings-pane="categories" data-cats-pane hidden>
                   <div class="categories-manager__shell">
                     <header class="settings-section-head cats-pane__head categories-manager__head">
-                      <h2 class="settings-section-title cats-pane__title">Categories</h2>
-                      <p class="settings-section-lede cats-pane__helper">
-                        Click a name to rename it. Use the menu to move or delete.
-                      </p>
+                      <div class="cats-pane__head-copy">
+                        <h2 class="settings-section-title cats-pane__title">Categories</h2>
+                        <p class="settings-section-lede cats-pane__helper">Organize the categories used in your cash-flow forecast.</p>
+                      </div>
+                      <div class="cats-pane__head-actions">
+                        <button type="button" id="addCategoryGroupBtn" class="cats-pane__action cats-pane__action--secondary">+ Add group</button>
+                        <button type="button" id="focusNewCategoryBtn" class="cats-pane__action cats-pane__action--primary">+ Add category</button>
+                      </div>
                     </header>
 
                     <div id="categoriesUncategorizedCallout" class="categories-callout" hidden role="region" aria-label="Uncategorized transactions">
@@ -642,10 +646,17 @@
                       </div>
                     </div>
 
-                    <div class="cats-pane__toolbar" role="toolbar" aria-label="Category actions">
-                      <button type="button" id="addCategoryGroupBtn" class="cats-pane__action">+ Add group</button>
-                      <button type="button" id="focusNewCategoryBtn" class="cats-pane__action">+ Add category</button>
+                    <div class="cats-pane__tools">
+                      <label class="cats-pane__search">
+                        <span class="sr-only">Search categories</span>
+                        <input id="categoriesSearch" type="search" placeholder="Search categories…" autocomplete="off" spellcheck="false" />
+                      </label>
+                      <div class="cats-pane__fold" role="group" aria-label="Expand or collapse groups">
+                        <button type="button" id="categoriesExpandAll" class="cats-pane__text-btn">Expand all</button>
+                        <button type="button" id="categoriesCollapseAll" class="cats-pane__text-btn">Collapse all</button>
+                      </div>
                     </div>
+                    <p id="categoriesSearchEmpty" class="cats-pane__search-empty" hidden>No categories match that search.</p>
 
                     <div id="addGroupInline" class="cats-pane__inline-add" hidden>
                       <label for="newGroupName" class="sr-only">New group name</label>
@@ -2001,7 +2012,7 @@ Date,Vendor,Amount
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
     <script src="../trial-status-notice.js?v=3"></script>
-    <script src="../app.js?v=546"></script>
+    <script src="../app.js?v=547"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=21" defer></script>
   </body>
