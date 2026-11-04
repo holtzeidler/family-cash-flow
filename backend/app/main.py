@@ -6545,6 +6545,19 @@ def create_category(
     return _category_out_from_model(cat=category, group_name=str(grp.name))
 
 
+@app.put("/api/families/{family_id}/categories/tree", response_model=CategoriesTreeOut)
+def put_categories_tree(
+    family_id: int,
+    payload: CategoryTreeLayoutIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    # Registered before /categories/{category_id} so "tree" is not parsed as an id.
+    user_id = get_current_user_id(access_token)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
+    return apply_category_tree_layout(db=db, family_id=family_id, payload=payload)
+
+
 @app.put("/api/families/{family_id}/categories/{category_id}", response_model=CategoryOut)
 def update_category(
     family_id: int,
@@ -6805,18 +6818,6 @@ def get_categories_tree_endpoint(
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
     return get_categories_tree(db=db, family_id=family_id, include_archived=include_archived)
-
-
-@app.put("/api/families/{family_id}/categories/tree", response_model=CategoriesTreeOut)
-def put_categories_tree(
-    family_id: int,
-    payload: CategoryTreeLayoutIn,
-    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_write(db=db, family_id=family_id, user_id=user_id)
-    return apply_category_tree_layout(db=db, family_id=family_id, payload=payload)
 
 
 @app.post("/api/families/{family_id}/category-groups", response_model=CategoryGroupOut)
