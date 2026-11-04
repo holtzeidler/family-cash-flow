@@ -42,6 +42,17 @@ assert(!src.includes("maybeEnsureSystemUncategorizedGroup"), "do not create an e
 assert(src.includes("function withoutEmptyUncategorizedGroup"), "hide an empty Uncategorized group");
 assert(src.includes("Add “${safe}” to ${safeGroup}"), "new category row names its group");
 assert(src.includes("function categoryMatchesTransactionKind"), "kind matching stays in place");
+const affinityStart = src.indexOf("function categoryFlowAffinity");
+const affinityEnd = src.indexOf("function collectRecentCategoryIdsForKind");
+assert(affinityStart !== -1 && affinityEnd > affinityStart, "category affinity is defined");
+const affinity = src.slice(affinityStart, affinityEnd);
+assert(!affinity.includes('includes("transfer")'), "transfer names are not guessed as income");
+assert(affinity.includes('"savings transfer"'), "savings transfer works for income or expense shortcuts");
+assert(affinity.includes('"investment transfer"'), "investment transfer works for income or expense shortcuts");
+assert(affinity.includes('"other transfer"'), "other transfer works for income or expense shortcuts");
+assert(affinity.includes('"cash & atm"'), "cash and atm works for income or expense shortcuts");
+assert(!src.includes("Browse all"), "the category field is the way to browse every category");
+assert(!src.includes("cats-cat__edit-hint"), "category rows use the menu instead of a second rename icon");
 assert(!src.includes("categoryImpliesMonthlyRecurrence"), "category names do not choose a monthly schedule");
 assert(!src.includes("categoryImpliesTwiceMonthlyRecurrence"), "paycheck does not choose a twice-monthly schedule");
 
