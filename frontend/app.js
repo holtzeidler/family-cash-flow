@@ -5512,38 +5512,43 @@ function closeFavoriteNamePrompt(fromEscape) {
 }
 
 function syncFavoriteStar(mode) {
-  const root = mode === "edit" ? document.getElementById("txEditInner") : document.querySelector("#txAddModal .modal--tx-add");
-  const btn = root?.querySelector(".tx-fav-star");
+  const btn = document.getElementById(mode === "edit" ? "txEditFavoriteBtn" : "txAddFavoriteBtn");
   if (!btn) return;
   const linked = mode === "edit" ? txEditLinkedFavoriteId : txAddLinkedFavoriteId;
   const on = Number.isFinite(Number(linked)) && Number(linked) > 0;
   btn.setAttribute("aria-pressed", on ? "true" : "false");
-  btn.setAttribute("aria-label", on ? "Saved to favorites" : "Save as favorite");
-  const glyph = btn.querySelector(".tx-fav-star__glyph");
-  if (glyph) glyph.textContent = on ? "★" : "☆";
+  btn.replaceChildren();
+  const glyph = document.createElement("span");
+  glyph.setAttribute("aria-hidden", "true");
+  glyph.textContent = on ? "★" : "☆";
+  btn.append(glyph, document.createTextNode(on ? " Update favorite" : " Save favorite"));
 }
 
 function ensureFavoriteStar(mode) {
-  const root = mode === "edit" ? document.getElementById("txEditInner") : document.querySelector("#txAddModal .modal--tx-add");
-  if (!root || root.querySelector(".tx-fav-star")) {
-    syncFavoriteStar(mode);
-    return;
-  }
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "tx-fav-star";
-  btn.innerHTML = '<span class="tx-fav-star__glyph" aria-hidden="true">☆</span>';
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openFavoriteNamePrompt(mode);
-  });
-  if (mode === "edit") {
-    const top = root.querySelector(".tx-edit-top");
-    if (top) top.appendChild(btn);
-    else root.appendChild(btn);
-  } else {
-    root.appendChild(btn);
+  document.querySelectorAll(".tx-fav-star").forEach((el) => el.remove());
+  const id = mode === "edit" ? "txEditFavoriteBtn" : "txAddFavoriteBtn";
+  let btn = document.getElementById(id);
+  if (!btn) {
+    const host = mode === "edit"
+      ? document.getElementById("txEditFooterSecondary")
+      : document.querySelector(".tx-add-actions-row");
+    if (!host) return;
+    btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = id;
+    btn.className = "secondary tx-fav-action";
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openFavoriteNamePrompt(mode);
+    });
+    if (mode === "edit") {
+      const cancel = document.getElementById("txEditCancel");
+      if (cancel && cancel.parentElement === host) host.insertBefore(btn, cancel);
+      else host.prepend(btn);
+    } else {
+      host.appendChild(btn);
+    }
   }
   syncFavoriteStar(mode);
 }
@@ -5553,27 +5558,34 @@ function ensureFavoriteNamePanel() {
   if (panel) return panel;
   panel = document.createElement("div");
   panel.id = "txFavoriteNamePanel";
-  panel.className = "tx-fav-name";
+  panel.className = "tx-fav-dialog";
   panel.hidden = true;
   panel.innerHTML =
-    '<label class="tx-fav-name__label" for="txFavoriteNameInput">Favorite name</label>' +
-    '<input id="txFavoriteNameInput" class="tx-fav-name__input" type="text" maxlength="120" autocomplete="off" />' +
+    '<div class="tx-fav-dialog__card" role="dialog" aria-modal="true" aria-labelledby="txFavoriteNameTitle">' +
+    '<p id="txFavoriteNameTitle" class="tx-fav-dialog__title">Save favorite</p>' +
+    '<p id="txFavoriteNameHint" class="tx-fav-dialog__hint" hidden>This updates the saved favorite.</p>' +
+    '<label class="sr-only" for="txFavoriteNameInput">Favorite name</label>' +
+    '<input id="txFavoriteNameInput" class="tx-fav-dialog__input" type="text" maxlength="120" autocomplete="off" />' +
     '<p id="txFavoriteNameErr" class="tx-fav-name__err" role="alert"></p>' +
     '<p id="txFavoriteNameStatus" class="tx-fav-name__status" role="status"></p>' +
-    '<div class="tx-fav-name__actions">' +
+    '<div class="tx-fav-dialog__actions">' +
     '<button type="button" id="txFavoriteNameCancel" class="secondary">Cancel</button>' +
-    '<button type="button" id="txFavoriteNameSave">Save favorite</button>' +
-    "</div>";
+    '<button type="button" id="txFavoriteNameSave" class="tx-fav-dialog__save">Save favorite</button>' +
+    "</div></div>";
+  panel.addEventListener("click", (event) => {
+    if (event.target === panel) closeFavoriteNamePrompt();
+  });
   panel.querySelector("#txFavoriteNameCancel")?.addEventListener("click", () => closeFavoriteNamePrompt());
   panel.querySelector("#txFavoriteNameSave")?.addEventListener("click", () => {
     void saveFavoriteFromPrompt();
   });
-  panel.querySelector("#txFavoriteNameInput")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+  panel.querySelector("#txFavoriteNameInput")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
       void saveFavoriteFromPrompt();
     }
   });
+  document.body.appendChild(panel);
   return panel;
 }
 
@@ -5605,20 +5617,22 @@ function openFavoriteNamePrompt(mode) {
   const helpers = favoriteHelpers();
   if (!helpers) return;
   const panel = ensureFavoriteNamePanel();
-  const host = mode === "edit" ? document.getElementById("txEditInner") : document.querySelector("#txAddModal .modal--tx-add");
-  if (!host) return;
-  const anchor = mode === "edit" ? host.querySelector(".tx-edit-top") : host.querySelector("#txAddTitle");
-  if (anchor && anchor.nextSibling !== panel) anchor.insertAdjacentElement("afterend", panel);
-  else if (!panel.parentElement) host.prepend(panel);
   favoritePromptMode = mode;
   const form = readFavoriteForm(mode);
   const linkedId = mode === "edit" ? txEditLinkedFavoriteId : txAddLinkedFavoriteId;
   const existing = favoriteTransactions.find((item) => Number(item.id) === Number(linkedId));
+  const updating = Number(linkedId) > 0;
   const input = panel.querySelector("#txFavoriteNameInput");
   const err = panel.querySelector("#txFavoriteNameErr");
   const status = panel.querySelector("#txFavoriteNameStatus");
+  const title = panel.querySelector("#txFavoriteNameTitle");
+  const hint = panel.querySelector("#txFavoriteNameHint");
+  const saveBtn = panel.querySelector("#txFavoriteNameSave");
   if (err) err.textContent = "";
   if (status) status.textContent = "";
+  if (title) title.textContent = updating ? "Update favorite" : "Save favorite";
+  if (hint) hint.hidden = !updating;
+  if (saveBtn) saveBtn.textContent = updating ? "Update favorite" : "Save favorite";
   if (input) {
     input.value = helpers.suggestFavoriteName({
       categoryName: form.categoryName,
@@ -5680,11 +5694,9 @@ async function saveFavoriteFromPrompt() {
     const next = favoriteTransactions.filter((item) => Number(item.id) !== Number(saved.id));
     next.push(saved);
     favoriteTransactions = next.sort((a, b) => Number(a.id) - Number(b.id));
-    if (status) status.textContent = "Saved to favorites.";
-    showBwToast("Saved to favorites.");
-    window.setTimeout(() => {
-      if (favoritePromptMode === mode) closeFavoriteNamePrompt();
-    }, 700);
+    const message = Number(linkedId) > 0 ? "Favorite updated." : "Saved to favorites.";
+    showBwToast(message);
+    closeFavoriteNamePrompt();
   } catch (e) {
     if (err) err.textContent = (e && e.message) || "Could not save that favorite.";
   } finally {
@@ -5969,7 +5981,8 @@ function ensureFavoriteLaunchers() {
     btn.addEventListener("click", () => toggleFavoritesMenu(btn));
     actions.appendChild(btn);
   }
-  const nav = document.querySelector(".calendar-nav-bar");
+  const today = document.getElementById("calendarGoToday");
+  const nav = today ? today.closest(".calendar-nav-bar") : document.querySelector(".calendar-nav-bar");
   if (nav && !document.getElementById("calFavoritesBtn")) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -5980,7 +5993,14 @@ function ensureFavoriteLaunchers() {
     btn.setAttribute("aria-expanded", "false");
     btn.innerHTML = '<span aria-hidden="true">☆</span> Favorites';
     btn.addEventListener("click", () => toggleFavoritesMenu(btn));
-    nav.appendChild(btn);
+    let cluster = nav.querySelector(":scope > .cal-nav-leading");
+    if (!cluster && today && today.parentElement === nav) {
+      cluster = document.createElement("div");
+      cluster.className = "cal-nav-leading";
+      today.replaceWith(cluster);
+      cluster.appendChild(today);
+    }
+    (cluster || nav).appendChild(btn);
   }
   document.addEventListener("click", (e) => {
     const menu = document.getElementById("bwFavoritesMenu");
