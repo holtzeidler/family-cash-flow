@@ -26713,7 +26713,7 @@ body.account-setup-page
   margin: 0;
   padding: 2px 0;
   list-style: none;
-  max-height: min(16rem, 42vh);
+  max-height: calc(6 * 1.75rem + 1.5rem);
   overflow-y: auto;
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 8px;
@@ -26732,7 +26732,7 @@ body.account-setup-page
     padding: 9px 12px;
   }
   .category-combobox__list{
-    max-height: min(16rem, 42vh);
+    max-height: calc(6 * 2.25rem + 1.5rem);
   }
 }
 .modal--tx-add .tx-add-form__body:has(.category-combobox__list:not([hidden])),
@@ -26771,6 +26771,17 @@ body.account-setup-page
 .category-combobox__create-text{
   color: color-mix(in srgb, rgb(34, 120, 72) 55%, var(--muted));
   font-size: 13px;
+}
+.category-combobox__create-label{
+  padding: 8px 12px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.78);
+}
+.category-combobox__create-group{
+  padding-left: 22px;
 }
 
 /* Add-transaction: repeat row + optional last txn (wide toolbar) */

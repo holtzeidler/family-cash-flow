@@ -4296,7 +4296,7 @@ function showCategoryFieldNote(fieldId, message, opts = {}) {
     retry.className = "category-add-note__retry";
     retry.textContent = "Try again";
     retry.addEventListener("click", () => {
-      void createCategoryFromCombobox(fieldId, opts.retryName);
+      void createCategoryFromCombobox(fieldId, opts.retryName, opts.retryGroupId);
     });
     note.appendChild(retry);
   }
@@ -12687,7 +12687,7 @@ function fitCategoryComboboxList(st) {
   const modalRect = modal.getBoundingClientRect();
   const below = modalRect.bottom - inputRect.bottom - 16;
   const above = inputRect.top - modalRect.top - 16;
-  const cap = 16 * 16;
+  const cap = categoryComboboxListCap();
   if (below >= 120 || below >= above) {
     st.list.style.maxHeight = Math.max(88, Math.min(cap, below)) + "px";
   } else {
@@ -12780,6 +12780,38 @@ function normalizeCategoryComboboxInput(fieldId) {
   st.input.value = "";
 }
 
+function categoryComboboxListCap() {
+  const compact = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+  const optionPx = compact ? 36 : 28;
+  return optionPx * 6 + 24;
+}
+
+/** Display order only. Income/Expense on the transaction still sets cash direction. */
+function categoryComboboxGroupRank(name, kind) {
+  const n = normalizeNameForCompare(name);
+  const income = n === "income" || n.includes("income") || n.includes("reimburse");
+  if (String(kind || "expense").toLowerCase() === "income") return income ? 0 : 1;
+  if (income) return 2;
+  if (
+    n.includes("bill") ||
+    n.includes("housing") ||
+    n.includes("utilit") ||
+    n.includes("debt") ||
+    n.includes("saving") ||
+    n.includes("transfer")
+  ) {
+    return 0;
+  }
+  return 1;
+}
+
+function categoryComboboxGroupOrder(names, kind) {
+  return names
+    .map((name, index) => ({ name, index, rank: categoryComboboxGroupRank(name, kind) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((row) => row.name);
+}
+
 function categoryComboboxFilterQuery(st) {
   const raw = st?.input?.value?.trim() || "";
   const q = raw.toLowerCase();
@@ -12817,7 +12849,10 @@ function filterCategoryCombobox(fieldId) {
     if (!byGroup.has(g)) byGroup.set(g, []);
     byGroup.get(g).push(c);
   }
-  const groupNames = [...new Set([...order, ...byGroup.keys()])].filter((g) => byGroup.has(g));
+  const groupNames = categoryComboboxGroupOrder(
+    [...new Set([...order, ...byGroup.keys()])].filter((g) => byGroup.has(g)),
+    categoryKindForComboboxField(fieldId)
+  );
   for (const gName of groupNames) {
     const header = document.createElement("li");
     header.className = "category-combobox__group";
@@ -12852,19 +12887,51 @@ function filterCategoryCombobox(fieldId) {
     addLi.className = "category-combobox__option category-combobox__option--create";
     addLi.setAttribute("role", "option");
     addLi.dataset.createName = rawQ;
-    const groupLabel = categoryGroupLabelForNewCategory(categoryKindForComboboxField(fieldId));
     const safe = escapeHtml(rawQ);
-    const safeGroup = escapeHtml(groupLabel);
-    addLi.innerHTML = `<span class="category-combobox__plus" aria-hidden="true">+</span><span class="category-combobox__create-text">Add “${safe}” to ${safeGroup}</span>`;
+    addLi.innerHTML = `<span class="category-combobox__plus" aria-hidden="true">+</span><span class="category-combobox__create-text">Create new category “${safe}”</span>`;
     st.list.appendChild(addLi);
   }
+}
+
+function showCategoryCreateGroupChoices(fieldId, rawName) {
+  const st = categoryComboboxRegistry.get(fieldId);
+  const name = String(rawName || "").trim();
+  if (!st || !name) return;
+  st.list.querySelectorAll(".category-combobox__create-group, .category-combobox__create-label").forEach((el) => el.remove());
+  const label = document.createElement("li");
+  label.className = "category-combobox__create-label";
+  label.setAttribute("role", "presentation");
+  label.textContent = "Choose a group";
+  st.list.appendChild(label);
+  const groups = (state.categoryTree?.groups || []).filter((g) => g && g.id != null && String(g.name || "").trim());
+  if (!groups.length) {
+    label.textContent = "Add a category group in Settings first.";
+    showCategoryComboboxList(st);
+    return;
+  }
+  for (const g of groups) {
+    const li = document.createElement("li");
+    li.className = "category-combobox__option category-combobox__create-group";
+    li.setAttribute("role", "option");
+    li.dataset.createName = name;
+    li.dataset.groupId = String(g.id);
+    li.textContent = String(g.name || "").trim();
+    st.list.appendChild(li);
+  }
+  showCategoryComboboxList(st);
+  const options = Array.from(st.list.querySelectorAll("li.category-combobox__option"));
+  const idx = options.findIndex((li) => li.classList.contains("category-combobox__create-group"));
+  if (idx >= 0) setCategoryComboboxActiveIndex(st, idx);
 }
 
 function applyCategoryComboboxPickFromLi(fieldId, li) {
   if (!li) return;
   if (li.classList.contains("category-combobox__option--create")) {
-    const nm = li.dataset.createName || "";
-    void createCategoryFromCombobox(fieldId, nm);
+    showCategoryCreateGroupChoices(fieldId, li.dataset.createName || "");
+    return;
+  }
+  if (li.classList.contains("category-combobox__create-group")) {
+    void createCategoryFromCombobox(fieldId, li.dataset.createName || "", Number(li.dataset.groupId));
     return;
   }
   const id = li.dataset.id;
@@ -12872,13 +12939,13 @@ function applyCategoryComboboxPickFromLi(fieldId, li) {
   if (id) selectCategoryComboboxChoice(fieldId, id, display);
 }
 
-async function createCategoryFromCombobox(fieldId, rawName) {
+async function createCategoryFromCombobox(fieldId, rawName, groupId) {
   const name = String(rawName || "").trim();
   const session = beginCategoryCreate(categoryComboboxCreateInFlight.has(fieldId), name);
   if (!session.started) return;
 
-  const kind = categoryKindForComboboxField(fieldId);
-  const gid = categoryGroupIdForNewCategory(kind);
+  const requested = Number(groupId);
+  const gid = Number.isFinite(requested) ? requested : categoryGroupIdForNewCategory(categoryKindForComboboxField(fieldId));
   const resolution = categoryCreateResolution(name, state.categories || [], gid);
   if (resolution.action === "reuse" && resolution.category) {
     selectCategoryComboboxChoice(fieldId, resolution.category.id, categoryDisplayLabel(resolution.category));
@@ -12922,7 +12989,7 @@ async function createCategoryFromCombobox(fieldId, rawName) {
     } else if (st) {
       st.hidden.value = "";
       st.input.value = name;
-      showCategoryFieldNote(fieldId, done.note, { categoryName: name, retryName: name });
+      showCategoryFieldNote(fieldId, done.note, { categoryName: name, retryName: name, retryGroupId: gid });
     }
   } catch (err) {
     try {
@@ -12941,7 +13008,7 @@ async function createCategoryFromCombobox(fieldId, rawName) {
       st.hidden.value = "";
       st.input.value = name;
     }
-    showCategoryFieldNote(fieldId, done.note, { categoryName: name, retryName: name });
+    showCategoryFieldNote(fieldId, done.note, { categoryName: name, retryName: name, retryGroupId: gid });
   } finally {
     categoryComboboxCreateInFlight.delete(fieldId);
     if (st) {
