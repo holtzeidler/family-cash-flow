@@ -5,6 +5,8 @@ const {
   buildFavoritePayload,
   planFavoriteFormFill,
   favoriteMenuDetail,
+  favoriteLinkId,
+  addFavoriteLinkForOpen,
   favoriteEmptyMessage,
 } = require("./favorite-transactions.js");
 
@@ -77,5 +79,14 @@ assert.strictEqual(optionalAccount.accountId, null);
 assert.strictEqual(favoriteMenuDetail({ kind: "expense", amount: "86.40" }), "Expense · $86.40");
 assert.strictEqual(favoriteMenuDetail({ kind: "income", amount: "1200" }), "Income · $1,200.00");
 assert.ok(favoriteEmptyMessage().includes("No favorites yet"));
+
+assert.strictEqual(favoriteLinkId(4), 4);
+assert.strictEqual(favoriteLinkId("12"), 12);
+assert.strictEqual(favoriteLinkId(0), null);
+assert.strictEqual(favoriteLinkId("nope"), null);
+assert.strictEqual(addFavoriteLinkForOpen({ favorite: { id: "7", amount: "10.00", category_id: 3, name: "Rent" } }), 7);
+assert.strictEqual(addFavoriteLinkForOpen({ favorite: { id: 8, amount: "99.00", name: "Other" } }), 8);
+assert.strictEqual(addFavoriteLinkForOpen({ date: "2026-11-04", kind: "expense" }), null);
+assert.strictEqual(addFavoriteLinkForOpen({ favorite: { name: "Rent", amount: "10.00", category_id: 3 } }), null);
 
 console.log("favorite transaction checks ok");

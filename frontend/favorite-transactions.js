@@ -82,8 +82,18 @@ function favoriteMenuDetail(favorite) {
   return `${kind} · $${whole}.${parts[1]}`;
 }
 
+function favoriteLinkId(value) {
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function addFavoriteLinkForOpen(opts) {
+  if (!opts || opts.favorite == null) return null;
+  return favoriteLinkId(opts.favorite.id);
+}
+
 function favoriteEmptyMessage() {
-  return "No favorites yet. Save one with the star on Add or Edit transaction.";
+  return "No favorites yet. Save one from Add or Edit transaction.";
 }
 
 if (typeof module !== "undefined" && module.exports) {
@@ -93,6 +103,8 @@ if (typeof module !== "undefined" && module.exports) {
     buildFavoritePayload,
     planFavoriteFormFill,
     favoriteMenuDetail,
+    favoriteLinkId,
+    addFavoriteLinkForOpen,
     favoriteEmptyMessage,
   };
 }
