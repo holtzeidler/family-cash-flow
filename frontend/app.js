@@ -4136,6 +4136,9 @@ familySelect.addEventListener("change", async () => {
   hydrateBalanceThresholdInputsFromStorage(true);
   await loadCategories();
   await loadAccounts();
+  closeFavoritesMenu();
+  favoriteTransactions = [];
+  favoriteTransactionsFamilyId = null;
   await loadExpectedTransactions();
   await loadMonthAndCalendar();
   if (state.activeFamilyId) {
@@ -5132,6 +5135,10 @@ async function openTxEditModalAsync(tx) {
     instanceAccountId.value = String(state.accounts[0].id);
   }
   show(txEditErr, "");
+  closeFavoriteNamePrompt();
+  txEditLinkedFavoriteId = null;
+  ensureFavoriteStar("edit");
+  syncFavoriteStar("edit");
   resetTxEditModalPosition();
   try { txEditModal.style.display = ""; } catch (_) {}
   txEditModal.classList.add("modal-overlay--open");
@@ -5263,6 +5270,9 @@ function resetTxEditModalPosition() {
 
 function closeTxEditModal() {
   if (!txEditModal) return;
+  closeFavoriteNamePrompt();
+  txEditLinkedFavoriteId = null;
+  syncFavoriteStar("edit");
   try { closeTxEditApplyScopeModal(); } catch (_) {}
   try { closeTxEditDeleteScopeModal(); } catch (_) {}
   resetTxEditModalPosition();
@@ -5458,6 +5468,520 @@ function initProfileSettings() {
 
 initProfileSettings();
 
+let favoriteTransactions = [];
+let favoriteTransactionsFamilyId = null;
+let txAddLinkedFavoriteId = null;
+let txEditLinkedFavoriteId = null;
+let favoritePromptMode = null;
+let suppressModalEscape = false;
+let favoritesMenuOwner = null;
+
+function favoriteHelpers() {
+  return typeof buildFavoritePayload === "function" ? {
+    buildFavoritePayload,
+    planFavoriteFormFill,
+    suggestFavoriteName,
+    favoriteMenuDetail,
+    favoriteEmptyMessage,
+  } : null;
+}
+
+function closeFavoriteNamePrompt(fromEscape) {
+  const panel = document.getElementById("txFavoriteNamePanel");
+  if (!panel || panel.hidden) return false;
+  panel.hidden = true;
+  favoritePromptMode = null;
+  if (fromEscape) suppressModalEscape = true;
+  return true;
+}
+
+function syncFavoriteStar(mode) {
+  const root = mode === "edit" ? document.getElementById("txEditInner") : document.querySelector("#txAddModal .modal--tx-add");
+  const btn = root?.querySelector(".tx-fav-star");
+  if (!btn) return;
+  const linked = mode === "edit" ? txEditLinkedFavoriteId : txAddLinkedFavoriteId;
+  const on = Number.isFinite(Number(linked)) && Number(linked) > 0;
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  btn.setAttribute("aria-label", on ? "Saved to favorites" : "Save as favorite");
+  const glyph = btn.querySelector(".tx-fav-star__glyph");
+  if (glyph) glyph.textContent = on ? "★" : "☆";
+}
+
+function ensureFavoriteStar(mode) {
+  const root = mode === "edit" ? document.getElementById("txEditInner") : document.querySelector("#txAddModal .modal--tx-add");
+  if (!root || root.querySelector(".tx-fav-star")) {
+    syncFavoriteStar(mode);
+    return;
+  }
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "tx-fav-star";
+  btn.innerHTML = '<span class="tx-fav-star__glyph" aria-hidden="true">☆</span>';
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openFavoriteNamePrompt(mode);
+  });
+  if (mode === "edit") {
+    const top = root.querySelector(".tx-edit-top");
+    if (top) top.appendChild(btn);
+    else root.appendChild(btn);
+  } else {
+    root.appendChild(btn);
+  }
+  syncFavoriteStar(mode);
+}
+
+function ensureFavoriteNamePanel() {
+  let panel = document.getElementById("txFavoriteNamePanel");
+  if (panel) return panel;
+  panel = document.createElement("div");
+  panel.id = "txFavoriteNamePanel";
+  panel.className = "tx-fav-name";
+  panel.hidden = true;
+  panel.innerHTML =
+    '<label class="tx-fav-name__label" for="txFavoriteNameInput">Favorite name</label>' +
+    '<input id="txFavoriteNameInput" class="tx-fav-name__input" type="text" maxlength="120" autocomplete="off" />' +
+    '<p id="txFavoriteNameErr" class="tx-fav-name__err" role="alert"></p>' +
+    '<p id="txFavoriteNameStatus" class="tx-fav-name__status" role="status"></p>' +
+    '<div class="tx-fav-name__actions">' +
+    '<button type="button" id="txFavoriteNameCancel" class="secondary">Cancel</button>' +
+    '<button type="button" id="txFavoriteNameSave">Save favorite</button>' +
+    "</div>";
+  panel.querySelector("#txFavoriteNameCancel")?.addEventListener("click", () => closeFavoriteNamePrompt());
+  panel.querySelector("#txFavoriteNameSave")?.addEventListener("click", () => {
+    void saveFavoriteFromPrompt();
+  });
+  panel.querySelector("#txFavoriteNameInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void saveFavoriteFromPrompt();
+    }
+  });
+  return panel;
+}
+
+function favoriteCategoryRecord(categoryId) {
+  if (categoryId == null || categoryId === "") return null;
+  return (state.categories || []).find((item) => Number(item.id) === Number(categoryId) && !item.archived) || null;
+}
+
+function readFavoriteForm(mode) {
+  const edit = mode === "edit";
+  const categoryId = categoryIdFromCategoryField(edit ? "txEditCategoryId" : "txAddCategoryId");
+  const category = favoriteCategoryRecord(categoryId);
+  return {
+    kind: getRadioValue(edit ? "txEditKind" : "txAddKind", "expense"),
+    amount: (edit ? txEditAmount : txAddAmount)?.value || "",
+    categoryId: category ? category.id : categoryId,
+    categoryName: category ? String(category.name || "") : "",
+    accountId: (edit ? instanceAccountId : txAddAccountId)?.value || "",
+    notes: (edit ? txEditNotes : txAddNotes)?.value || "",
+    description: edit ? txEditDescriptionSnapshot : "",
+  };
+}
+
+function openFavoriteNamePrompt(mode) {
+  if (!canWriteFamilyData()) {
+    window.alert("You have view-only access to this account.");
+    return;
+  }
+  const helpers = favoriteHelpers();
+  if (!helpers) return;
+  const panel = ensureFavoriteNamePanel();
+  const host = mode === "edit" ? document.getElementById("txEditInner") : document.querySelector("#txAddModal .modal--tx-add");
+  if (!host) return;
+  const anchor = mode === "edit" ? host.querySelector(".tx-edit-top") : host.querySelector("#txAddTitle");
+  if (anchor && anchor.nextSibling !== panel) anchor.insertAdjacentElement("afterend", panel);
+  else if (!panel.parentElement) host.prepend(panel);
+  favoritePromptMode = mode;
+  const form = readFavoriteForm(mode);
+  const linkedId = mode === "edit" ? txEditLinkedFavoriteId : txAddLinkedFavoriteId;
+  const existing = favoriteTransactions.find((item) => Number(item.id) === Number(linkedId));
+  const input = panel.querySelector("#txFavoriteNameInput");
+  const err = panel.querySelector("#txFavoriteNameErr");
+  const status = panel.querySelector("#txFavoriteNameStatus");
+  if (err) err.textContent = "";
+  if (status) status.textContent = "";
+  if (input) {
+    input.value = helpers.suggestFavoriteName({
+      categoryName: form.categoryName,
+      description: form.description,
+      kind: form.kind,
+      existingName: existing ? existing.name : "",
+    });
+  }
+  panel.hidden = false;
+  input?.focus();
+  input?.select();
+}
+
+async function saveFavoriteFromPrompt() {
+  const helpers = favoriteHelpers();
+  const panel = document.getElementById("txFavoriteNamePanel");
+  const mode = favoritePromptMode;
+  if (!helpers || !panel || !mode || !state.activeFamilyId) return;
+  const err = panel.querySelector("#txFavoriteNameErr");
+  const status = panel.querySelector("#txFavoriteNameStatus");
+  const saveBtn = panel.querySelector("#txFavoriteNameSave");
+  if (err) err.textContent = "";
+  if (status) status.textContent = "";
+  const form = readFavoriteForm(mode);
+  const selectedCategory = form.categoryId != null && form.categoryId !== "" ? favoriteCategoryRecord(form.categoryId) : null;
+  if (form.categoryId != null && form.categoryId !== "" && !selectedCategory) {
+    if (err) err.textContent = "That category is no longer available. Clear it or choose another before saving this favorite.";
+    return;
+  }
+  const accountId = form.accountId ? Number(form.accountId) : null;
+  if (accountId && !(state.accounts || []).some((item) => Number(item.id) === accountId)) {
+    if (err) err.textContent = "That account is no longer available. Choose another before saving this favorite.";
+    return;
+  }
+  const built = helpers.buildFavoritePayload({
+    name: panel.querySelector("#txFavoriteNameInput")?.value,
+    kind: form.kind,
+    amount: form.amount,
+    categoryId: selectedCategory ? selectedCategory.id : null,
+    accountId: accountId || null,
+    notes: form.notes,
+  });
+  if (!built.ok) {
+    if (err) err.textContent = built.nameError || built.amountError || built.kindError;
+    return;
+  }
+  const linkedId = mode === "edit" ? txEditLinkedFavoriteId : txAddLinkedFavoriteId;
+  if (saveBtn) saveBtn.disabled = true;
+  try {
+    const base = `/api/families/${state.activeFamilyId}/favorite-transactions`;
+    const saved = linkedId
+      ? await api(`${base}/${linkedId}`, "PUT", built.body)
+      : await api(base, "POST", built.body);
+    if (!saved || saved.id == null) throw new Error("Could not save that favorite.");
+    if (mode === "edit") txEditLinkedFavoriteId = Number(saved.id);
+    else txAddLinkedFavoriteId = Number(saved.id);
+    syncFavoriteStar(mode);
+    favoriteTransactionsFamilyId = Number(state.activeFamilyId);
+    const next = favoriteTransactions.filter((item) => Number(item.id) !== Number(saved.id));
+    next.push(saved);
+    favoriteTransactions = next.sort((a, b) => Number(a.id) - Number(b.id));
+    if (status) status.textContent = "Saved to favorites.";
+    showBwToast("Saved to favorites.");
+    window.setTimeout(() => {
+      if (favoritePromptMode === mode) closeFavoriteNamePrompt();
+    }, 700);
+  } catch (e) {
+    if (err) err.textContent = (e && e.message) || "Could not save that favorite.";
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+function applyFavoriteToOpenAddForm(favorite) {
+  const helpers = favoriteHelpers();
+  if (!helpers || !favorite) return;
+  const today = toISODate(new Date());
+  const plan = helpers.planFavoriteFormFill(favorite, {
+    categories: state.categories || [],
+    accounts: state.accounts || [],
+    date: (txAddDate && txAddDate.value) || today,
+    today,
+  });
+  const radio = document.querySelector(`input[type="radio"][name="txAddKind"][value="${plan.kind}"]`);
+  if (radio) radio.checked = true;
+  if (txAddAmount) txAddAmount.value = plan.amount;
+  if (txAddNotes) txAddNotes.value = plan.notes || "";
+  if (txAddRecurrence) txAddRecurrence.value = "";
+  if (txAddEndsMode) txAddEndsMode.value = "never";
+  if (txAddEndCount) txAddEndCount.value = "";
+  if (txAddEndDate) txAddEndDate.value = "";
+  if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
+  if (txAddVariable) txAddVariable.checked = false;
+  if (txAddAccountId) {
+    if (plan.accountId) txAddAccountId.value = String(plan.accountId);
+    else if (plan.clearAccount) txAddAccountId.value = "";
+  }
+  try {
+    updateTxAddRepeatingUi();
+  } catch (_) {}
+  try {
+    renderTxAddCategoryChips();
+  } catch (_) {}
+  setCategoryFieldValue("txAddCategoryId", plan.categoryId);
+  txAddLinkedFavoriteId = Number(favorite.id) || null;
+  syncFavoriteStar("add");
+  show(txAddErr, plan.notices.join(" "));
+  updateTxAddFormValidity();
+}
+
+async function loadFavoriteTransactions() {
+  if (!state.activeFamilyId) {
+    favoriteTransactions = [];
+    favoriteTransactionsFamilyId = null;
+    return [];
+  }
+  const rows = await api(`/api/families/${state.activeFamilyId}/favorite-transactions`, "GET");
+  favoriteTransactions = Array.isArray(rows) ? rows : [];
+  favoriteTransactionsFamilyId = Number(state.activeFamilyId);
+  return favoriteTransactions;
+}
+
+function closeFavoritesMenu() {
+  const menu = document.getElementById("bwFavoritesMenu");
+  if (menu) menu.hidden = true;
+  if (favoritesMenuOwner) favoritesMenuOwner.setAttribute("aria-expanded", "false");
+  favoritesMenuOwner = null;
+}
+
+function positionFavoritesMenu(button) {
+  const menu = document.getElementById("bwFavoritesMenu");
+  if (!menu || !button) return;
+  const rect = button.getBoundingClientRect();
+  const width = Math.min(320, window.innerWidth - 24);
+  let left = Math.min(rect.left, window.innerWidth - width - 12);
+  left = Math.max(12, left);
+  let top = rect.bottom + 6;
+  menu.style.width = `${width}px`;
+  menu.hidden = false;
+  const height = menu.offsetHeight;
+  if (top + height > window.innerHeight - 12) top = Math.max(12, rect.top - height - 6);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+function renderFavoritesMenu(menu, rows, errorText) {
+  const helpers = favoriteHelpers();
+  menu.innerHTML = "";
+  const title = document.createElement("p");
+  title.className = "fav-menu__title";
+  title.textContent = "Favorites";
+  menu.appendChild(title);
+  if (errorText) {
+    const err = document.createElement("p");
+    err.className = "fav-menu__error";
+    err.textContent = errorText;
+    menu.appendChild(err);
+    return;
+  }
+  if (!rows.length) {
+    const empty = document.createElement("p");
+    empty.className = "fav-menu__empty";
+    empty.textContent = helpers ? helpers.favoriteEmptyMessage() : "No favorites yet.";
+    menu.appendChild(empty);
+    return;
+  }
+  const list = document.createElement("ul");
+  list.className = "fav-menu__list";
+  for (const fav of rows) {
+    const item = document.createElement("li");
+    item.className = "fav-menu__item";
+    const pick = document.createElement("button");
+    pick.type = "button";
+    pick.className = "fav-menu__pick";
+    const name = document.createElement("span");
+    name.className = "fav-menu__name";
+    name.textContent = String(fav.name || "Favorite");
+    const meta = document.createElement("span");
+    meta.className = "fav-menu__meta";
+    meta.textContent = helpers ? helpers.favoriteMenuDetail(fav) : "";
+    pick.append(name, meta);
+    pick.addEventListener("click", () => {
+      closeFavoritesMenu();
+      openTxAddModal({
+        date: toISODate(new Date()),
+        kind: String(fav.kind || "").toLowerCase() === "income" ? "income" : "expense",
+        favorite: fav,
+      });
+    });
+    const rename = document.createElement("button");
+    rename.type = "button";
+    rename.className = "fav-menu__action";
+    rename.textContent = "Rename";
+    rename.addEventListener("click", () => beginFavoriteRename(item, fav));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "fav-menu__action fav-menu__action--danger";
+    remove.textContent = "Delete";
+    remove.addEventListener("click", () => {
+      void confirmDeleteFavorite(fav);
+    });
+    item.append(pick, rename, remove);
+    list.appendChild(item);
+  }
+  menu.appendChild(list);
+}
+
+function beginFavoriteRename(item, fav) {
+  item.innerHTML = "";
+  const wrap = document.createElement("div");
+  wrap.className = "fav-menu__rename";
+  const input = document.createElement("input");
+  input.className = "fav-menu__rename-input";
+  input.type = "text";
+  input.maxLength = 120;
+  input.value = String(fav.name || "");
+  input.setAttribute("aria-label", "Favorite name");
+  const save = document.createElement("button");
+  save.type = "button";
+  save.className = "fav-menu__action";
+  save.textContent = "Save";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "fav-menu__action";
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", () => void openFavoritesMenu(favoritesMenuOwner));
+  save.addEventListener("click", () => {
+    void renameFavorite(fav, input.value, wrap);
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void renameFavorite(fav, input.value, wrap);
+    }
+  });
+  wrap.append(input, save, cancel);
+  item.appendChild(wrap);
+  input.focus();
+  input.select();
+}
+
+async function renameFavorite(fav, name, wrap) {
+  const helpers = favoriteHelpers();
+  const cleaned = String(name || "").trim();
+  if (!cleaned) {
+    let err = wrap.querySelector(".fav-menu__error");
+    if (!err) {
+      err = document.createElement("p");
+      err.className = "fav-menu__error";
+      wrap.appendChild(err);
+    }
+    err.textContent = helpers ? helpers.buildFavoritePayload({ name: "", kind: "expense", amount: "1" }).nameError : "Enter a favorite name.";
+    return;
+  }
+  try {
+    await api(`/api/families/${state.activeFamilyId}/favorite-transactions/${fav.id}`, "PUT", { name: cleaned.slice(0, 120) });
+    await openFavoritesMenu(favoritesMenuOwner);
+  } catch (e) {
+    let err = wrap.querySelector(".fav-menu__error");
+    if (!err) {
+      err = document.createElement("p");
+      err.className = "fav-menu__error";
+      wrap.appendChild(err);
+    }
+    err.textContent = (e && e.message) || "Could not rename that favorite.";
+  }
+}
+
+async function confirmDeleteFavorite(fav) {
+  const ok = await bwConfirm({
+    title: "Delete this favorite?",
+    body: "This removes the saved template only. Transactions already on your forecast stay as they are.",
+    confirmLabel: "Delete",
+    cancelLabel: "Cancel",
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await api(`/api/families/${state.activeFamilyId}/favorite-transactions/${fav.id}`, "DELETE");
+    if (Number(txAddLinkedFavoriteId) === Number(fav.id)) {
+      txAddLinkedFavoriteId = null;
+      syncFavoriteStar("add");
+    }
+    if (Number(txEditLinkedFavoriteId) === Number(fav.id)) {
+      txEditLinkedFavoriteId = null;
+      syncFavoriteStar("edit");
+    }
+    await openFavoritesMenu(favoritesMenuOwner);
+  } catch (e) {
+    const menu = document.getElementById("bwFavoritesMenu");
+    if (!menu) return;
+    renderFavoritesMenu(menu, favoriteTransactions, (e && e.message) || "Could not delete that favorite.");
+  }
+}
+
+async function openFavoritesMenu(button) {
+  if (!button || !state.activeFamilyId) return;
+  const menu = document.getElementById("bwFavoritesMenu") || document.createElement("div");
+  if (!menu.id) {
+    menu.id = "bwFavoritesMenu";
+    menu.className = "fav-menu";
+    menu.hidden = true;
+    menu.setAttribute("role", "dialog");
+    menu.setAttribute("aria-label", "Favorites");
+    menu.addEventListener("click", (event) => event.stopPropagation());
+    document.body.appendChild(menu);
+  }
+  favoritesMenuOwner = button;
+  button.setAttribute("aria-expanded", "true");
+  menu.innerHTML = "";
+  const loading = document.createElement("p");
+  loading.className = "fav-menu__empty";
+  loading.textContent = "Loading favorites…";
+  menu.appendChild(loading);
+  positionFavoritesMenu(button);
+  try {
+    const rows = await loadFavoriteTransactions();
+    if (favoritesMenuOwner !== button) return;
+    renderFavoritesMenu(menu, rows, "");
+    positionFavoritesMenu(button);
+  } catch (e) {
+    if (favoritesMenuOwner !== button) return;
+    renderFavoritesMenu(menu, [], (e && e.message) || "Could not load favorites.");
+    positionFavoritesMenu(button);
+  }
+}
+
+function toggleFavoritesMenu(button) {
+  const menu = document.getElementById("bwFavoritesMenu");
+  if (menu && !menu.hidden && favoritesMenuOwner === button) {
+    closeFavoritesMenu();
+    return;
+  }
+  void openFavoritesMenu(button);
+}
+
+function ensureFavoriteLaunchers() {
+  const actions = document.querySelector(".tm__headActions");
+  if (actions && !document.getElementById("tmFavoritesBtn")) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "tmFavoritesBtn";
+    btn.className = "tm-fav-btn";
+    btn.dataset.favoritesToggle = "1";
+    btn.setAttribute("aria-haspopup", "dialog");
+    btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = '<span aria-hidden="true">☆</span> Favorites';
+    btn.addEventListener("click", () => toggleFavoritesMenu(btn));
+    actions.appendChild(btn);
+  }
+  const nav = document.querySelector(".calendar-nav-bar");
+  if (nav && !document.getElementById("calFavoritesBtn")) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "calFavoritesBtn";
+    btn.className = "cal-fav-btn";
+    btn.dataset.favoritesToggle = "1";
+    btn.setAttribute("aria-haspopup", "dialog");
+    btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = '<span aria-hidden="true">☆</span> Favorites';
+    btn.addEventListener("click", () => toggleFavoritesMenu(btn));
+    nav.appendChild(btn);
+  }
+  document.addEventListener("click", (e) => {
+    const menu = document.getElementById("bwFavoritesMenu");
+    if (!menu || menu.hidden) return;
+    const target = e.target;
+    // Rename replaces its button during the click, so the target is no longer in the menu.
+    if (!target || target.isConnected === false) return;
+    if (menu.contains(target)) return;
+    if (target.closest && target.closest("[data-favorites-toggle], #bwFavoritesMenu, #bwConfirmModal")) return;
+    closeFavoritesMenu();
+  });
+  ensureFavoriteStar("add");
+  ensureFavoriteStar("edit");
+}
+
+ensureFavoriteLaunchers();
+
 function openTxAddModal(opts = {}) {
   void openTxAddModalAsync(opts);
 }
@@ -5513,12 +6037,22 @@ async function openTxAddModalAsync(opts = {}) {
   } catch (err) {
     if (typeof console !== "undefined" && console.warn) console.warn("txAdd chips render failed:", err);
   }
+  closeFavoriteNamePrompt();
+  ensureFavoriteStar("add");
+  if (opts.favorite) applyFavoriteToOpenAddForm(opts.favorite);
+  else {
+    txAddLinkedFavoriteId = null;
+    syncFavoriteStar("add");
+  }
   updateTxAddFormValidity();
   requestAnimationFrame(() => (txAddAmount ? txAddAmount.focus() : dateEl.focus()));
 }
 
 function closeTxAddModal() {
   if (!txAddModal) return;
+  closeFavoriteNamePrompt();
+  txAddLinkedFavoriteId = null;
+  syncFavoriteStar("add");
   resetTxAddFormValidation();
   if (!txAddSaveInFlight) setTxAddSaveBusy(false);
   show(txAddErr, "");
@@ -6484,6 +7018,10 @@ if (txEditModal) {
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  if (suppressModalEscape) {
+    suppressModalEscape = false;
+    return;
+  }
   if (_billingIntervalConfirmEl?.classList.contains("modal-overlay--open")) {
     closeBillingIntervalConfirm(false);
     return;
@@ -6492,6 +7030,7 @@ document.addEventListener("keydown", (e) => {
     closeBwConfirm(false);
     return;
   }
+  if (closeFavoriteNamePrompt(true)) return;
   const deleteScope = document.getElementById("txEditDeleteScopeModal");
   if (deleteScope?.classList.contains("modal-overlay--open")) {
     closeTxEditDeleteScopeModal();
@@ -6506,7 +7045,13 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && txAddModal?.classList.contains("modal-overlay--open")) closeTxAddModal();
+  if (e.key !== "Escape") return;
+  if (suppressModalEscape) {
+    suppressModalEscape = false;
+    return;
+  }
+  if (closeFavoriteNamePrompt(true)) return;
+  if (txAddModal?.classList.contains("modal-overlay--open")) closeTxAddModal();
 });
 
 document.addEventListener("keydown", (e) => {
