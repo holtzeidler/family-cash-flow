@@ -33904,71 +33904,88 @@ body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
 }
 .tm-fav-btn:focus-visible,
 .cal-fav-btn:focus-visible,
-.tx-fav-star:focus-visible,
+.tx-fav-action:focus-visible,
+.tx-fav-dialog__save:focus-visible,
 .fav-menu__pick:focus-visible,
 .fav-menu__action:focus-visible{
   outline: 2px solid rgba(4, 120, 87, 0.35);
   outline-offset: 2px;
 }
-.modal--tx-add,
-#txEditInner{
-  position: relative;
-}
-.tx-fav-star{
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #fff;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-.modal--tx-add .tx-fav-star{
-  position: absolute;
-  top: 7px;
-  right: 10px;
-  z-index: 2;
-}
-.tx-edit-top{
+.modal--tx-add .tx-add-form .modal-actions.modal-actions--tx-add-foot .tx-add-actions-row.row.two{
   display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
 }
-.tx-edit-top .tx-edit-mode-banner{
-  flex: 1 1 auto;
+.modal--tx-add .tx-add-actions-row .tx-fav-action{
+  order: 1;
+}
+.modal--tx-add .tx-add-actions-row #txAddCancel{
+  order: 2;
+}
+.modal--tx-add .tx-add-actions-row .tx-add-btn-primary{
+  order: 3;
+}
+button.secondary.tx-fav-action{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  flex: 0 1 auto;
+  min-height: 36px;
   margin: 0;
-}
-.tx-fav-star:hover{
-  background: rgba(255, 255, 255, 0.16);
-}
-.tx-fav-name{
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(11, 61, 46, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
-}
-.tx-fav-name__label{
-  display: block;
-  margin-bottom: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
   font-size: 12.5px;
-  font-weight: 650;
-  color: rgba(11, 61, 46, 0.84);
+  line-height: 1.2;
+  white-space: nowrap;
+  touch-action: manipulation;
 }
-.tx-fav-name__input{
+.tx-fav-dialog[hidden]{
+  display: none !important;
+}
+.tx-fav-dialog{
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.28);
+}
+.tx-fav-dialog__card{
+  width: min(320px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(17, 24, 39, 0.16);
+}
+.tx-fav-dialog__title{
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(11, 61, 46, 0.96);
+}
+.tx-fav-dialog__hint{
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: rgba(71, 85, 105, 0.9);
+}
+.tx-fav-dialog__input{
   width: 100%;
   box-sizing: border-box;
   min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  border-radius: 8px;
+  font: inherit;
   font-size: 16px;
 }
 .tx-fav-name__err,
@@ -33983,11 +34000,58 @@ body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
 .tx-fav-name__status{
   color: rgba(11, 61, 46, 0.78);
 }
-.tx-fav-name__actions{
+.tx-fav-dialog__actions{
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
+}
+.tx-fav-dialog__actions button{
+  width: auto;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+.tx-fav-dialog__save{
+  background: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 82%, #0d1f18);
+  color: #fff;
+  font-weight: 650;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 1px 2px rgba(11, 61, 46, 0.12);
+}
+.tx-fav-dialog__save:hover{
+  background: color-mix(in srgb, var(--accent) 92%, #000);
+  border-color: color-mix(in srgb, var(--accent) 72%, #0d1f18);
+  color: #fff;
+  filter: none;
+}
+body[data-bw-view="calendar"] .cal-nav-leading{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  grid-column: 1;
+  grid-row: 1;
+  min-width: max-content;
+}
+body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn{
+  margin: 0;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 630;
+  border-radius: 9px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(51, 65, 85, 0.88);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
+  border-color: rgba(11, 61, 46, 0.19);
+  background: rgba(4, 120, 87, 0.06);
+  color: rgba(11, 61, 46, 0.92);
 }
 .fav-menu{
   position: fixed;
@@ -34117,12 +34181,15 @@ body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
     flex: 0 0 auto;
     min-height: 44px;
   }
-  body[data-bw-view="calendar"] .cal-fav-btn{
-    grid-column: 1 / -1;
-    grid-row: 3;
-    justify-self: stretch;
-    margin-right: 0;
+  button.secondary.tx-fav-action{
     min-height: 40px;
+  }
+  .modal--tx-add .tx-add-actions-row .tx-add-btn-primary{
+    order: -1;
+    flex: 1 1 100%;
+  }
+  #txEditInner > .modal-actions #txEditFooterSecondary .tx-fav-action{
+    flex: 1 1 auto;
   }
   .fav-menu__item{
     grid-template-columns: minmax(0, 1fr);
