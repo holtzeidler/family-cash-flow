@@ -2033,10 +2033,6 @@ function setTxAddSaveBusy(busy) {
   if (txAddCancel) txAddCancel.disabled = !!busy;
 }
 
-function countCategoriesForTxAddKind(kind) {
-  return (state.categories || []).filter((c) => categoryMatchesTransactionKind(c, kind)).length;
-}
-
 function txAddFormValidationState() {
   const amountVal = txAddAmount?.value || "";
   const amountOk = amountVal !== "" && Number(amountVal) > 0;
@@ -4358,25 +4354,23 @@ const TX_ADD_EXPENSE_CHIP_HINTS = [
 ];
 let txAddCategoryChipsBound = false;
 
-function categoryMatchesTransactionKind(cat, kind) {
-  if (!cat) return false;
-  const k = String(kind || "expense").toLowerCase();
+/** Shortcut affinity only. The transaction's Income/Expense choice still sets cash direction. */
+function categoryFlowAffinity(cat) {
   const g = normalizeNameForCompare(cat.group_name || "");
   const n = normalizeNameForCompare(cat.name || "");
-  const incomeGroup =
-    g === "income" ||
-    g.includes("income") ||
-    g.includes("reimburse") ||
-    (g.includes("transfer") && (g.includes("in") || !g.includes("out")));
-  const incomeName =
-    n.includes("paycheck") ||
-    n.includes("payroll") ||
-    n.includes("salary") ||
-    n.includes("bonus") ||
-    (n.includes("transfer") && n.includes("in"));
-  const isIncome = incomeGroup || incomeName;
-  if (k === "income") return isIncome;
-  return !isIncome;
+  const flexible = new Set(["cash & atm", "cash and atm", "savings transfer", "investment transfer", "other transfer"]);
+  if (flexible.has(n)) return "either";
+  const incomeGroup = g === "income" || g.includes("income") || g.includes("reimburse");
+  const incomeName = n.includes("paycheck") || n.includes("payroll") || n.includes("salary") || n.includes("bonus");
+  if (incomeGroup || incomeName) return "income";
+  return "expense";
+}
+
+function categoryMatchesTransactionKind(cat, kind) {
+  if (!cat) return false;
+  const affinity = categoryFlowAffinity(cat);
+  if (affinity === "either") return true;
+  return affinity === String(kind || "expense").toLowerCase();
 }
 
 function collectRecentCategoryIdsForKind(kind) {
@@ -4464,7 +4458,7 @@ function refreshTxAddCategoryChipActiveState() {
   const container = document.getElementById("txAddQuickChips");
   if (!container) return;
   const cur = categoryIdFromCategoryField("txAddCategoryId");
-  for (const btn of container.querySelectorAll(".tx-quick-chip:not(.tx-quick-chip--browse)")) {
+  for (const btn of container.querySelectorAll(".tx-quick-chip")) {
     btn.classList.toggle("is-active", cur != null && Number(btn.dataset.catId) === Number(cur));
   }
 }
@@ -4476,36 +4470,15 @@ function syncTxAddQuickChipsEmptyState(container, isEmpty) {
   container.setAttribute("aria-hidden", isEmpty ? "true" : "false");
 }
 
-function appendTxAddBrowseAllChip(container) {
-  const kind = getRadioValue("txAddKind", "expense");
-  container.querySelector(".tx-quick-chip--browse")?.remove();
-  if (countCategoriesForTxAddKind(kind) <= TX_ADD_CATEGORY_CHIP_MAX) return;
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "tx-quick-chip tx-quick-chip--browse";
-  btn.textContent = "Browse all";
-  btn.addEventListener("click", () => {
-    const st = categoryComboboxRegistry.get("txAddCategoryId");
-    if (st?.input) {
-      st.input.focus();
-      showCategoryComboboxList(st);
-      filterCategoryCombobox("txAddCategoryId");
-    }
-  });
-  container.appendChild(btn);
-}
-
 function renderTxAddCategoryChips() {
   const container = document.getElementById("txAddQuickChips");
   if (!container) return;
   const kind = getRadioValue("txAddKind", "expense");
   const suggestions = computeTxAddCategoryChipSuggestions(kind);
   const sig = suggestions.map((c) => c.id).join(",");
-  const chipsEmpty =
-    suggestions.length === 0 && countCategoriesForTxAddKind(kind) <= TX_ADD_CATEGORY_CHIP_MAX;
+  const chipsEmpty = suggestions.length === 0;
   if (container.dataset.kind === kind && container.dataset.sig === sig) {
     refreshTxAddCategoryChipActiveState();
-    appendTxAddBrowseAllChip(container);
     syncTxAddQuickChipsEmptyState(container, chipsEmpty);
     return;
   }
@@ -4522,7 +4495,7 @@ function renderTxAddCategoryChips() {
     btn.dataset.catId = String(cat.id);
     if (cur != null && Number(cur) === Number(cat.id)) btn.classList.add("is-active");
     btn.addEventListener("click", () => {
-      for (const other of container.querySelectorAll(".tx-quick-chip:not(.tx-quick-chip--browse)")) {
+      for (const other of container.querySelectorAll(".tx-quick-chip")) {
         other.classList.remove("is-active");
       }
       btn.classList.add("is-active");
@@ -4539,7 +4512,6 @@ function renderTxAddCategoryChips() {
     });
     container.appendChild(btn);
   }
-  appendTxAddBrowseAllChip(container);
 }
 
 function ensureTxAddCategoryChipsUi() {
@@ -12739,7 +12711,7 @@ function fitCategoryComboboxList(st) {
   const modalRect = modal.getBoundingClientRect();
   const below = modalRect.bottom - inputRect.bottom - 16;
   const above = inputRect.top - modalRect.top - 16;
-  const cap = 12 * 16;
+  const cap = 16 * 16;
   if (below >= 120 || below >= above) {
     st.list.style.maxHeight = Math.max(88, Math.min(cap, below)) + "px";
   } else {
@@ -12832,10 +12804,24 @@ function normalizeCategoryComboboxInput(fieldId) {
   st.input.value = "";
 }
 
+function categoryComboboxFilterQuery(st) {
+  const raw = st?.input?.value?.trim() || "";
+  const q = raw.toLowerCase();
+  if (!q) return "";
+  const hid = st.hidden?.value?.trim() || "";
+  if (!hid) return q;
+  const cat = (st.categories || []).find((c) => String(c.id) === String(hid));
+  if (!cat) return q;
+  const display = categoryDisplayLabel(cat).trim().toLowerCase();
+  const name = String(cat.name || "").trim().toLowerCase();
+  if (q === display || q === name) return "";
+  return q;
+}
+
 function filterCategoryCombobox(fieldId) {
   const st = categoryComboboxRegistry.get(fieldId);
   if (!st) return;
-  const q = st.input.value.trim().toLowerCase();
+  const q = categoryComboboxFilterQuery(st);
   const cats = st.categories || [];
   const filtered = !q
     ? cats.slice()
@@ -12875,7 +12861,7 @@ function filterCategoryCombobox(fieldId) {
       st.list.appendChild(li);
     }
   }
-  const rawQ = st.input.value.trim();
+  const rawQ = categoryComboboxFilterQuery(st) ? st.input.value.trim() : "";
   const qExact = rawQ.toLowerCase();
   let hasExactNameMatch = false;
   if (rawQ) {
@@ -13026,7 +13012,7 @@ function onCategoryComboboxKeydown(e, fieldId) {
         return;
       }
     }
-    const q = st.input.value.trim().toLowerCase();
+    const q = categoryComboboxFilterQuery(st);
     const cats = st.categories || [];
     const filtered = !q
       ? cats
@@ -13130,6 +13116,9 @@ function mountCategoryComboboxFromSelect(selectEl) {
   input.addEventListener("focus", () => {
     showCategoryComboboxList(st);
     filterCategoryCombobox(fieldId);
+    try {
+      input.select();
+    } catch (_) {}
   });
   input.addEventListener("blur", () => {
     if (st.blurTimer) clearTimeout(st.blurTimer);
@@ -13336,10 +13325,7 @@ function ensureCategoriesScanTips() {
     if (toolbar) toolbar.insertAdjacentElement("beforebegin", tips);
     else pane.querySelector(".categories-manager__shell")?.prepend(tips);
   }
-  tips.innerHTML =
-    "<span>Drag to reorder</span>" +
-    '<span class="cats-pane__scan-tips-sep" aria-hidden="true">•</span>' +
-    "<span>Click to rename</span>";
+  tips.textContent = "Drag to reorder";
 }
 
 function refreshCategoriesManagerChrome() {
@@ -14101,33 +14087,15 @@ function renderCategoriesGrid(tree) {
     meta.className = "cats-cat__meta";
     meta.textContent = nUse > 0 ? `${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
 
-    const editHint = document.createElement("button");
-    editHint.type = "button";
-    editHint.className = "cats-cat__edit-hint";
-    editHint.setAttribute("aria-label", `Rename ${c.name}`);
-    editHint.innerHTML =
-      '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 2.5 13.5 5.5 5.5 13.5H2.5v-3L10.5 2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
-    editHint.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      selectEditableText(nameEl);
-    });
-
     row.appendChild(handle);
     row.appendChild(nameEl);
     row.appendChild(meta);
-    row.appendChild(editHint);
     row.appendChild(menu);
 
     row.addEventListener("click", (ev) => {
       const t = ev.target;
       if (!(t instanceof Element)) return;
-      if (
-        t.closest(".cats-cat__menu") ||
-        t.closest(".cats-cat__handle") ||
-        t.closest(".cats-cat__edit-hint") ||
-        t.closest(".cats-cat__name")
-      ) {
+      if (t.closest(".cats-cat__menu") || t.closest(".cats-cat__handle") || t.closest(".cats-cat__name")) {
         return;
       }
       selectEditableText(nameEl);
