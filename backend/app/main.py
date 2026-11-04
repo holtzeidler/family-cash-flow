@@ -620,6 +620,31 @@ class Account(Base):
     family: Mapped[Family] = relationship(back_populates="accounts")
 
 
+FAVORITE_TRANSACTION_LIMIT = 30
+
+
+class FavoriteTransaction(Base):
+    """Reusable Add Transaction template. Saving, editing, or deleting one does not create a transaction."""
+
+    __tablename__ = "favorite_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Stored as the enum value (income/expense), not a second Postgres enum type.
+    kind: Mapped[TransactionKind] = mapped_column(SAEnum(TransactionKind, native_enum=False, length=20), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    category_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    account_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+
 class ExpectedTransaction(Base):
     __tablename__ = "expected_transactions"
 
@@ -2259,6 +2284,98 @@ class TransactionsListOut(BaseModel):
     items: list[TransactionOut]
     totals: dict[str, Decimal]
 
+
+def _favorite_name(value: str) -> str:
+    cleaned = str(value).strip()
+    if not cleaned:
+        raise ValueError("Favorite name is required")
+    if len(cleaned) > 120:
+        raise ValueError("Favorite name is too long")
+    return cleaned
+
+
+def _favorite_amount(value: Decimal) -> Decimal:
+    amount = Decimal(value)
+    quantized = amount.quantize(Decimal("0.01"))
+    if amount != quantized:
+        raise ValueError("Amount can have at most two decimal places")
+    if quantized > Decimal("9999999999.99"):
+        raise ValueError("Amount is too large")
+    return quantized
+
+
+def _favorite_notes(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    if len(cleaned) > 500:
+        raise ValueError("Notes are too long")
+    return cleaned or None
+
+
+class FavoriteTransactionIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    kind: TransactionKind
+    amount: Decimal = Field(gt=0)
+    category_id: Optional[int] = None
+    account_id: Optional[int] = None
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, value: str) -> str:
+        return _favorite_name(value)
+
+    @field_validator("amount")
+    @classmethod
+    def _clean_amount(cls, value: Decimal) -> Decimal:
+        return _favorite_amount(value)
+
+    @field_validator("notes")
+    @classmethod
+    def _clean_notes(cls, value: Optional[str]) -> Optional[str]:
+        return _favorite_notes(value)
+
+
+class FavoriteTransactionUpdateIn(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=120)
+    kind: Optional[TransactionKind] = None
+    amount: Optional[Decimal] = Field(default=None, gt=0)
+    category_id: Optional[int] = None
+    account_id: Optional[int] = None
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        return _favorite_name(value)
+
+    @field_validator("amount")
+    @classmethod
+    def _clean_amount(cls, value: Optional[Decimal]) -> Optional[Decimal]:
+        if value is None:
+            return None
+        return _favorite_amount(value)
+
+    @field_validator("notes")
+    @classmethod
+    def _clean_notes(cls, value: Optional[str]) -> Optional[str]:
+        return _favorite_notes(value)
+
+
+class FavoriteTransactionOut(BaseModel):
+    id: int
+    name: str
+    kind: TransactionKind
+    amount: Decimal
+    category_id: Optional[int] = None
+    account_id: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
 class TransactionsPurgeAfterOut(BaseModel):
     deleted: int
 
@@ -3155,6 +3272,7 @@ def startup_populate_schema():
     _ensure_user_name_part_columns()
     _ensure_user_onboarding_goal_columns()
     _ensure_platform_admin_audit_table()
+    _ensure_favorite_transactions_table()
     _ensure_billing_tables()
     _ensure_onboarding_completion_backfill()
     _sync_legacy_platform_admin_roles()
@@ -4418,6 +4536,51 @@ def _ensure_reimbursable_columns() -> None:
         conn.execute(text("ALTER TABLE expected_transaction_overrides ADD COLUMN IF NOT EXISTS reimbursable BOOLEAN"))
         conn.execute(text("UPDATE transactions SET reimbursable = COALESCE(reimbursable, FALSE)"))
         conn.execute(text("UPDATE expected_transactions SET reimbursable = COALESCE(reimbursable, FALSE)"))
+
+
+def _ensure_favorite_transactions_table() -> None:
+    """Family-scoped templates. create_all also creates this; the SQL covers databases started before the model existed."""
+    with engine.begin() as conn:
+        if settings.DATABASE_URL.startswith("sqlite"):
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS favorite_transactions ("
+                    "id INTEGER PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL, "
+                    "name VARCHAR(120) NOT NULL, "
+                    "kind VARCHAR(20) NOT NULL, "
+                    "amount NUMERIC(12, 2) NOT NULL, "
+                    "category_id INTEGER, "
+                    "account_id INTEGER, "
+                    "notes VARCHAR(500), "
+                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
+                    "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, "
+                    "FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE, "
+                    "FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL, "
+                    "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+                    ")"
+                )
+            )
+        else:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS favorite_transactions ("
+                    "id SERIAL PRIMARY KEY, "
+                    "family_id INTEGER NOT NULL REFERENCES families(id) ON DELETE CASCADE, "
+                    "name VARCHAR(120) NOT NULL, "
+                    "kind VARCHAR(20) NOT NULL, "
+                    "amount NUMERIC(12, 2) NOT NULL, "
+                    "category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL, "
+                    "account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL, "
+                    "notes VARCHAR(500), "
+                    "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), "
+                    "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+                    ")"
+                )
+            )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_favorite_transactions_family_id ON favorite_transactions (family_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_favorite_transactions_category_id ON favorite_transactions (category_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_favorite_transactions_account_id ON favorite_transactions (account_id)"))
 
 
 def _ensure_expected_variable_column() -> None:
@@ -6347,6 +6510,9 @@ def delete_category(
     pass ``reassign_to`` with another category id in the same family, **or**
     pass ``uncategorize_refs=true`` to drop the category from those rows.
     Omitting both when references exist returns HTTP 400 with structured detail.
+
+    Favorite transactions are templates, not forecast entries, so they do not
+    count as references and do not block deletion. Their category is cleared.
     """
     user_id = get_current_user_id(access_token)
     require_family_write(db=db, family_id=family_id, user_id=user_id)
@@ -6445,6 +6611,11 @@ def delete_category(
                 },
             )
 
+    db.execute(
+        update(FavoriteTransaction)
+        .where(FavoriteTransaction.family_id == family_id, FavoriteTransaction.category_id == category_id)
+        .values(category_id=None)
+    )
     db.execute(delete(Category).where(Category.id == category_id, Category.family_id == family_id))
     db.commit()
     return {"ok": True, "archived": False}
@@ -6918,6 +7089,163 @@ def update_account_starting_balance(
         starting_balance=account.starting_balance,
         starting_balance_date=account.starting_balance_date or account.created_at.date(),
     )
+
+
+def _favorite_category_id(db, family_id: int, category_id: Optional[int]) -> Optional[int]:
+    if category_id is None:
+        return None
+    category = db.execute(
+        select(Category).where(Category.id == int(category_id), Category.family_id == family_id)
+    ).scalar_one_or_none()
+    if category is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category_id")
+    if bool(category.archived):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That category is archived")
+    return int(category.id)
+
+
+def _favorite_account_id(db, family_id: int, account_id: Optional[int]) -> Optional[int]:
+    if account_id is None:
+        return None
+    account = db.execute(
+        select(Account).where(Account.id == int(account_id), Account.family_id == family_id)
+    ).scalar_one_or_none()
+    if account is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid account_id")
+    return int(account.id)
+
+
+def _favorite_out(row: FavoriteTransaction) -> FavoriteTransactionOut:
+    kind = row.kind if isinstance(row.kind, TransactionKind) else TransactionKind(str(row.kind))
+    return FavoriteTransactionOut(
+        id=int(row.id),
+        name=str(row.name),
+        kind=kind,
+        amount=row.amount,
+        category_id=int(row.category_id) if row.category_id is not None else None,
+        account_id=int(row.account_id) if row.account_id is not None else None,
+        notes=row.notes,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def _favorite_or_404(db, family_id: int, favorite_id: int) -> FavoriteTransaction:
+    row = db.execute(
+        select(FavoriteTransaction).where(
+            FavoriteTransaction.id == favorite_id,
+            FavoriteTransaction.family_id == family_id,
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Favorite transaction not found")
+    return row
+
+
+@app.get("/api/families/{family_id}/favorite-transactions", response_model=list[FavoriteTransactionOut])
+def list_favorite_transactions(
+    family_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+    rows = (
+        db.execute(
+            select(FavoriteTransaction)
+            .where(FavoriteTransaction.family_id == family_id)
+            .order_by(FavoriteTransaction.created_at.asc(), FavoriteTransaction.id.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return [_favorite_out(row) for row in rows]
+
+
+@app.post("/api/families/{family_id}/favorite-transactions", response_model=FavoriteTransactionOut)
+def create_favorite_transaction(
+    family_id: int,
+    payload: FavoriteTransactionIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Save a template only. This does not insert a transaction or a recurring series."""
+    user_id = get_current_user_id(access_token)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
+    saved = int(
+        db.execute(
+            select(func.count(FavoriteTransaction.id)).where(FavoriteTransaction.family_id == family_id)
+        ).scalar_one()
+        or 0
+    )
+    if saved >= FAVORITE_TRANSACTION_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A household can save up to 30 favorite transactions.",
+        )
+    row = FavoriteTransaction(
+        family_id=family_id,
+        name=payload.name,
+        kind=payload.kind,
+        amount=payload.amount,
+        category_id=_favorite_category_id(db, family_id, payload.category_id),
+        account_id=_favorite_account_id(db, family_id, payload.account_id),
+        notes=payload.notes,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _favorite_out(row)
+
+
+@app.put("/api/families/{family_id}/favorite-transactions/{favorite_id}", response_model=FavoriteTransactionOut)
+def update_favorite_transaction(
+    family_id: int,
+    favorite_id: int,
+    payload: FavoriteTransactionUpdateIn,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
+    row = _favorite_or_404(db, family_id, favorite_id)
+    sent = payload.model_fields_set
+    if "name" in sent:
+        if payload.name is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Favorite name is required")
+        row.name = payload.name
+    if "kind" in sent:
+        if payload.kind is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Transaction type is required")
+        row.kind = payload.kind
+    if "amount" in sent:
+        if payload.amount is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount is required")
+        row.amount = payload.amount
+    if "category_id" in sent:
+        row.category_id = _favorite_category_id(db, family_id, payload.category_id)
+    if "account_id" in sent:
+        row.account_id = _favorite_account_id(db, family_id, payload.account_id)
+    if "notes" in sent:
+        row.notes = payload.notes
+    db.commit()
+    db.refresh(row)
+    return _favorite_out(row)
+
+
+@app.delete("/api/families/{family_id}/favorite-transactions/{favorite_id}")
+def delete_favorite_transaction(
+    family_id: int,
+    favorite_id: int,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_write(db=db, family_id=family_id, user_id=user_id)
+    row = _favorite_or_404(db, family_id, favorite_id)
+    db.delete(row)
+    db.commit()
+    return {"ok": True}
 
 
 @app.get("/api/families/{family_id}/expected-transactions", response_model=list[ExpectedTransactionOut])
