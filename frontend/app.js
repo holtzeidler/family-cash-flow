@@ -5825,8 +5825,54 @@ function favoritesMenuHead() {
   return head;
 }
 
+function useFavoriteTransaction(fav) {
+  closeFavoritesMenu();
+  openTxAddModal({
+    date: toISODate(new Date()),
+    kind: String(fav.kind || "").toLowerCase() === "income" ? "income" : "expense",
+    favorite: fav,
+  });
+}
+
+function favoriteRowMenu(item, fav) {
+  const menu = document.createElement("details");
+  menu.className = "cats-cat__menu fav-menu__more";
+  const summary = document.createElement("summary");
+  summary.className = "cats-cat__menu-summary";
+  summary.setAttribute("aria-label", `Actions for ${fav.name || "favorite"}`);
+  summary.innerHTML =
+    '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="3.5" r="1.35"/><circle cx="8" cy="8" r="1.35"/><circle cx="8" cy="12.5" r="1.35"/></svg>';
+  summary.addEventListener("click", (event) => event.stopPropagation());
+  const panel = document.createElement("div");
+  panel.className = "cats-cat__menu-panel";
+  const mkItem = (label, classExtra, onClick) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `cats-cat__menu-item${classExtra ? ` ${classExtra}` : ""}`;
+    button.textContent = label;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      try { menu.open = false; } catch (_) {}
+      onClick();
+    });
+    return button;
+  };
+  panel.appendChild(mkItem("Rename", "", () => beginFavoriteRename(item, fav)));
+  const divider = document.createElement("div");
+  divider.className = "cats-menu-divider";
+  divider.setAttribute("role", "separator");
+  panel.appendChild(divider);
+  panel.appendChild(mkItem("Delete", "cats-cat__menu-item--danger", () => {
+    void confirmDeleteFavorite(fav);
+  }));
+  menu.append(summary, panel);
+  return menu;
+}
+
 function renderFavoritesMenu(menu, rows, errorText) {
   const helpers = favoriteHelpers();
+  if (typeof bindCategoriesFloatingMenusGlobally === "function") bindCategoriesFloatingMenusGlobally();
   menu.innerHTML = "";
   menu.appendChild(favoritesMenuHead());
   if (errorText) {
@@ -5858,27 +5904,18 @@ function renderFavoritesMenu(menu, rows, errorText) {
     meta.className = "fav-menu__meta";
     meta.textContent = helpers ? helpers.favoriteMenuDetail(fav) : "";
     pick.append(name, meta);
-    pick.addEventListener("click", () => {
-      closeFavoritesMenu();
-      openTxAddModal({
-        date: toISODate(new Date()),
-        kind: String(fav.kind || "").toLowerCase() === "income" ? "income" : "expense",
-        favorite: fav,
-      });
+    pick.addEventListener("click", () => useFavoriteTransaction(fav));
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "fav-menu__add";
+    add.textContent = "+ Add";
+    add.setAttribute("aria-label", `Add ${fav.name || "favorite"}`);
+    add.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      useFavoriteTransaction(fav);
     });
-    const rename = document.createElement("button");
-    rename.type = "button";
-    rename.className = "fav-menu__action";
-    rename.textContent = "Rename";
-    rename.addEventListener("click", () => beginFavoriteRename(item, fav));
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "fav-menu__action fav-menu__action--danger";
-    remove.textContent = "Delete";
-    remove.addEventListener("click", () => {
-      void confirmDeleteFavorite(fav);
-    });
-    item.append(pick, rename, remove);
+    item.append(pick, add, favoriteRowMenu(item, fav));
     list.appendChild(item);
   }
   menu.appendChild(list);
@@ -6068,6 +6105,16 @@ function ensureFavoriteLaunchers() {
     if (document.getElementById("bwConfirmModal")?.classList.contains("modal-overlay--open")) return;
     const namePanel = document.getElementById("txFavoriteNamePanel");
     if (namePanel && !namePanel.hidden) return;
+    const openRowMenu = menu.querySelector("details.cats-cat__menu[open]");
+    if (openRowMenu) {
+      try { openRowMenu.open = false; } catch (_) {}
+      if (typeof resetCategoriesMenuPanelPosition === "function") {
+        resetCategoriesMenuPanelPosition(openRowMenu.querySelector(".cats-cat__menu-panel"));
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     closeFavoritesMenu();
     const modalOpen = document.getElementById("txAddModal")?.classList.contains("modal-overlay--open")
       || document.getElementById("txEditModal")?.classList.contains("modal-overlay--open");
