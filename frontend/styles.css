@@ -34191,6 +34191,38 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   gap: 4px;
   align-items: center;
 }
+.fav-menu__add{
+  appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(11, 61, 46, 0.18);
+  background: rgba(4, 120, 87, 0.08);
+  color: rgba(11, 61, 46, 0.94);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fav-menu__add:hover{
+  background: rgba(4, 120, 87, 0.14);
+}
+.fav-menu__add:focus-visible{
+  outline: 2px solid rgba(4, 120, 87, 0.35);
+  outline-offset: 2px;
+}
+.fav-menu .cats-cat__menu{
+  margin-left: 0;
+}
+.fav-menu .cats-cat__menu-summary{
+  opacity: 1;
+}
 .fav-menu__pick{
   appearance: none;
   display: flex;
@@ -34304,12 +34336,16 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
     height: 44px;
     margin: -8px -6px -8px 0;
   }
-  .fav-menu__item{
-    grid-template-columns: minmax(0, 1fr);
+  .fav-menu__add{
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .fav-menu .cats-cat__menu-summary{
+    width: 44px;
+    height: 44px;
   }
   .fav-menu__action{
     min-height: 36px;
-    justify-self: start;
   }
 }
 
