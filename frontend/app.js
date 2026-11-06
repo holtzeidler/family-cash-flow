@@ -19003,10 +19003,24 @@ function dedupeCalendarDayTransactions(expectedItems, actualTxs) {
   return { actuals, expected };
 }
 
+function ensureCalendarBalanceCaption() {
+  const dow = document.getElementById("calendarDow");
+  if (!dow || !dow.parentNode) return;
+  let cap = document.getElementById("calendarBalanceCaption");
+  if (!cap) {
+    cap = document.createElement("p");
+    cap.id = "calendarBalanceCaption";
+    cap.className = "calendar-balance-caption";
+    dow.parentNode.insertBefore(cap, dow);
+  }
+  cap.textContent = "Each day's amount is your projected checking balance at the end of that day.";
+}
+
 function renderCalendar() {
   if (!calendarGrid) return;
   calendarGrid.innerHTML = "";
   const calendarDow = document.getElementById("calendarDow");
+  ensureCalendarBalanceCaption();
   if (calendarDow) calendarDow.innerHTML = "";
   const isMobileCalendarLayout =
     typeof window !== "undefined" && typeof window.matchMedia === "function"
@@ -19527,7 +19541,17 @@ function renderCalendar() {
       else if (watchOnly) stripCue = "cal-balance-strip--cue-watch";
 
       const balanceClass = balParts.join(" ");
-      const balanceTitle = dayBalVerified ? "" : "Projected end-of-day balance";
+      const balanceMoney = `$${fmtMoneyParens(endNum)}`;
+      const balanceTitle = dayBalVerified
+        ? "Adjusted checking balance"
+        : isReconciled
+          ? "Reconciled checking balance"
+          : "Projected end-of-day balance";
+      const balanceAria = dayBalVerified
+        ? `Adjusted checking balance, ${balanceMoney}`
+        : isReconciled
+          ? `Reconciled checking balance, ${balanceMoney}`
+          : `Projected checking balance at the end of the day, ${balanceMoney}`;
       const riskIcon =
         negativeBal && !repeatedNegativeRun && !dayBalVerified
           ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>`
@@ -19544,9 +19568,7 @@ function renderCalendar() {
             ? buildCalBalanceStatusPill("starting", { accountId: startingAccountRow?.account_id })
             : "";
       const stripStatusClass = statusPill ? " cal-balance-strip--has-status" : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
-        endNum
-      )}</span></span>${statusPill}</div></div>`;
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="${escapeHtml(balanceTitle)}" aria-label="${escapeHtml(balanceAria)}">${balanceMoney}</span></span>${statusPill}</div></div>`;
       bindCalendarDayBalanceHit(metricsEl, iso, {
         isReconciled,
         dayBalVerified,
