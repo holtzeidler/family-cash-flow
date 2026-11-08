@@ -1121,28 +1121,70 @@ function accountSetupStep3MoreGuidance(txs) {
   const list = Array.isArray(txs) ? txs : [];
   let income = 0;
   let expense = 0;
-  let paycheckOnly = true;
   for (const tx of list) {
     const kind = String((tx && tx.kind) || "").trim().toLowerCase();
-    if (kind === "income") {
-      income += 1;
-      const category = String((tx && tx.category) || "").trim().toLowerCase();
-      if (category !== "paycheck") paycheckOnly = false;
-    } else if (kind === "expense") {
-      expense += 1;
-    }
+    if (kind === "income") income += 1;
+    else if (kind === "expense") expense += 1;
   }
   if (income > 0 && expense > 0) {
     return "You're ready to see your first forecast! You can always add more transactions later.";
   }
   if (income > 0) {
-    const lead = paycheckOnly ? "Paycheck saved!" : "Income saved!";
-    return `${lead} Add a bill for a more complete forecast, or continue for now.`;
+    return "Add a bill to make your forecast more complete, or continue for now.";
   }
   if (expense > 0) {
-    return "Bill saved! Add income for a more complete forecast, or continue for now.";
+    return "Add income to make your forecast more complete, or continue for now.";
   }
   return "";
+}
+
+function buildAccountSetupStep3SavedItem(tx) {
+  const name = String((tx && tx.category) || "").trim() || "Uncategorized";
+  const scheduleParts = [accountSetupSavedRecurrenceLabel(tx), accountSetupSavedDateLabel(tx && tx.date)].filter(Boolean);
+  const item = document.createElement("li");
+  item.className = "account-setup-step3-saved__item";
+  const main = document.createElement("div");
+  main.className = "account-setup-step3-saved__main";
+  const nameEl = document.createElement("span");
+  nameEl.className = "account-setup-step3-saved__name";
+  name.split("/").forEach((segment, i) => {
+    if (i > 0) nameEl.append("/", document.createElement("wbr"));
+    nameEl.append(segment);
+  });
+  main.append(nameEl);
+  const metaEl = document.createElement("div");
+  metaEl.className = "account-setup-step3-saved__meta";
+  scheduleParts.forEach((part, i) => {
+    if (i > 0) metaEl.append("\u00a0· ");
+    const partEl = document.createElement("span");
+    partEl.className = "account-setup-step3-saved__metaPart";
+    partEl.textContent = part;
+    metaEl.append(partEl);
+  });
+  const amountEl = document.createElement("div");
+  amountEl.className = "account-setup-step3-saved__amount";
+  amountEl.textContent = accountSetupSavedAmountLabel(tx && tx.amount);
+  item.append(main, metaEl, amountEl);
+  return item;
+}
+
+function buildAccountSetupStep3SavedGroup(key, title, items) {
+  const group = document.createElement("section");
+  group.className = `account-setup-step3-saved__group account-setup-step3-saved__group--${key}`;
+  const headingId = `accountSetupStep3Saved${title}Heading`;
+  group.setAttribute("aria-labelledby", headingId);
+  const heading = document.createElement("h2");
+  heading.className = "account-setup-step3-saved__heading";
+  heading.id = headingId;
+  const count = document.createElement("span");
+  count.className = "account-setup-step3-saved__count";
+  count.textContent = `${items.length} added`;
+  heading.append(title, " ", count);
+  const listEl = document.createElement("ul");
+  listEl.className = "account-setup-step3-saved__items";
+  items.forEach((tx) => listEl.appendChild(buildAccountSetupStep3SavedItem(tx)));
+  group.append(heading, listEl);
+  return group;
 }
 
 function renderAccountSetupStep3SavedList() {
@@ -1168,40 +1210,11 @@ function renderAccountSetupStep3SavedList() {
   if (!list) return;
   list.replaceChildren();
   list.hidden = !hasAny;
-  for (const tx of txs) {
-    const kind = String((tx && tx.kind) || "").trim().toLowerCase() === "income" ? "Income" : "Bill";
-    const name = String((tx && tx.category) || "").trim() || "Uncategorized";
-    const scheduleParts = [accountSetupSavedRecurrenceLabel(tx), accountSetupSavedDateLabel(tx && tx.date)].filter(Boolean);
-    const item = document.createElement("li");
-    item.className = "account-setup-step3-saved__item";
-    const main = document.createElement("div");
-    main.className = "account-setup-step3-saved__main";
-    const kindEl = document.createElement("span");
-    kindEl.className = "account-setup-step3-saved__name";
-    kindEl.textContent = kind;
-    main.append(kindEl);
-    const metaEl = document.createElement("div");
-    metaEl.className = "account-setup-step3-saved__meta";
-    const nameEl = document.createElement("span");
-    nameEl.className = "account-setup-step3-saved__category";
-    name.split("/").forEach((segment, i) => {
-      if (i > 0) nameEl.append("/", document.createElement("wbr"));
-      nameEl.append(segment);
-    });
-    metaEl.append(nameEl);
-    scheduleParts.forEach((part) => {
-      metaEl.append("\u00a0· ");
-      const partEl = document.createElement("span");
-      partEl.className = "account-setup-step3-saved__metaPart";
-      partEl.textContent = part;
-      metaEl.append(partEl);
-    });
-    const amountEl = document.createElement("div");
-    amountEl.className = "account-setup-step3-saved__amount";
-    amountEl.textContent = accountSetupSavedAmountLabel(tx && tx.amount);
-    item.append(main, metaEl, amountEl);
-    list.appendChild(item);
-  }
+  const isIncome = (tx) => String((tx && tx.kind) || "").trim().toLowerCase() === "income";
+  const incomeTxs = txs.filter(isIncome);
+  const billTxs = txs.filter((tx) => !isIncome(tx));
+  if (incomeTxs.length) list.appendChild(buildAccountSetupStep3SavedGroup("income", "Income", incomeTxs));
+  if (billTxs.length) list.appendChild(buildAccountSetupStep3SavedGroup("bills", "Bills", billTxs));
 }
 
 function formatAccountSetupStep3Summary(incomeCount, expenseCount) {
