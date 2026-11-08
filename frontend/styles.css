@@ -26415,7 +26415,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: auto;
-  gap: 8px 12px;
+  gap: 10px 14px;
   align-items: start;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell{
@@ -26432,21 +26432,42 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
   grid-column: 2;
   grid-row: 1;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell--second{
-  grid-column: 3;
+/* Under the date/frequency row: the second date (twice a month) and the schedule summary */
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail{
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px 14px;
+  align-items: end;
+  min-width: 0;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail:not(:has(> :not([hidden]))){
+  display: none;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail > .account-setup-tx-schedule-grid__summary{
+  grid-column: 1 / -1;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail:has(> .account-setup-tx-schedule-grid__cell--second:not([hidden])){
+  padding: 10px 12px 11px;
+  background: rgba(11, 61, 46, 0.035);
+  border: 1px solid rgba(11, 61, 46, 0.1);
+  border-left: 3px solid rgba(11, 61, 46, 0.38);
+  border-radius: 10px;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail:has(> .account-setup-tx-schedule-grid__cell--second:not([hidden])) > .account-setup-tx-schedule-grid__summary{
+  grid-column: 2;
   grid-row: 1;
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.account-setup-tx-schedule-grid__cell--second:not([hidden])){
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-}
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell--repeat .account-setup-tx-schedule-grid__summary{
-  margin: 2px 0 0;
+  align-self: end;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-block > .account-setup-tx-variable-inline{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin: 8px 0 0;
+  margin: 12px 0 0;
   padding: 0;
   width: 100%;
 }
@@ -26527,10 +26548,10 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
 }
 body.account-setup-page .account-setup-step3-form .account-setup-schedule-summary{
   margin: 0;
-  font-size: 0.6875rem;
-  line-height: 1.28;
+  font-size: 0.75rem;
+  line-height: 1.4;
   font-weight: 400;
-  color: rgba(100, 116, 139, 0.58);
+  color: var(--as-label-secondary-color);
 }
 body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-top: 0;
@@ -26584,9 +26605,12 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-variable-inl
   gap: 4px;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-variable-inline .reimbursable-field__hint{
-  margin-top: 4px;
+  margin-top: 2px;
   padding-left: 0;
-  white-space: nowrap;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--as-label-secondary-color);
+  white-space: normal;
 }
 body.account-setup-page .account-setup-tx-variable-inline{
   display: flex;
@@ -26687,14 +26711,64 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid:has(.account-setup-tx-schedule-grid__cell--second:not([hidden])){
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+@media (max-width: 519px){
+  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid,
+  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail{
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell--date,
+  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__cell--repeat{
+    grid-column: 1;
+    grid-row: auto;
+  }
+  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail{
+    grid-row: auto;
+  }
+  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail:has(> .account-setup-tx-schedule-grid__cell--second:not([hidden])) > .account-setup-tx-schedule-grid__summary{
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 0;
+  }
+  /* Back + Save + Cancel do not fit on one row on phones: Save full width, then Back | Cancel */
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell,
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px 12px;
+    padding-left: var(--as-card-pad-x);
+    padding-right: var(--as-card-pad-x);
+  }
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell :is(.account-setup-actions__cluster, .account-setup-actions__forward, .account-setup-actions__txFormBtns),
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell :is(.account-setup-actions__cluster, .account-setup-actions__forward, .account-setup-actions__txFormBtns){
+    display: contents;
+  }
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell #asTxSaveIncomeBtn.top-nav__logout,
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell #asExpSaveBtn.top-nav__logout{
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+  }
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell #accountSetupBackBtn.secondary,
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell #accountSetupBackBtn.secondary{
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+  }
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell #asTxCancelIncomeBtn.secondary,
+  body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell #asExpCancelBtn.secondary{
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
   }
 }
 body.account-setup-page #accountSetupWizardPanel2 .account-setup-step3-form__body > .form-row-h:last-child,
 body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__body > .form-row-h:last-child{
   gap: 5px;
   margin-bottom: 0;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-step3-form__body > .account-setup-tx-notes-row{
+  margin-top: 14px;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell,
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel3[data-expense-phase="form"]) .account-setup-actions--shell{
