@@ -20033,18 +20033,20 @@ body.account-setup-page .account-setup-step3-saved__group + .account-setup-step3
 body.account-setup-page .account-setup-step3-saved__heading{
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: 0.6rem;
   margin: 0;
-  padding: 0.7rem 0.9rem 0.1rem;
-  font-size: 0.8rem;
+  padding: 0.9rem 0.9rem 0.4rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   color: #0b3d2e;
 }
 body.account-setup-page .account-setup-step3-saved__count{
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #6b7c74;
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #7a8a83;
 }
 body.account-setup-page .account-setup-step3-saved__items{
   margin: 0;
@@ -20072,7 +20074,7 @@ body.account-setup-page .account-setup-step3-saved__main{
 body.account-setup-page .account-setup-step3-saved__name{
   display: block;
   min-width: 0;
-  font-size: 0.98rem;
+  font-size: 1.09rem;
   font-weight: 600;
   line-height: 1.3;
   color: #12261f;
@@ -20440,6 +20442,13 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
       "main amount"
       "meta meta";
     align-items: start;
+  }
+  body.account-setup-page .account-setup-step3-saved__heading{
+    padding-top: 0.8rem;
+    font-size: 1.25rem;
+  }
+  body.account-setup-page .account-setup-step3-saved__name{
+    font-size: 1.0625rem;
   }
   body.account-setup-page .account-setup-step3-saved__amount{
     align-self: start;
