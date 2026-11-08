@@ -26444,19 +26444,111 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-gri
   grid-column: 1 / -1;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail:has(> .account-setup-tx-schedule-grid__cell--second:not([hidden])){
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   padding: 10px 12px 11px;
   background: rgba(11, 61, 46, 0.035);
   border: 1px solid rgba(11, 61, 46, 0.1);
   border-left: 3px solid rgba(11, 61, 46, 0.38);
   border-radius: 10px;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail:has(> .account-setup-tx-schedule-grid__cell--second:not([hidden])) > .account-setup-tx-schedule-grid__summary{
-  grid-column: 2;
-  grid-row: 1;
-  align-self: end;
+/* Twice a month: three compact choices, plus a small day field for "Another day" */
+body.account-setup-page .account-setup-step3-form .account-setup-second-day{
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__option{
+  position: relative;
+  flex: 1 1 auto;
+  display: inline-flex;
   align-items: center;
-  min-height: 38px;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  color: rgba(17, 24, 39, 0.86);
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.24);
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__option > input[type="radio"]{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__option:hover:not(:has(input:disabled)){
+  border-color: rgba(11, 61, 46, 0.4);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__option:has(input:checked){
+  color: #0b3d2e;
+  font-weight: 600;
+  background: rgba(11, 61, 46, 0.09);
+  border-color: rgba(11, 61, 46, 0.55);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__option:has(input:focus-visible){
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 52%, rgba(17, 24, 39, 0.22));
+  box-shadow: 0 0 0 3px rgba(11, 61, 46, 0.16);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__option:has(input:disabled){
+  color: rgba(100, 116, 139, 0.6);
+  background: rgba(248, 250, 249, 0.8);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__custom{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__custom[hidden]{
+  display: none;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__customLabel{
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--as-label-primary-color);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input.account-setup-second-day__customInput{
+  width: 4.5rem;
+  min-height: 36px;
+  height: 36px;
+  -moz-appearance: textfield;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input.account-setup-second-day__customInput:focus{
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 52%, rgba(17, 24, 39, 0.22));
+  box-shadow: 0 0 0 3px rgba(11, 61, 46, 0.1);
+}
+body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid input.account-setup-second-day__customInput[aria-invalid="true"]{
+  border-color: #9f2d2d;
+}
+body.account-setup-page .account-setup-step3-form .account-setup-second-day__error{
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #9f2d2d;
 }
 body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-block > .account-setup-tx-variable-inline{
   display: flex;
@@ -26720,10 +26812,17 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail{
     grid-row: auto;
   }
-  body.account-setup-page .account-setup-step3-form .account-setup-tx-schedule-grid__detail:has(> .account-setup-tx-schedule-grid__cell--second:not([hidden])) > .account-setup-tx-schedule-grid__summary{
-    grid-column: 1;
-    grid-row: auto;
-    min-height: 0;
+  body.account-setup-page .account-setup-step3-form .account-setup-second-day__long{
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  body.account-setup-page .account-setup-step3-form .account-setup-second-day__option{
+    padding: 6px 10px;
   }
   /* Back + Save + Cancel do not fit on one row on phones: Save full width, then Back | Cancel */
   body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell,

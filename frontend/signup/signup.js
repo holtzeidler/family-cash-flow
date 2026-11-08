@@ -2134,14 +2134,12 @@ function rejectAccountSetupParsedTransaction(prefix, parsed) {
     return;
   }
   clearAccountSetupFrequencyError(prefix);
-  const focusId = /date|first day/i.test(msg)
-    ? prefix === "asExp"
-      ? "asExpTxDate"
-      : "asTxDate"
-    : /second monthly/i.test(msg)
+  const focusId = /second monthly/i.test(msg)
+    ? accountSetupSecondDayFocusId(prefix)
+    : /date|first day/i.test(msg)
       ? prefix === "asExp"
-        ? "asExpSecondDayOfMonth"
-        : "asTxSecondDayOfMonth"
+        ? "asExpTxDate"
+        : "asTxDate"
       : null;
   revealAccountSetupFormError(msg, focusId);
 }
@@ -2197,6 +2195,17 @@ function revealAccountSetupFormError(message, focusElId) {
 }
 
 function getAccountSetupScheduleFields(prefix) {
+  const p = prefix === "asExp" ? "asExp" : "asTx";
+  return {
+    ...getAccountSetupScheduleBaseFields(p),
+    secondDayRadios: Array.from(document.querySelectorAll(`input[name="${p}SecondDayChoice"]`)),
+    secondDayCustomWrap: document.getElementById(`${p}SecondDayCustomWrap`),
+    secondDayCustomEl: document.getElementById(`${p}SecondDayCustom`),
+    secondDayCustomError: document.getElementById(`${p}SecondDayCustomError`),
+  };
+}
+
+function getAccountSetupScheduleBaseFields(prefix) {
   if (prefix === "asExp") {
     return {
       recurrenceEl: document.getElementById("asExpRecurrence"),
@@ -2232,7 +2241,7 @@ function getAccountSetupScheduleFields(prefix) {
 }
 
 function populateAccountSetupSecondDayOptions(selectEl) {
-  if (!selectEl || selectEl.dataset.secondDayInit === "1") return;
+  if (!selectEl || selectEl.tagName !== "SELECT" || selectEl.dataset.secondDayInit === "1") return;
   selectEl.dataset.secondDayInit = "1";
   selectEl.innerHTML = "";
   const placeholder = document.createElement("option");
@@ -2245,6 +2254,83 @@ function populateAccountSetupSecondDayOptions(selectEl) {
     opt.textContent = day === 31 ? "Last day" : formatAccountSetupOrdinalDay(day);
     selectEl.appendChild(opt);
   }
+}
+
+function parseAccountSetupSecondDayInput(raw) {
+  const s = String(raw ?? "").trim();
+  if (!/^\d{1,2}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 && n <= 31 ? n : null;
+}
+
+/** "15" or "31" for the preset choices, "custom" for any other day, "" when nothing is chosen. */
+function accountSetupSecondDayMode(fields) {
+  const picked = (fields.secondDayRadios || []).find((r) => r.checked);
+  if (picked && picked.value === "custom") return "custom";
+  const value = String(fields.secondDayEl?.value || "").trim();
+  if (value === "" || value === "15" || value === "31") return value;
+  return "custom";
+}
+
+function syncAccountSetupSecondDayChoice(fields, active, startIso) {
+  const radios = fields.secondDayRadios || [];
+  const customEl = fields.secondDayCustomEl;
+  const errorEl = fields.secondDayCustomError;
+  const setError = (msg) => {
+    if (errorEl) {
+      errorEl.textContent = msg;
+      errorEl.hidden = !msg;
+    }
+    if (customEl) customEl.setAttribute("aria-invalid", msg ? "true" : "false");
+  };
+  if (!active) {
+    for (const r of radios) {
+      r.checked = false;
+      r.disabled = false;
+    }
+    if (customEl) {
+      customEl.value = "";
+      delete customEl.dataset.touched;
+    }
+    if (fields.secondDayCustomWrap) fields.secondDayCustomWrap.hidden = true;
+    setError("");
+    return;
+  }
+  const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startIso || "")) ? Number(String(startIso).slice(8, 10)) : NaN;
+  const mode = accountSetupSecondDayMode(fields);
+  const value = String(fields.secondDayEl?.value || "").trim();
+  for (const r of radios) {
+    r.checked = r.value === mode;
+    r.disabled = r.value !== "custom" && Number(r.value) === startDay;
+  }
+  const custom = mode === "custom";
+  if (fields.secondDayCustomWrap) fields.secondDayCustomWrap.hidden = !custom;
+  if (!customEl) return;
+  if (!custom) {
+    setError("");
+    return;
+  }
+  if (value && parseAccountSetupSecondDayInput(customEl.value) !== Number(value)) customEl.value = value;
+  const n = parseAccountSetupSecondDayInput(customEl.value);
+  let error = "";
+  if (n != null && n === startDay) {
+    error = `Choose a day other than the ${formatAccountSetupOrdinalDay(startDay)}.`;
+  } else if (n == null && customEl.dataset.touched === "1") {
+    error = "Enter a day from 1 to 31.";
+  }
+  setError(error);
+}
+
+function accountSetupSecondDayFocusId(prefix) {
+  const fields = getAccountSetupScheduleFields(prefix);
+  if (accountSetupSecondDayMode(fields) === "custom" && fields.secondDayCustomEl) {
+    fields.secondDayCustomEl.dataset.touched = "1";
+    syncAccountSetupScheduleUi(prefix);
+    return fields.secondDayCustomEl.id;
+  }
+  const radios = fields.secondDayRadios || [];
+  const target = radios.find((r) => r.checked && !r.disabled) || radios.find((r) => !r.disabled);
+  return target ? target.id : null;
 }
 
 function inferAccountSetupSecondDayValue(startIso) {
@@ -2270,7 +2356,11 @@ function accountSetupScheduleSummaryText(recurrence, startIso, secondDayValue) {
     if (!Number.isFinite(second) || second < 1 || second > 31) {
       return `Next date sets the first monthly date (${formatAccountSetupOrdinalDay(start.getDate())}). Choose the second date.`;
     }
-    return `Repeats twice monthly on the ${formatAccountSetupOrdinalDay(start.getDate())} and ${formatAccountSetupOrdinalDay(second, { useLastDayLabel: true })}.`;
+    if (second === start.getDate()) {
+      return `Next date sets the first monthly date (${formatAccountSetupOrdinalDay(start.getDate())}). Choose a different second date.`;
+    }
+    const shortMonthNote = second >= 29 && second <= 30 ? " In shorter months, it falls on the last day." : "";
+    return `Repeats twice monthly on the ${formatAccountSetupOrdinalDay(start.getDate())} and ${formatAccountSetupOrdinalDay(second, { useLastDayLabel: true })}.${shortMonthNote}`;
   }
   if (recurrence === "monthly") {
     return `Repeats monthly on the ${formatAccountSetupOrdinalDay(start.getDate())}.`;
@@ -2328,14 +2418,16 @@ function syncAccountSetupScheduleUi(prefix) {
     fields.secondLabelEl.textContent = recurrence === "semiannual" ? "Second yearly date" : "Also occurs on";
   }
   if (fields.secondDayEl) {
-    fields.secondDayEl.hidden = recurrence !== "twice_monthly";
+    const customSecondDay = recurrence === "twice_monthly" && accountSetupSecondDayMode(fields) === "custom";
     const needsSuggestedDefault =
       recurrence === "twice_monthly" &&
+      !customSecondDay &&
       startIso &&
       (!String(fields.secondDayEl.value || "").trim() || Number(fields.secondDayEl.value) === Number(startIso.slice(8, 10)));
     if (needsSuggestedDefault) fields.secondDayEl.value = inferAccountSetupSecondDayValue(startIso);
     if (recurrence !== "twice_monthly") fields.secondDayEl.value = "";
     fields.secondDayEl.disabled = recurrence !== "twice_monthly";
+    syncAccountSetupSecondDayChoice(fields, recurrence === "twice_monthly", startIso);
   }
   if (fields.secondYearlyEl) {
     fields.secondYearlyEl.hidden = recurrence !== "semiannual";
@@ -5409,6 +5501,40 @@ function initAccountSetupTransactionUi() {
       }
       fields.endDateEl?.addEventListener("input", () => syncAccountSetupScheduleUi(prefix));
       fields.endCountEl?.addEventListener("input", () => syncAccountSetupScheduleUi(prefix));
+      let secondDayPointerPick = false;
+      const secondDayChoiceEl = document.getElementById(`${prefix}SecondDayChoice`);
+      secondDayChoiceEl?.addEventListener("pointerdown", () => {
+        secondDayPointerPick = true;
+      });
+      secondDayChoiceEl?.addEventListener("keydown", () => {
+        secondDayPointerPick = false;
+      });
+      for (const radio of fields.secondDayRadios) {
+        radio.addEventListener("change", () => {
+          if (!radio.checked || !fields.secondDayEl) return;
+          const custom = radio.value === "custom";
+          if (custom) {
+            const n = parseAccountSetupSecondDayInput(fields.secondDayCustomEl?.value);
+            fields.secondDayEl.value = n == null ? "" : String(n);
+          } else {
+            fields.secondDayEl.value = radio.value;
+          }
+          syncAccountSetupScheduleUi(prefix);
+          // Only jump into the day field on a click/tap; arrow keys keep moving through the choices.
+          if (custom && secondDayPointerPick) fields.secondDayCustomEl?.focus();
+          secondDayPointerPick = false;
+        });
+      }
+      fields.secondDayCustomEl?.addEventListener("input", () => {
+        if (!fields.secondDayEl) return;
+        const n = parseAccountSetupSecondDayInput(fields.secondDayCustomEl.value);
+        fields.secondDayEl.value = n == null ? "" : String(n);
+        syncAccountSetupScheduleUi(prefix);
+      });
+      fields.secondDayCustomEl?.addEventListener("change", () => {
+        fields.secondDayCustomEl.dataset.touched = "1";
+        syncAccountSetupScheduleUi(prefix);
+      });
       syncAccountSetupScheduleUi(prefix);
     }
 
