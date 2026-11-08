@@ -37,7 +37,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=879" />
+    <link rel="stylesheet" href="../styles.css?v=880" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -427,16 +427,8 @@
                     <div id="asTxSecondDayWrap" class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--second tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
                       <span class="account-setup-tx-schedule-grid__label" id="asTxSecondOccurrenceLabel">Also occurs on</span>
                       <input id="asTxSecondDayOfMonth" type="hidden" value="" />
-                      <div id="asTxSecondDayChoice" class="account-setup-second-day" role="radiogroup" aria-labelledby="asTxSecondOccurrenceLabel">
-                        <label class="account-setup-second-day__option"><input type="radio" name="asTxSecondDayChoice" id="asTxSecondDay15" value="15" /><span>15th<span class="account-setup-second-day__long"> of the month</span></span></label>
-                        <label class="account-setup-second-day__option"><input type="radio" name="asTxSecondDayChoice" id="asTxSecondDayLast" value="31" /><span>Last day<span class="account-setup-second-day__long"> of the month</span></span></label>
-                        <label class="account-setup-second-day__option"><input type="radio" name="asTxSecondDayChoice" id="asTxSecondDayOther" value="custom" /><span>Another day</span></label>
-                      </div>
-                      <div id="asTxSecondDayCustomWrap" class="account-setup-second-day__custom" hidden>
-                        <label for="asTxSecondDayCustom" class="account-setup-second-day__customLabel">Day of the month</label>
-                        <input id="asTxSecondDayCustom" type="number" inputmode="numeric" min="1" max="31" step="1" placeholder="1–31" class="account-setup-tx-schedule-grid__control account-setup-second-day__customInput" aria-describedby="asTxSecondDayCustomError" />
-                        <p id="asTxSecondDayCustomError" class="account-setup-second-day__error" role="alert" hidden></p>
-                      </div>
+                      <input id="asTxSecondMonthlyDate" type="date" class="account-setup-tx-schedule-grid__control account-setup-second-day__date" aria-labelledby="asTxSecondOccurrenceLabel" aria-describedby="asTxSecondMonthlyDateError asTxScheduleSummary" hidden />
+                      <p id="asTxSecondMonthlyDateError" class="account-setup-second-day__error" role="alert" hidden></p>
                       <input id="asTxSecondYearlyDate" type="date" class="account-setup-tx-schedule-grid__control" hidden title="Second yearly date for twice-yearly schedules" />
                     </div>
                     <p id="asTxScheduleSummary" class="account-setup-schedule-summary account-setup-tx-schedule-grid__summary" hidden></p>
@@ -601,16 +593,8 @@
                       <div id="asExpSecondDayWrap" class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--second tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
                         <span class="account-setup-tx-schedule-grid__label" id="asExpSecondOccurrenceLabel">Also occurs on</span>
                         <input id="asExpSecondDayOfMonth" type="hidden" value="" />
-                        <div id="asExpSecondDayChoice" class="account-setup-second-day" role="radiogroup" aria-labelledby="asExpSecondOccurrenceLabel">
-                          <label class="account-setup-second-day__option"><input type="radio" name="asExpSecondDayChoice" id="asExpSecondDay15" value="15" /><span>15th<span class="account-setup-second-day__long"> of the month</span></span></label>
-                          <label class="account-setup-second-day__option"><input type="radio" name="asExpSecondDayChoice" id="asExpSecondDayLast" value="31" /><span>Last day<span class="account-setup-second-day__long"> of the month</span></span></label>
-                          <label class="account-setup-second-day__option"><input type="radio" name="asExpSecondDayChoice" id="asExpSecondDayOther" value="custom" /><span>Another day</span></label>
-                        </div>
-                        <div id="asExpSecondDayCustomWrap" class="account-setup-second-day__custom" hidden>
-                          <label for="asExpSecondDayCustom" class="account-setup-second-day__customLabel">Day of the month</label>
-                          <input id="asExpSecondDayCustom" type="number" inputmode="numeric" min="1" max="31" step="1" placeholder="1–31" class="account-setup-tx-schedule-grid__control account-setup-second-day__customInput" aria-describedby="asExpSecondDayCustomError" />
-                          <p id="asExpSecondDayCustomError" class="account-setup-second-day__error" role="alert" hidden></p>
-                        </div>
+                        <input id="asExpSecondMonthlyDate" type="date" class="account-setup-tx-schedule-grid__control account-setup-second-day__date" aria-labelledby="asExpSecondOccurrenceLabel" aria-describedby="asExpSecondMonthlyDateError asExpScheduleSummary" hidden />
+                        <p id="asExpSecondMonthlyDateError" class="account-setup-second-day__error" role="alert" hidden></p>
                         <input id="asExpSecondYearlyDate" type="date" class="account-setup-tx-schedule-grid__control" hidden title="Second yearly date for twice-yearly schedules" />
                       </div>
                       <p id="asExpScheduleSummary" class="account-setup-schedule-summary account-setup-tx-schedule-grid__summary" hidden></p>
@@ -857,6 +841,6 @@
     </div>
 
     <script src="../signup/account-setup-finish-decision.js?v=3"></script>
-    <script src="../signup/signup.js?v=162"></script>
+    <script src="../signup/signup.js?v=163"></script>
   </body>
 </html>

@@ -2211,10 +2211,8 @@ function getAccountSetupScheduleFields(prefix) {
   const p = prefix === "asExp" ? "asExp" : "asTx";
   return {
     ...getAccountSetupScheduleBaseFields(p),
-    secondDayRadios: Array.from(document.querySelectorAll(`input[name="${p}SecondDayChoice"]`)),
-    secondDayCustomWrap: document.getElementById(`${p}SecondDayCustomWrap`),
-    secondDayCustomEl: document.getElementById(`${p}SecondDayCustom`),
-    secondDayCustomError: document.getElementById(`${p}SecondDayCustomError`),
+    secondMonthlyDateEl: document.getElementById(`${p}SecondMonthlyDate`),
+    secondMonthlyDateError: document.getElementById(`${p}SecondMonthlyDateError`),
   };
 }
 
@@ -2269,81 +2267,88 @@ function populateAccountSetupSecondDayOptions(selectEl) {
   }
 }
 
-function parseAccountSetupSecondDayInput(raw) {
-  const s = String(raw ?? "").trim();
-  if (!/^\d{1,2}$/.test(s)) return null;
-  const n = Number(s);
-  return n >= 1 && n <= 31 ? n : null;
+function accountSetupIsoOnDay(year, monthIndex, day) {
+  const first = new Date(year, monthIndex, 1, 12, 0, 0, 0);
+  const lastDay = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12, 0, 0, 0).getDate();
+  const d = Math.min(day, lastDay);
+  return `${first.getFullYear()}-${String(first.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-/** "15" or "31" for the preset choices, "custom" for any other day, "" when nothing is chosen. */
-function accountSetupSecondDayMode(fields) {
-  const picked = (fields.secondDayRadios || []).find((r) => r.checked);
-  if (picked && picked.value === "custom") return "custom";
-  const value = String(fields.secondDayEl?.value || "").trim();
-  if (value === "" || value === "15" || value === "31") return value;
-  return "custom";
+/** Dates after Next Date and before its next monthly repeat, so each day of the month appears once. */
+function accountSetupSecondMonthlyDateRange(startIso) {
+  const start = parseAccountSetupIsoDate(startIso);
+  if (!start) return null;
+  const min = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1, 12, 0, 0, 0);
+  const nextRepeat = parseAccountSetupIsoDate(accountSetupIsoOnDay(start.getFullYear(), start.getMonth() + 1, start.getDate()));
+  const max = new Date(nextRepeat.getFullYear(), nextRepeat.getMonth(), nextRepeat.getDate() - 1, 12, 0, 0, 0);
+  return {
+    min: accountSetupIsoOnDay(min.getFullYear(), min.getMonth(), min.getDate()),
+    max: accountSetupIsoOnDay(max.getFullYear(), max.getMonth(), max.getDate()),
+  };
 }
 
-function syncAccountSetupSecondDayChoice(fields, active, startIso) {
-  const radios = fields.secondDayRadios || [];
-  const customEl = fields.secondDayCustomEl;
-  const errorEl = fields.secondDayCustomError;
+/** Stored second day (1–31, 31 = last day) → its first date after Next Date. */
+function accountSetupSecondDayToIso(startIso, day) {
+  const start = parseAccountSetupIsoDate(startIso);
+  const n = Number(day);
+  if (!start || !Number.isFinite(n) || n < 1 || n > 31) return "";
+  const sameMonth = accountSetupIsoOnDay(start.getFullYear(), start.getMonth(), n);
+  if (sameMonth > String(startIso)) return sameMonth;
+  return accountSetupIsoOnDay(start.getFullYear(), start.getMonth() + 1, n);
+}
+
+/** Picked date → stored second day; the last day of any month is saved as 31 ("last day"). */
+function accountSetupSecondDayFromIso(iso) {
+  const d = parseAccountSetupIsoDate(iso);
+  if (!d) return null;
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12, 0, 0, 0).getDate();
+  return d.getDate() === lastDay ? 31 : d.getDate();
+}
+
+function syncAccountSetupSecondMonthlyDate(fields, active, startIso) {
+  const dateEl = fields.secondMonthlyDateEl;
+  const errorEl = fields.secondMonthlyDateError;
+  if (!dateEl) return;
   const setError = (msg) => {
     if (errorEl) {
       errorEl.textContent = msg;
       errorEl.hidden = !msg;
     }
-    if (customEl) customEl.setAttribute("aria-invalid", msg ? "true" : "false");
+    dateEl.setAttribute("aria-invalid", msg ? "true" : "false");
   };
+  dateEl.hidden = !active;
   if (!active) {
-    for (const r of radios) {
-      r.checked = false;
-      r.disabled = false;
-    }
-    if (customEl) {
-      customEl.value = "";
-      delete customEl.dataset.touched;
-    }
-    if (fields.secondDayCustomWrap) fields.secondDayCustomWrap.hidden = true;
+    dateEl.value = "";
+    delete dateEl.dataset.touched;
     setError("");
     return;
   }
-  const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startIso || "")) ? Number(String(startIso).slice(8, 10)) : NaN;
-  const mode = accountSetupSecondDayMode(fields);
+  const range = accountSetupSecondMonthlyDateRange(startIso);
+  if (range) {
+    dateEl.min = range.min;
+    dateEl.max = range.max;
+  } else {
+    dateEl.removeAttribute("min");
+    dateEl.removeAttribute("max");
+  }
   const value = String(fields.secondDayEl?.value || "").trim();
-  for (const r of radios) {
-    r.checked = r.value === mode;
-    r.disabled = r.value !== "custom" && Number(r.value) === startDay;
-  }
-  const custom = mode === "custom";
-  if (fields.secondDayCustomWrap) fields.secondDayCustomWrap.hidden = !custom;
-  if (!customEl) return;
-  if (!custom) {
-    setError("");
-    return;
-  }
-  if (value && parseAccountSetupSecondDayInput(customEl.value) !== Number(value)) customEl.value = value;
-  const n = parseAccountSetupSecondDayInput(customEl.value);
+  dateEl.value = value ? accountSetupSecondDayToIso(startIso, value) : "";
+  const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startIso || "")) ? Number(String(startIso).slice(8, 10)) : NaN;
   let error = "";
-  if (n != null && n === startDay) {
+  if (value && Number(value) === startDay) {
     error = `Choose a day other than the ${formatAccountSetupOrdinalDay(startDay)}.`;
-  } else if (n == null && customEl.dataset.touched === "1") {
-    error = "Enter a day from 1 to 31.";
+  } else if (!value && dateEl.dataset.touched === "1") {
+    error = "Choose the second date.";
   }
   setError(error);
 }
 
 function accountSetupSecondDayFocusId(prefix) {
   const fields = getAccountSetupScheduleFields(prefix);
-  if (accountSetupSecondDayMode(fields) === "custom" && fields.secondDayCustomEl) {
-    fields.secondDayCustomEl.dataset.touched = "1";
-    syncAccountSetupScheduleUi(prefix);
-    return fields.secondDayCustomEl.id;
-  }
-  const radios = fields.secondDayRadios || [];
-  const target = radios.find((r) => r.checked && !r.disabled) || radios.find((r) => !r.disabled);
-  return target ? target.id : null;
+  if (!fields.secondMonthlyDateEl) return null;
+  fields.secondMonthlyDateEl.dataset.touched = "1";
+  syncAccountSetupScheduleUi(prefix);
+  return fields.secondMonthlyDateEl.id;
 }
 
 function inferAccountSetupSecondDayValue(startIso) {
@@ -2431,16 +2436,19 @@ function syncAccountSetupScheduleUi(prefix) {
     fields.secondLabelEl.textContent = recurrence === "semiannual" ? "Second yearly date" : "Also occurs on";
   }
   if (fields.secondDayEl) {
-    const customSecondDay = recurrence === "twice_monthly" && accountSetupSecondDayMode(fields) === "custom";
+    const userPicked = fields.secondDayEl.dataset.userPicked === "1";
+    const current = String(fields.secondDayEl.value || "").trim();
     const needsSuggestedDefault =
       recurrence === "twice_monthly" &&
-      !customSecondDay &&
       startIso &&
-      (!String(fields.secondDayEl.value || "").trim() || Number(fields.secondDayEl.value) === Number(startIso.slice(8, 10)));
+      ((!current && !userPicked) || (!userPicked && Number(current) === Number(startIso.slice(8, 10))));
     if (needsSuggestedDefault) fields.secondDayEl.value = inferAccountSetupSecondDayValue(startIso);
-    if (recurrence !== "twice_monthly") fields.secondDayEl.value = "";
+    if (recurrence !== "twice_monthly") {
+      fields.secondDayEl.value = "";
+      delete fields.secondDayEl.dataset.userPicked;
+    }
     fields.secondDayEl.disabled = recurrence !== "twice_monthly";
-    syncAccountSetupSecondDayChoice(fields, recurrence === "twice_monthly", startIso);
+    syncAccountSetupSecondMonthlyDate(fields, recurrence === "twice_monthly", startIso);
   }
   if (fields.secondYearlyEl) {
     fields.secondYearlyEl.hidden = recurrence !== "semiannual";
@@ -2751,7 +2759,10 @@ function resetAccountSetupTransactionForm(forKind) {
   if (varEl) varEl.checked = false;
   if (recSel) recSel.value = "";
   if (endsModeEl) endsModeEl.value = "never";
-  if (secondDayEl) secondDayEl.value = "";
+  if (secondDayEl) {
+    secondDayEl.value = "";
+    delete secondDayEl.dataset.userPicked;
+  }
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
   if (bgEl) bgEl.value = "";
@@ -3074,7 +3085,10 @@ function resetAccountSetupExpenseForm() {
   if (varEl) varEl.checked = false;
   if (recSel) recSel.value = "";
   if (endsModeEl) endsModeEl.value = "never";
-  if (secondDayEl) secondDayEl.value = "";
+  if (secondDayEl) {
+    secondDayEl.value = "";
+    delete secondDayEl.dataset.userPicked;
+  }
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
   if (bgEl) bgEl.value = "";
@@ -3403,6 +3417,7 @@ function hydrateAccountSetupDraft() {
           eSecondYearly.value = `${y}-${String(lastTx.second_occurrence_month).padStart(2, "0")}-${String(lastTx.second_day_of_month).padStart(2, "0")}`;
         } else if (eSecondDay && lastTx.second_day_of_month != null) {
           eSecondDay.value = String(lastTx.second_day_of_month);
+          eSecondDay.dataset.userPicked = "1";
         }
         if (eEndsMode) eEndsMode.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
         if (eEndDate && lastTx.end_date) eEndDate.value = String(lastTx.end_date);
@@ -3435,6 +3450,7 @@ function hydrateAccountSetupDraft() {
           txSecondYearlyEl.value = `${y}-${String(lastTx.second_occurrence_month).padStart(2, "0")}-${String(lastTx.second_day_of_month).padStart(2, "0")}`;
         } else if (txSecondDayEl && lastTx.second_day_of_month != null) {
           txSecondDayEl.value = String(lastTx.second_day_of_month);
+          txSecondDayEl.dataset.userPicked = "1";
         }
         if (txEndsModeEl) txEndsModeEl.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
         if (txEndDateEl && lastTx.end_date) txEndDateEl.value = String(lastTx.end_date);
@@ -5394,7 +5410,10 @@ function initAccountSetupQuickChips() {
       const endsModeEl = document.getElementById("asTxEndsMode");
       if (endsModeEl) endsModeEl.value = "never";
       const secondDayEl = document.getElementById("asTxSecondDayOfMonth");
-      if (secondDayEl) secondDayEl.value = "";
+      if (secondDayEl) {
+        secondDayEl.value = "";
+        delete secondDayEl.dataset.userPicked;
+      }
       const endCountEl = document.getElementById("asTxEndCount");
       if (endCountEl) endCountEl.value = "";
       const endDateEl = document.getElementById("asTxEndDate");
@@ -5514,38 +5533,12 @@ function initAccountSetupTransactionUi() {
       }
       fields.endDateEl?.addEventListener("input", () => syncAccountSetupScheduleUi(prefix));
       fields.endCountEl?.addEventListener("input", () => syncAccountSetupScheduleUi(prefix));
-      let secondDayPointerPick = false;
-      const secondDayChoiceEl = document.getElementById(`${prefix}SecondDayChoice`);
-      secondDayChoiceEl?.addEventListener("pointerdown", () => {
-        secondDayPointerPick = true;
-      });
-      secondDayChoiceEl?.addEventListener("keydown", () => {
-        secondDayPointerPick = false;
-      });
-      for (const radio of fields.secondDayRadios) {
-        radio.addEventListener("change", () => {
-          if (!radio.checked || !fields.secondDayEl) return;
-          const custom = radio.value === "custom";
-          if (custom) {
-            const n = parseAccountSetupSecondDayInput(fields.secondDayCustomEl?.value);
-            fields.secondDayEl.value = n == null ? "" : String(n);
-          } else {
-            fields.secondDayEl.value = radio.value;
-          }
-          syncAccountSetupScheduleUi(prefix);
-          // Only jump into the day field on a click/tap; arrow keys keep moving through the choices.
-          if (custom && secondDayPointerPick) fields.secondDayCustomEl?.focus();
-          secondDayPointerPick = false;
-        });
-      }
-      fields.secondDayCustomEl?.addEventListener("input", () => {
+      fields.secondMonthlyDateEl?.addEventListener("change", () => {
         if (!fields.secondDayEl) return;
-        const n = parseAccountSetupSecondDayInput(fields.secondDayCustomEl.value);
+        const n = accountSetupSecondDayFromIso(fields.secondMonthlyDateEl.value);
         fields.secondDayEl.value = n == null ? "" : String(n);
-        syncAccountSetupScheduleUi(prefix);
-      });
-      fields.secondDayCustomEl?.addEventListener("change", () => {
-        fields.secondDayCustomEl.dataset.touched = "1";
+        fields.secondDayEl.dataset.userPicked = "1";
+        fields.secondMonthlyDateEl.dataset.touched = "1";
         syncAccountSetupScheduleUi(prefix);
       });
       syncAccountSetupScheduleUi(prefix);
