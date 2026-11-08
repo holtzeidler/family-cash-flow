@@ -1171,22 +1171,26 @@ function renderAccountSetupStep3SavedList() {
   for (const tx of txs) {
     const kind = String((tx && tx.kind) || "").trim().toLowerCase() === "income" ? "Income" : "Bill";
     const name = String((tx && tx.category) || "").trim() || "Uncategorized";
-    const metaParts = [kind, accountSetupSavedRecurrenceLabel(tx), accountSetupSavedDateLabel(tx && tx.date)].filter(Boolean);
+    const scheduleParts = [accountSetupSavedRecurrenceLabel(tx), accountSetupSavedDateLabel(tx && tx.date)].filter(Boolean);
     const item = document.createElement("li");
     item.className = "account-setup-step3-saved__item";
     const main = document.createElement("div");
     main.className = "account-setup-step3-saved__main";
+    const kindEl = document.createElement("span");
+    kindEl.className = "account-setup-step3-saved__name";
+    kindEl.textContent = kind;
+    main.append(kindEl);
+    const metaEl = document.createElement("div");
+    metaEl.className = "account-setup-step3-saved__meta";
     const nameEl = document.createElement("span");
-    nameEl.className = "account-setup-step3-saved__name";
+    nameEl.className = "account-setup-step3-saved__category";
     name.split("/").forEach((segment, i) => {
       if (i > 0) nameEl.append("/", document.createElement("wbr"));
       nameEl.append(segment);
     });
-    main.append(nameEl);
-    const metaEl = document.createElement("div");
-    metaEl.className = "account-setup-step3-saved__meta";
-    metaParts.forEach((part, i) => {
-      if (i > 0) metaEl.append("\u00a0· ");
+    metaEl.append(nameEl);
+    scheduleParts.forEach((part) => {
+      metaEl.append("\u00a0· ");
       const partEl = document.createElement("span");
       partEl.className = "account-setup-step3-saved__metaPart";
       partEl.textContent = part;
