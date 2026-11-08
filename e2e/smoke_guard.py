@@ -44,6 +44,7 @@ _WATCHED_KEYS = (
     "CONTACT_EMAIL_FROM",
     "PLATFORM_ADMIN_EMAILS",
     "STAGING_AUTH_EMAIL_ALLOWLIST",
+    "STAGING_ACCESS_PASSWORD",
     "TRANSACTIONAL_REPLY_TO",
     "MAINT_TOKEN",
     "ENV",
@@ -86,6 +87,7 @@ def apply_safe_environment(db_path: Path) -> None:
     os.environ["CONTACT_EMAIL_FROM"] = ""
     os.environ["PLATFORM_ADMIN_EMAILS"] = ""
     os.environ["STAGING_AUTH_EMAIL_ALLOWLIST"] = ""
+    os.environ["STAGING_ACCESS_PASSWORD"] = ""
     os.environ["TRANSACTIONAL_REPLY_TO"] = ""
     os.environ["MAINT_TOKEN"] = ""
     os.environ["JWT_SECRET"] = "balancewhiz-local-smoke-not-for-production"

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import hashlib
+import hmac
 import secrets
 import io
 import json
@@ -13,6 +14,7 @@ import ssl
 import threading
 import time
 from collections import defaultdict
+from contextvars import ContextVar
 from email.message import EmailMessage
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -64,6 +66,9 @@ class Settings(BaseSettings):
     # Staging only: when set, only these emails may register, log in, or request password reset.
     # Leave empty on production. Use test addresses (e.g. you+staging@gmail.com), not production accounts.
     STAGING_AUTH_EMAIL_ALLOWLIST: str = ""
+    # Staging only: one shared password that replaces the email allowlist. Empty keeps the allowlist.
+    # Ignored outside staging. Never commit or log the value.
+    STAGING_ACCESS_PASSWORD: str = ""
     # Public URL of the web app (no trailing slash), e.g. https://app.example.com or https://user.github.io/repo
     # Used in family invite emails. If unset, the API uses the Origin header from the browser when the owner sends an invite.
     APP_PUBLIC_BASE_URL: str = ""
@@ -980,6 +985,7 @@ def _read_access_token_from_cookie_or_authorization(
 
 
 def get_current_user_id(access_token: Optional[str]) -> int:
+    _require_staging_access_pass()
     if not access_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     claims = _access_token_claims(access_token)
@@ -990,6 +996,8 @@ def get_current_user_id(access_token: Optional[str]) -> int:
     if user_id is None or token_version is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
     _require_token_session_current(user_id, token_version)
+    if _is_staging_deployment():
+        _require_staging_session_allowed(user_id)
     return user_id
 
 
@@ -1132,12 +1140,117 @@ def _staging_auth_allowlist_enforced() -> bool:
 
 
 def _staging_auth_email_allowed(email: str) -> bool:
-    """Staging fails closed: an empty allowlist admits no one. Elsewhere an empty list admits everyone."""
+    """Staging fails closed: an empty allowlist admits no one. Elsewhere an empty list admits everyone.
+
+    In staging password mode any address is admitted; the staging pass is the gate.
+    """
+    if _staging_password_mode():
+        return True
     allow = _staging_auth_email_allowlist()
     key = _email_lookup_key(email)
     if _is_staging_deployment():
         return key in allow
     return not allow or key in allow
+
+
+def _staging_email_recipient_allowed(email: str) -> bool:
+    """Whether a staging lifecycle email may go to this address. Callers check staging first."""
+    if _staging_password_mode():
+        return True
+    allow = _staging_auth_email_allowlist()
+    return bool(allow) and _email_lookup_key(email) in allow
+
+
+_STAGING_PASS_TYPE = "staging_access"
+_STAGING_PASS_DAYS = 30
+_STAGING_PASS_HEADER = "x-staging-access"
+_STAGING_ACCESS_REQUIRED_DETAIL = "Enter the BalanceWhiz Staging password to continue."
+_STAGING_ACCESS_WRONG_DETAIL = "That password isn't right."
+_STAGING_ACCESS_WINDOW_S = 15 * 60
+_STAGING_ACCESS_MAX_FAILURES_PER_IP = 10
+# X-Forwarded-For can be spoofed, so a cap across all clients bounds guessing.
+_STAGING_ACCESS_MAX_FAILURES_TOTAL = 100
+_staging_access_rate_lock = threading.Lock()
+_staging_access_failures_by_ip: dict[str, list[float]] = defaultdict(list)
+_staging_access_failures_total: list[float] = []
+_staging_access_pass_ok: ContextVar[bool] = ContextVar("staging_access_pass_ok", default=False)
+
+
+def _staging_access_password() -> str:
+    return (settings.STAGING_ACCESS_PASSWORD or "").strip()
+
+
+def _staging_password_mode() -> bool:
+    """Staging with a shared password set. Otherwise staging keeps the email allowlist."""
+    return _is_staging_deployment() and bool(_staging_access_password())
+
+
+def _staging_pass_signing_key() -> str:
+    """Bound to the password, so changing the password ends every existing pass."""
+    material = b"bw-staging-access\x00" + _staging_access_password().encode("utf-8")
+    return hmac.new(settings.JWT_SECRET.encode("utf-8"), material, hashlib.sha256).hexdigest()
+
+
+def _issue_staging_pass() -> tuple[str, datetime]:
+    now = int(time.time())
+    exp = now + _STAGING_PASS_DAYS * 24 * 60 * 60
+    token = jwt.encode(
+        {"typ": _STAGING_PASS_TYPE, "iat": now, "exp": exp},
+        _staging_pass_signing_key(),
+        algorithm="HS256",
+    )
+    return token, datetime.fromtimestamp(exp, tz=timezone.utc)
+
+
+def _staging_pass_valid(token: Optional[str]) -> bool:
+    if not token or not _staging_password_mode():
+        return False
+    try:
+        payload = jwt.decode(str(token).strip(), _staging_pass_signing_key(), algorithms=["HS256"])
+    except Exception:
+        return False
+    return isinstance(payload, dict) and payload.get("typ") == _STAGING_PASS_TYPE
+
+
+def _staging_access_password_matches(candidate: str) -> bool:
+    expected = hashlib.sha256(_staging_access_password().encode("utf-8")).digest()
+    given = hashlib.sha256((candidate or "").strip().encode("utf-8")).digest()
+    return hmac.compare_digest(given, expected)
+
+
+def _staging_access_attempt_blocked(ip: str) -> bool:
+    now = time.time()
+    with _staging_access_rate_lock:
+        by_ip = _staging_access_failures_by_ip[ip]
+        by_ip[:] = [t for t in by_ip if now - t < _STAGING_ACCESS_WINDOW_S]
+        _staging_access_failures_total[:] = [t for t in _staging_access_failures_total if now - t < _STAGING_ACCESS_WINDOW_S]
+        return (
+            len(by_ip) >= _STAGING_ACCESS_MAX_FAILURES_PER_IP
+            or len(_staging_access_failures_total) >= _STAGING_ACCESS_MAX_FAILURES_TOTAL
+        )
+
+
+def _record_staging_access_failure(ip: str) -> None:
+    now = time.time()
+    with _staging_access_rate_lock:
+        _staging_access_failures_by_ip[ip].append(now)
+        _staging_access_failures_total.append(now)
+
+
+def _reset_staging_access_rate_limits() -> None:
+    """Clear in-memory password attempt limits. Tests call this. It is not an HTTP route."""
+    with _staging_access_rate_lock:
+        _staging_access_failures_by_ip.clear()
+        _staging_access_failures_total.clear()
+
+
+def _require_staging_access_pass() -> None:
+    """In staging password mode, refuse requests without a valid staging pass.
+
+    403 rather than 401 so the browser keeps its BalanceWhiz session while it unlocks staging.
+    """
+    if _staging_password_mode() and not _staging_access_pass_ok.get():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_STAGING_ACCESS_REQUIRED_DETAIL)
 
 
 _STAGING_AUTH_DENIED_DETAIL = (
@@ -1147,6 +1260,7 @@ _STAGING_AUTH_DENIED_DETAIL = (
 
 
 def _require_staging_auth_email_allowed(email: str) -> None:
+    _require_staging_access_pass()
     if not _staging_auth_email_allowed(email):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_STAGING_AUTH_DENIED_DETAIL)
 
@@ -1776,6 +1890,9 @@ def _send_signup_welcome_email(*, user: User, family: Family) -> None:
     if not (settings.RESEND_API_KEY or "").strip():
         logger.warning("Welcome email skipped: RESEND_API_KEY is not set")
         return
+    if _is_staging_deployment() and not _staging_auth_email_allowed(str(user.email)):
+        logger.info("Welcome email skipped; staging allowlist user id=%s", getattr(user, "id", None))
+        return
     trial_end = trial_ends_at(getattr(family, "created_at", None))
     if trial_end is None:
         logger.warning("Welcome email skipped: trial end date is unknown for user id=%s", getattr(user, "id", None))
@@ -2170,6 +2287,7 @@ class PlatformOverviewOut(BaseModel):
     stripe_mode: str = "none"
     writes_enabled: bool = True
     staging_auth_restricted: bool = False
+    staging_access_mode: str = ""
 
 
 class PlatformEmailTestOut(BaseModel):
@@ -2899,6 +3017,51 @@ async def protect_staging_from_production_data(request: Request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def read_staging_access_pass(request: Request, call_next):
+    """Record whether this request carries a valid staging pass. Never answers the request itself."""
+    ok = _staging_pass_valid(request.headers.get(_STAGING_PASS_HEADER))
+    marker = _staging_access_pass_ok.set(ok)
+    try:
+        return await call_next(request)
+    finally:
+        _staging_access_pass_ok.reset(marker)
+
+
+@app.get("/api/staging/access", include_in_schema=False)
+def staging_access_status():
+    """Which staging gate is active, and whether this browser's pass is valid. Staging only."""
+    if not _is_staging_deployment():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+    mode = "password" if _staging_password_mode() else "allowlist"
+    return {"mode": mode, "pass_valid": mode == "password" and _staging_access_pass_ok.get()}
+
+
+@app.post("/api/staging/access", include_in_schema=False)
+async def staging_access_unlock(request: Request):
+    """Exchange the shared staging password for a signed pass. The password is never echoed or logged."""
+    if not _is_staging_deployment():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+    if not _staging_password_mode():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Staging password access is not turned on.")
+    ip = _client_ip_for_rate_limit(request)
+    if _staging_access_attempt_blocked(ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many attempts. Wait 15 minutes and try again.",
+        )
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+    candidate = body.get("password") if isinstance(body, dict) else None
+    if not isinstance(candidate, str) or len(candidate) > 512 or not _staging_access_password_matches(candidate):
+        _record_staging_access_failure(ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_STAGING_ACCESS_WRONG_DETAIL)
+    token, expires_at = _issue_staging_pass()
+    return {"pass": token, "expires_at": expires_at.isoformat().replace("+00:00", "Z")}
+
+
 @app.get("/api/health", include_in_schema=False)
 def health():
     """Lightweight liveness probe (no DB) — used to wake Render before login."""
@@ -2971,6 +3134,7 @@ async def public_contact(payload: ContactIn, request: Request):
     """
     Send a contact message to CONTACT_EMAIL_TO via Resend (preferred) or SMTP (e.g. Microsoft 365).
     """
+    _require_staging_access_pass()
     if not _contact_email_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -4933,6 +5097,7 @@ def _email_lookup_key(email: str) -> str:
 @app.post("/api/auth/check-email", response_model=EmailExistsOut)
 def check_email_registered(payload: CheckEmailIn, db=Depends(get_db)):
     """Return whether an account already uses this email (case-insensitive). Used before signup."""
+    _require_staging_access_pass()
     key = _email_lookup_key(payload.email)
     if _is_staging_deployment() and not _staging_auth_email_allowed(key):
         return EmailExistsOut(exists=False)
@@ -5226,6 +5391,7 @@ def verify_email(payload: VerifyEmailIn, response: Response, db=Depends(get_db))
     """Create the user and session from a single-use link. The family and trial come later."""
     from sqlalchemy.exc import IntegrityError
 
+    _require_staging_access_pass()
     now = datetime.utcnow()
     token_hash = _hash_invite_token(payload.token.strip())
     row = db.execute(select(EmailVerification).where(EmailVerification.token_hash == token_hash)).scalar_one_or_none()
@@ -5409,6 +5575,7 @@ _INVALID_PW_RESET_MSG = "This reset link has expired or has already been used."
 @app.post("/api/public/password-reset/request")
 def password_reset_request(payload: PasswordResetRequestIn, request: Request, db=Depends(get_db)):
     """Same response whether or not the email is registered; does not reveal account existence."""
+    _require_staging_access_pass()
     ip = _client_ip_for_rate_limit(request)
     email_key = str(payload.email).strip().lower()
     if not _allow_password_reset_request(ip=ip, email_key=email_key):
@@ -5452,6 +5619,7 @@ def password_reset_validate(
     token: str = Query(..., min_length=24, max_length=500),
     db=Depends(get_db),
 ):
+    _require_staging_access_pass()
     raw = str(token).strip()
     th = _hash_invite_token(raw)
     row = db.execute(select(PasswordResetToken).where(PasswordResetToken.token_hash == th)).scalar_one_or_none()
@@ -5463,6 +5631,7 @@ def password_reset_validate(
 
 @app.post("/api/public/password-reset/complete")
 def password_reset_complete(payload: PasswordResetCompleteIn, db=Depends(get_db)):
+    _require_staging_access_pass()
     raw = str(payload.token).strip()
     th = _hash_invite_token(raw)
     row = db.execute(select(PasswordResetToken).where(PasswordResetToken.token_hash == th)).scalar_one_or_none()
@@ -5887,6 +6056,7 @@ def platform_overview(
         stripe_mode=_stripe_secret_mode(),
         writes_enabled=_staging_db_writes_allowed(),
         staging_auth_restricted=_staging_auth_allowlist_enforced(),
+        staging_access_mode=("password" if _staging_password_mode() else "allowlist") if staging else "",
     )
 
 

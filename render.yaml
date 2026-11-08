@@ -56,6 +56,9 @@ services:
         sync: false
       - key: STAGING_AUTH_EMAIL_ALLOWLIST
         sync: false
+      # Optional shared staging password. Leave unset to keep the allowlist. Staging only.
+      - key: STAGING_ACCESS_PASSWORD
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

@@ -27,6 +27,11 @@ if [ "$(basename "${OUT_DIR}")" != "public-staging" ]; then
   echo "Omitted dev-only trial banner preview from ${OUT_DIR}"
 fi
 
+# The staging password prompt ships only in staging builds.
+if [ "${OUT_DIR}" != "public-staging" ]; then
+  rm -f "${OUT_DIR}/staging-access.js"
+fi
+
 # Staging: chart-line favicon (production keeps typography Bw in frontend/).
 if [ "${OUT_DIR}" = "public-staging" ]; then
   STAGING_FAV="${REPO_ROOT}/frontend/staging-favicons"
@@ -97,6 +102,19 @@ if os.environ.get("BW_STAGING_BUILD") == "1":
                 count=1,
                 flags=re.IGNORECASE,
             )
+        if new_txt != txt:
+            path.write_text(new_txt, encoding="utf-8")
+
+    # Every page that talks to the API loads the staging access check first.
+    gate_tag = '<script src="/staging-access.js?v=1"></script>'
+    for path in root.rglob("*.html"):
+        try:
+            txt = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if "window.API_BASE" not in txt or gate_tag in txt:
+            continue
+        new_txt = re.sub(r"(<head(?:\s[^>]*)?>)", r"\1\n    " + gate_tag, txt, count=1, flags=re.IGNORECASE)
         if new_txt != txt:
             path.write_text(new_txt, encoding="utf-8")
 PY

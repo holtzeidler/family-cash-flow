@@ -51,3 +51,9 @@ jobs:
 
       - name: Email verification
         run: python -m pytest backend/tests/test_email_verification.py -q
+
+      - name: Staging access allowlist
+        run: python -m pytest backend/tests/test_staging_auth_allowlist.py -q
+
+      - name: Staging access password
+        run: python -m pytest backend/tests/test_staging_access_password.py -q

@@ -50,7 +50,8 @@ On **`family-cash-flow-api-staging`**, set (in addition to blueprint defaults):
 | `DATABASE_URL` | Pooled URL of the separate **Neon staging project**. Never production (`ep-ancient-union-…`) and never the retired staging branch (`ep-polished-boat-…`, which held a copy of production data). Set the same value on `family-cash-flow-trial-reminders-staging`. |
 | `PRODUCTION_DATABASE_HOST` | `ep-ancient-union-and21kx9-pooler` — staging refuses to start if `DATABASE_URL` matches this host, pooled or direct. |
 | `STAGING_DATABASE_HOST` | The staging project's endpoint ID, without `-pooler` (Neon → staging project → Branches → Computes). Staging starts only when `DATABASE_URL` matches it (or a database whose name includes `staging`). The retired `ep-polished-boat-…` host is always refused, even if this variable still names it. |
-| `STAGING_AUTH_EMAIL_ALLOWLIST` | Comma-separated **test-only** emails allowed to register/login on staging (e.g. `you+staging@gmail.com`). Production accounts are rejected even if the staging DB was copied from prod. |
+| `STAGING_AUTH_EMAIL_ALLOWLIST` | Comma-separated **test-only** emails allowed to register/login on staging (e.g. `you+staging@gmail.com`). Production accounts are rejected even if the staging DB was copied from prod. Ignored while `STAGING_ACCESS_PASSWORD` is set. |
+| `STAGING_ACCESS_PASSWORD` | Optional. One shared staging password that replaces the allowlist (see **Staging password mode** below). Unset keeps the allowlist. Ignored outside staging. Never commit or log the value. |
 | `RESEND_API_KEY` | Already set on staging. Used by the Resend SDK. Never commit or log the value. Temporary `POST /api/platform/email-test?template=welcome` (platform admin) previews a transactional template only to `tracy@balancewhiz.com`. Preview/test CTAs use `https://balancewhiz.com` (not staging) so Microsoft does not treat the send as phishing. Real transactional mail still uses `APP_PUBLIC_BASE_URL`. Use `template=design` for the generic design preview, `template=trial-ending` for the 3-day trial reminder, `template=plan-monthly` or `template=plan-annual` for the plan-selection confirmation, or `template=annual-renewal` for the annual renewal reminder, or `template=payment-failed-monthly` or `template=payment-failed-annual` for a failed payment, or `template=cancel-monthly` or `template=cancel-annual` for a scheduled cancellation, or `template=trial-expired` for a trial that ended without a plan,     or `template=subscription-ended` for a subscription Stripe ended after unpaid retries, or `template=reactivate-resumed` or `template=reactivate-restored` for the two reactivation confirmations, or `template=payment-method-updated` for a saved payment method change. Those previews do not run the reminder job, expire an account, fail a Stripe payment, cancel a subscription, charge a card, change a Stripe subscription, or update a payment method. The job is the staging cron `family-cash-flow-trial-reminders-staging` (twice a day). It sends the 3-day trial reminder and the 7-day annual renewal reminder, emails only addresses on `STAGING_AUTH_EMAIL_ALLOWLIST`, and refuses the production database. The annual reminder reads the Stripe renewal amount and date; the cron needs `STRIPE_SECRET_KEY` (same key as the staging API, not committed). |
 | `TRANSACTIONAL_REPLY_TO` | Optional. Defaults to `support@balancewhiz.com` (the public contact mailbox). Replies to transactional mail go here, not to `notifications@updates.balancewhiz.com`. |
 
@@ -206,6 +207,20 @@ To keep environments separate:
 
 Sign in on staging with a **dedicated test account**, not your main production email.
 
+### Staging password mode
+
+Setting `STAGING_ACCESS_PASSWORD` on `family-cash-flow-api-staging` replaces the email allowlist with one shared password:
+
+- Each browser asks once for the password (the **BalanceWhiz Staging** prompt). The API returns a signed pass that lasts 30 days; the browser keeps the pass, never the password.
+- Every API request needs that pass, including requests from accounts that were already signed in. Without it the API answers 403, and the site shows the prompt again without signing the account out.
+- After unlocking, any email can sign up (with email confirmation) and any staging account can sign in.
+- Changing the password ends every existing pass; everyone enters the new password once.
+- Wrong passwords: 10 per address per 15 minutes, and 100 across all addresses per 15 minutes, then the API answers 429.
+- Lifecycle emails from the staging API go to any staging account. The staging cron keeps using the allowlist unless it also has `STAGING_ACCESS_PASSWORD`.
+- To go back to the allowlist, delete `STAGING_ACCESS_PASSWORD` and redeploy. Do not use Render's **Rollback** button to reach a deploy from before the October database cutover; it restores the old environment variables.
+
+`GET /api/staging/access` reports `mode` (`password` or `allowlist`) and whether the browser's pass is valid. It does not exist outside staging.
+
 ## Troubleshooting
 
 | Symptom | Check |
@@ -216,6 +231,8 @@ Sign in on staging with a **dedicated test account**, not your main production e
 | Staging shows production data | Staging API `DATABASE_URL` must be the separate Neon staging project, never **ep-ancient-union-…** or the retired **ep-polished-boat-…**. Platform Admin → Overview shows the connected host. |
 | Staging deploy fails with "Staging refused to start" | `DATABASE_URL` is production or the retired staging branch, or `STAGING_DATABASE_HOST` doesn't match the staging project's endpoint ID. Render keeps the previous deploy running. |
 | Production login works on staging | Set `STAGING_AUTH_EMAIL_ALLOWLIST` to test emails only; fix `DATABASE_URL` if prod data still appears |
+| Staging password prompt keeps coming back | The password changed or the pass expired; enter the current password. If it never stops, check `GET /api/staging/access` on the staging API, and confirm the browser allows site storage. |
+| Staging password prompt never appears | `STAGING_ACCESS_PASSWORD` is not set on the staging API, or the deploy that added it has not finished. `GET /api/staging/access` shows `"mode": "allowlist"`. |
 | CI fails on `staging` push | GitHub secret `API_BASE_STAGING` set in `staging` environment |
 | Login/signup sends you to production | Signup links must be relative (`/account-setup/`), not `https://balancewhiz.com/...` |
 | Production broke after staging merge | Re-test on staging before `staging` → `main`; consider branch protection on `main` |

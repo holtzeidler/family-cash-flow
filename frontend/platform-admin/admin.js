@@ -162,7 +162,9 @@
         <dt>Database</dt><dd>${escapeHtml(data.database_name || "unknown")}${host ? ` <span class="meta">(${escapeHtml(host)})</span>` : ""}</dd>
         <dt>Isolated from live site</dt><dd>${isolated ? "Yes — this is not the production database." : "No — writes are blocked until DATABASE_URL points at the staging database."}</dd>
         <dt>Stripe</dt><dd>${escapeHtml(stripe === "live" ? "Live keys (billing changes blocked on staging)" : stripe === "test" ? "Test mode" : stripe === "none" ? "Not configured" : stripe)}</dd>
-        <dt>Staging login allowlist</dt><dd>${data.staging_auth_restricted ? "On — only listed test emails can sign in." : "Off — any account in this database can sign in."}</dd>
+        ${data.staging_access_mode === "password"
+          ? `<dt>Staging access</dt><dd>Shared staging password — anyone who enters it can sign up or sign in.</dd>`
+          : `<dt>Staging login allowlist</dt><dd>${data.staging_auth_restricted ? "On — only listed test emails can sign in." : "Off — any account in this database can sign in."}</dd>`}
       </dl>
     </div>`;
     const callout = document.getElementById("adminCallout");

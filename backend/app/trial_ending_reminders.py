@@ -10,7 +10,8 @@ Safety:
 - Refuses the production database unless TRIAL_ENDING_REMINDERS_ALLOW_PRODUCTION=1.
   That flag is set only on the production cron, never on the staging cron.
 - On staging, sends only to STAGING_AUTH_EMAIL_ALLOWLIST. An empty allowlist
-  sends nobody. Production does not use that allowlist.
+  sends nobody. Production does not use that allowlist. If this cron also has
+  STAGING_ACCESS_PASSWORD, it sends to any staging account, like the staging API.
 - Records a row in lifecycle_email_sends after a successful send. The unique
   key is (family, kind, trial end) or (family, kind, Stripe period end).
   A second run the same day finds that row and does not send again. The same
@@ -87,14 +88,11 @@ def _trial_notice_already_sent(db, *, family_id: int, user_id: int, kind: str, k
 
 def _allowlist_blocks(email: str) -> bool:
     """True when this staging recipient must not be emailed."""
-    from .main import _is_staging_deployment, _staging_auth_email_allowlist
+    from .main import _is_staging_deployment, _staging_email_recipient_allowed
 
     if not _is_staging_deployment():
         return False
-    allow = _staging_auth_email_allowlist()
-    if not allow:
-        return True
-    return (email or "").strip().lower() not in allow
+    return not _staging_email_recipient_allowed(email or "")
 
 
 def _send_annual_renewal_reminders(db, *, app_url: str, dry_run: bool) -> tuple[int, int, int]:

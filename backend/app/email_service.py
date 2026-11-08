@@ -421,7 +421,7 @@ def maybe_send_payment_failed_email(
         _database_identity,
         _host_label_matches,
         _is_staging_deployment,
-        _staging_auth_email_allowlist,
+        _staging_email_recipient_allowed,
         settings,
     )
 
@@ -449,8 +449,7 @@ def maybe_send_payment_failed_email(
         logger.info("Payment failed email skipped; staging is pointed at the production database")
         return
     if staging:
-        allow = _staging_auth_email_allowlist()
-        if not allow or email.lower() not in allow:
+        if not _staging_email_recipient_allowed(email):
             logger.info("Payment failed email skipped; staging allowlist family_id=%s", family_id)
             return
     elif livemode is False:
@@ -556,7 +555,7 @@ def maybe_send_subscription_canceled_email(
         _database_identity,
         _host_label_matches,
         _is_staging_deployment,
-        _staging_auth_email_allowlist,
+        _staging_email_recipient_allowed,
         settings,
     )
 
@@ -579,8 +578,7 @@ def maybe_send_subscription_canceled_email(
         logger.info("Cancellation email skipped; staging is pointed at the production database")
         return
     if staging:
-        allow = _staging_auth_email_allowlist()
-        if not allow or email.lower() not in allow:
+        if not _staging_email_recipient_allowed(email):
             logger.info("Cancellation email skipped; staging allowlist family_id=%s", family_id)
             return
     elif livemode is False:
@@ -681,7 +679,7 @@ def maybe_send_subscription_ended_nonpayment_email(
         _database_identity,
         _host_label_matches,
         _is_staging_deployment,
-        _staging_auth_email_allowlist,
+        _staging_email_recipient_allowed,
         settings,
     )
 
@@ -712,8 +710,7 @@ def maybe_send_subscription_ended_nonpayment_email(
         logger.info("Subscription ended email skipped; staging is pointed at the production database")
         return
     if staging:
-        allow = _staging_auth_email_allowlist()
-        if not allow or email.lower() not in allow:
+        if not _staging_email_recipient_allowed(email):
             logger.info("Subscription ended email skipped; staging allowlist family_id=%s", family_id)
             return
     elif livemode is False:
@@ -808,7 +805,7 @@ def _reactivation_recipient(db, *, family_id: int, user_id: Optional[int], livem
         _database_identity,
         _host_label_matches,
         _is_staging_deployment,
-        _staging_auth_email_allowlist,
+        _staging_email_recipient_allowed,
         settings,
     )
 
@@ -827,8 +824,7 @@ def _reactivation_recipient(db, *, family_id: int, user_id: Optional[int], livem
         logger.info("Reactivation email skipped; staging is pointed at the production database")
         return None
     if staging:
-        allow = _staging_auth_email_allowlist()
-        if not allow or email.lower() not in allow:
+        if not _staging_email_recipient_allowed(email):
             logger.info("Reactivation email skipped; staging allowlist family_id=%s", family_id)
             return None
     elif livemode is False:
@@ -1064,7 +1060,7 @@ def maybe_send_payment_method_updated_email(
         _database_identity,
         _host_label_matches,
         _is_staging_deployment,
-        _staging_auth_email_allowlist,
+        _staging_email_recipient_allowed,
         settings,
     )
 
@@ -1102,8 +1098,7 @@ def maybe_send_payment_method_updated_email(
         logger.info("Payment method email skipped; staging is pointed at the production database")
         return
     if staging:
-        allow = _staging_auth_email_allowlist()
-        if not allow or email.lower() not in allow:
+        if not _staging_email_recipient_allowed(email):
             logger.info("Payment method email skipped; staging allowlist family_id=%s", fam)
             return
     elif livemode is False:
@@ -1166,7 +1161,7 @@ def maybe_send_plan_selection_email(
         trial_end_idempotency_key,
         trial_ends_at,
     )
-    from .main import Family, LifecycleEmailSend, User, _database_identity, _host_label_matches, _is_staging_deployment, _staging_auth_email_allowlist, settings
+    from .main import Family, LifecycleEmailSend, User, _database_identity, _host_label_matches, _is_staging_deployment, _staging_email_recipient_allowed, settings
 
     if family_id is None or subscription is None:
         return
@@ -1203,8 +1198,7 @@ def maybe_send_plan_selection_email(
         logger.info("Plan selection email skipped; staging is pointed at the production database")
         return
     if staging:
-        allow = _staging_auth_email_allowlist()
-        if not allow or email.lower() not in allow:
+        if not _staging_email_recipient_allowed(email):
             logger.info("Plan selection email skipped; staging allowlist family_id=%s", family_id)
             return
     elif livemode is False:
