@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=901" />
+    <link rel="stylesheet" href="../styles.css?v=902" />
   </head>
   <body>
     <h1 class="sr-only">Transactions</h1>
@@ -1707,12 +1707,13 @@
           <p id="reconcileDateDisplay" class="balance-check-in__date"></p>
         </div>
         <div id="reconcileBalanceBlock" class="balance-check-in__forecast-card">
-          <span class="balance-check-in__forecast-k">BalanceWhiz forecast</span>
+          <span class="balance-check-in__forecast-k">Projected end-of-day balance</span>
           <span id="reconcileForecastBal" class="balance-check-in__forecast-v">—</span>
         </div>
 
         <div id="reconcileConfirmState" class="balance-check-in__confirm">
-          <p id="reconcileMatchPrompt" class="balance-check-in__match-prompt">Does this match your current bank balance?</p>
+          <p class="balance-check-in__prep-note">Update transactions that haven't cleared or whose dates changed before reconciling.</p>
+          <p id="reconcileMatchPrompt" class="balance-check-in__match-prompt">Does this match your bank's end-of-day balance?</p>
           <div id="reconcileConfirmErr" class="error"></div>
           <div class="balance-check-in__confirm-actions">
             <button type="button" id="reconcileMatchYesBtn" class="balance-check-in__primary balance-check-in__primary--full">Yes, it matches</button>
@@ -1722,7 +1723,7 @@
 
         <div id="reconcileEditState" class="balance-check-in__edit" hidden>
           <label class="balance-check-in__actual" for="reconcileActualAmount">
-            <span class="balance-check-in__actual-label">Actual bank balance</span>
+            <span class="balance-check-in__actual-label">End-of-day bank balance</span>
             <div class="money-input balance-check-in__actual-input">
               <span class="money-input__prefix" aria-hidden="true">$</span>
               <input type="text" id="reconcileActualAmount" inputmode="decimal" autocomplete="off" aria-describedby="reconcileHelp" />

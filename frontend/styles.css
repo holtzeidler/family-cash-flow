@@ -22485,6 +22485,12 @@ body.plans-page--polished .plans-quote{
   text-transform: uppercase;
   color: rgba(71, 85, 105, 0.92);
 }
+#reconcileBalanceBlock .balance-check-in__forecast-k{
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
 .balance-check-in__forecast-v{
   font-size: 1.25rem;
   font-weight: 750;
@@ -22497,6 +22503,13 @@ body.plans-page--polished .plans-quote{
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+.balance-check-in__prep-note{
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 450;
+  line-height: 1.4;
+  color: rgba(100, 116, 139, 0.92);
 }
 .balance-check-in__match-prompt{
   margin: 0;
