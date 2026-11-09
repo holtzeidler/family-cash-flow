@@ -35419,3 +35419,218 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   }
 }
 
+/* Sidebar typography: one restrained hierarchy across Cash Health, Needs Review, and Monthly Cash Flow. */
+body[data-bw-view] .sidebar{
+  --sb-heading-size: 11px;
+  --sb-heading-weight: 600;
+  --sb-heading-tracking: 0.04em;
+  --sb-heading-color: rgba(71, 85, 105, 0.72);
+  --sb-body-size: 13px;
+  --sb-body-weight: 500;
+  --sb-body-color: rgba(51, 65, 85, 0.88);
+  --sb-support-size: 11px;
+  --sb-support-weight: 400;
+  --sb-support-color: rgba(100, 116, 139, 0.72);
+  --sb-amount-size: 13px;
+  --sb-amount-weight: 600;
+}
+body[data-bw-view] #cashOutlookTitle,
+body[data-bw-view] .sidebar-forecast-head h2,
+body[data-bw-view] #sidebarPendingTitle,
+body[data-bw-view] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view] .sidebar-reconcile__label{
+  font-size: var(--sb-heading-size);
+  font-weight: var(--sb-heading-weight);
+  letter-spacing: var(--sb-heading-tracking);
+  text-transform: uppercase;
+  color: var(--sb-heading-color);
+  line-height: 1.2;
+}
+body[data-bw-view] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view] #sidebarPendingTxCard.sidebar-pending--success #sidebarPendingTitle,
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label{
+  text-transform: none;
+  letter-spacing: -0.011em;
+  font-size: var(--sb-body-size);
+  font-weight: var(--sb-body-weight);
+  line-height: 1.3;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  font-family: inherit;
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-heading-weight);
+  letter-spacing: 0;
+  color: var(--sb-heading-color);
+}
+body[data-bw-view] .sidebar-cash-health__horizon{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  letter-spacing: 0;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .cash-health-card__kicker{
+  font-size: var(--sb-body-size);
+  font-weight: var(--sb-body-weight);
+  letter-spacing: -0.011em;
+  line-height: 1.3;
+  color: var(--sb-body-color);
+}
+body[data-bw-view] .cash-health-card--healthy .cash-health-card__kicker,
+body[data-bw-view] .cash-health-card--below .cash-health-card__kicker,
+body[data-bw-view] .cash-health-card--negative .cash-health-card__kicker{
+  font-size: var(--sb-body-size);
+  font-weight: var(--sb-body-weight);
+  color: var(--sb-body-color);
+}
+body[data-bw-view] .cash-health-card__amount{
+  font-size: var(--sb-amount-size);
+  font-weight: var(--sb-amount-weight);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: rgba(30, 41, 59, 0.9);
+}
+body[data-bw-view] .cash-health-card--below .cash-health-card__amount{
+  color: rgba(146, 64, 14, 0.88);
+}
+body[data-bw-view] .cash-health-card--negative .cash-health-card__amount{
+  color: color-mix(in srgb, var(--danger) 72%, #78716c);
+}
+body[data-bw-view] .cash-health-card__when,
+body[data-bw-view] .cash-health-card__desc{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  letter-spacing: 0;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .pending-attn-name,
+body[data-bw-view="calendar"] .pending-attn-name,
+body[data-bw-view="transactions"] .pending-attn-name,
+body[data-bw-view="settings"] .pending-attn-name,
+body[data-bw-view="reports"] .pending-attn-name,
+body[data-bw-view] .pending-attn-item.is-critical .pending-attn-name,
+body[data-bw-view] .pending-attn-item.is-overdue .pending-attn-name{
+  font-size: var(--sb-body-size);
+  font-weight: var(--sb-body-weight);
+  letter-spacing: -0.011em;
+  line-height: 1.3;
+  color: var(--sb-body-color);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+body[data-bw-view] .pending-attn-meta,
+body[data-bw-view="calendar"] .pending-attn-meta,
+body[data-bw-view="transactions"] .pending-attn-meta,
+body[data-bw-view="settings"] .pending-attn-meta,
+body[data-bw-view="reports"] .pending-attn-meta,
+body[data-bw-view] .pending-attn-item.is-notable .pending-attn-meta,
+body[data-bw-view] .pending-attn-item.is-major .pending-attn-meta{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  letter-spacing: 0;
+  line-height: 1.3;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .sidebar-reconcile__detail,
+body[data-bw-view] .sidebar-reconcile__date{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  letter-spacing: 0;
+  line-height: 1.35;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .sidebar-reconcile__action{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-heading-weight);
+  letter-spacing: 0;
+  color: rgba(71, 85, 105, 0.78);
+}
+body[data-bw-view] .sidebar-reconcile__elapsed{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .sidebar-reconcile__elapsed.is-stale{
+  color: rgba(146, 64, 14, 0.84);
+}
+body[data-bw-view] #sidebarBodyMonth .total .k,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .k,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .k,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .k,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__k,
+body[data-bw-view="reports"] .totals-compact__k{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-body-weight);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] #sidebarBodyMonth .total .v,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .v,
+body[data-bw-view] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__v,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__v,
+body[data-bw-view="reports"] .totals-compact__v,
+body[data-bw-view="reports"] .totals-compact__row--net .totals-compact__v{
+  font-size: var(--sb-amount-size);
+  font-weight: var(--sb-amount-weight);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+body[data-bw-view] #sidebarBodyMonth .total--net,
+body[data-bw-view] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net:has(.v.danger){
+  background: transparent;
+  border-radius: 0;
+}
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net{
+  background: transparent;
+}
+body[data-bw-view] #sidebarBodyMonth .total--income .v.ok,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--income .totals-compact__v.ok,
+body[data-bw-view] #sidebarBodyMonth .total--net .v.ok,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__v.ok{
+  color: color-mix(in srgb, var(--ok) 78%, #64748b);
+}
+body[data-bw-view] #sidebarBodyMonth .total--expense .v.danger,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--expense .totals-compact__v.danger,
+body[data-bw-view] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__v.danger{
+  color: color-mix(in srgb, var(--danger) 72%, #78716c);
+}
+
