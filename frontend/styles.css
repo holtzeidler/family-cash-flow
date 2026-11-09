@@ -34385,6 +34385,24 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   background: rgba(4, 120, 87, 0.06);
   color: rgba(11, 61, 46, 0.92);
 }
+.cal-add-split{
+  display: inline-flex;
+  align-items: stretch;
+  margin: 0;
+  border-radius: 9px;
+  border: 1px solid rgba(4, 120, 87, 0.28);
+  background: rgba(4, 120, 87, 0.07);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+.cal-add-split:hover{
+  border-color: rgba(4, 120, 87, 0.4);
+  background: rgba(4, 120, 87, 0.12);
+}
+.cal-add-split:focus-within{
+  outline: 2px solid rgba(4, 120, 87, 0.35);
+  outline-offset: 2px;
+}
 .cal-add-tx-btn{
   appearance: none;
   display: inline-flex;
@@ -34404,6 +34422,12 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   cursor: pointer;
 }
+.cal-add-split .cal-add-tx-btn{
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
 .cal-add-tx-btn > span{
   font-size: 1.15em;
   font-weight: 700;
@@ -34413,21 +34437,105 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   border-color: rgba(4, 120, 87, 0.4);
   background: rgba(4, 120, 87, 0.12);
 }
-.cal-add-tx-btn:focus-visible{
+.cal-add-split .cal-add-tx-btn:hover,
+.cal-add-tx-menu-btn:hover{
+  border-color: transparent;
+  background: transparent;
+}
+.cal-add-tx-btn:focus-visible,
+.cal-add-tx-menu-btn:focus-visible{
   outline: 2px solid rgba(4, 120, 87, 0.35);
   outline-offset: 2px;
 }
+.cal-add-split .cal-add-tx-btn:focus-visible,
+.cal-add-split .cal-add-tx-menu-btn:focus-visible{
+  outline: none;
+  background: rgba(4, 120, 87, 0.14);
+}
+.cal-add-tx-menu-btn{
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 4px 7px;
+  min-width: 28px;
+  border: 0;
+  border-left: 1px solid rgba(4, 120, 87, 0.22);
+  border-radius: 0;
+  background: transparent;
+  color: rgba(11, 61, 46, 0.94);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+.cal-add-tx-menu-btn svg{
+  display: block;
+  transition: transform 0.12s ease;
+}
+.cal-add-tx-menu-btn[aria-expanded="true"] svg{
+  transform: rotate(180deg);
+}
+.cal-add-tx-menu[hidden]{
+  display: none !important;
+}
+.cal-add-tx-menu{
+  position: fixed;
+  z-index: 1300;
+  box-sizing: border-box;
+  min-width: 168px;
+  padding: 6px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.16);
+}
+.cal-add-tx-menu__item{
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none;
+  margin: 0;
+  padding: 8px 10px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(11, 61, 46, 0.92);
+  cursor: pointer;
+}
+.cal-add-tx-menu__item:hover,
+.cal-add-tx-menu__item:focus-visible{
+  background: rgba(4, 120, 87, 0.08);
+  outline: none;
+}
 @media (max-width: 768px){
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn){
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn),
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split){
     grid-template-rows: auto auto auto;
   }
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-nav-leading{
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-nav-leading,
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split) .cal-nav-leading{
     grid-column: 1 / -1;
     min-width: 0;
   }
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-detail-toggle{
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-detail-toggle,
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split) .cal-detail-toggle{
     grid-column: 1 / -1;
     grid-row: 3;
+  }
+  .cal-add-tx-menu-btn{
+    min-width: 40px;
+    min-height: 36px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .cal-add-tx-menu__item{
+    min-height: 44px;
   }
 }
 @media (max-width: 360px){
@@ -34438,7 +34546,6 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
     display: none;
   }
   body[data-bw-view="calendar"] .cal-nav-leading .cal-today-btn,
-  body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn,
   body[data-bw-view="calendar"] .cal-nav-leading .cal-add-tx-btn{
     padding-left: 7px;
     padding-right: 7px;
