@@ -1003,6 +1003,7 @@ const lowBalanceResult = document.getElementById("lowBalanceResult");
 const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
 const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
+const cashHealthHorizon = document.getElementById("cashHealthHorizon");
 const sidebarCashHealthCard = document.getElementById("sidebarCashHealthCard");
 // Legacy browser-local keys kept only long enough to migrate older sessions to
 // the server-backed family threshold fields.
@@ -1442,8 +1443,16 @@ function showForecastGettingStartedBanner() {
 }
 
 /** @param {"off"|"danger"|"muted"} style */
+function setCashHealthHorizon(text) {
+  if (!cashHealthHorizon) return;
+  const t = String(text || "").trim();
+  cashHealthHorizon.textContent = t;
+  cashHealthHorizon.hidden = !t;
+}
+
 function setSidebarLowBalanceBanner(text, style = "off") {
   if (!sidebarLowBalanceBanner) return;
+  setCashHealthHorizon("");
   if (!text || style === "off") {
     sidebarLowBalanceBanner.style.display = "none";
     sidebarLowBalanceBanner.textContent = "";
@@ -2528,15 +2537,6 @@ function syncSidebarCashHealthCardVisibility() {
   sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
 }
 
-function cashHealthCardFooterHtml(copy) {
-  const horizon = escapeHtml(copy.horizon || copy.footer || "");
-  const view = String(copy.viewAction || "").trim();
-  const viewHtml = view
-    ? `<span class="cash-health-card__view">${escapeHtml(view)} <span aria-hidden="true">›</span></span>`
-    : "";
-  return `<span class="cash-health-card__footer"><span class="cash-health-card__horizon">${horizon}</span>${viewHtml}</span>`;
-}
-
 function cashHealthStatusIconHtml(tone) {
   if (tone === "healthy") {
     return `<span class="cash-health-card__icon cash-health-card__icon--healthy" aria-hidden="true"></span>`;
@@ -2558,11 +2558,16 @@ function cashHealthCardHtml(copy) {
   if (amount) figureBits.push(`<span class="cash-health-card__amount">${amount}</span>`);
   if (when) figureBits.push(`<span class="cash-health-card__when">${when}</span>`);
   if (descriptor) figureBits.push(`<span class="cash-health-card__desc">${descriptor}</span>`);
+  const view = String(copy.viewAction || "").trim();
+  if (view) {
+    figureBits.push(
+      `<span class="cash-health-card__view">${escapeHtml(view)} <span aria-hidden="true">›</span></span>`
+    );
+  }
   const figure = figureBits.length ? `<span class="cash-health-card__figure">${figureBits.join("")}</span>` : "";
   const inner = `<span class="cash-health-card__body">
       <span class="cash-health-card__kicker">${cashHealthStatusIconHtml(copy.tone)}${kicker}</span>
       ${figure}
-      ${cashHealthCardFooterHtml(copy)}
     </span>`;
   if (copy.tone === "healthy") {
     return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">${inner}</div>`;
@@ -2576,6 +2581,7 @@ function setSidebarCashHealthCard(copy) {
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted", "is-intro", "is-suggestion");
   sidebarLowBalanceBanner.classList.add("is-muted");
+  setCashHealthHorizon(copy.horizon || "");
   if (sidebarLowBalanceBanner.dataset.cashHealthBound !== "1") {
     sidebarLowBalanceBanner.dataset.cashHealthBound = "1";
     sidebarLowBalanceBanner.addEventListener("click", (e) => {

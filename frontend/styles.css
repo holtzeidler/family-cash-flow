@@ -33838,6 +33838,7 @@ body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
   border-radius: 12px;
 }
 body[data-bw-view] #sidebarCashHealthCard .sidebar-cash-health__head{
+  align-items: baseline;
   margin-bottom: 10px;
 }
 body[data-bw-view] #cashOutlookTitle,
@@ -34868,6 +34869,20 @@ button.cash-health-card:focus-visible{
   width: 100%;
   min-width: 0;
 }
+.sidebar-cash-health__horizon{
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: none;
+  color: rgba(120, 113, 108, 0.62);
+  white-space: nowrap;
+}
+.sidebar-cash-health__horizon[hidden]{
+  display: none;
+}
 .cash-health-card__kicker{
   display: flex;
   align-items: flex-start;
@@ -34875,17 +34890,17 @@ button.cash-health-card:focus-visible{
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 400;
   letter-spacing: -0.01em;
-  line-height: 1.25;
-  color: rgba(28, 25, 23, 0.88);
+  line-height: 1.3;
+  color: rgba(28, 25, 23, 0.86);
 }
 .cash-health-card__icon{
   flex: 0 0 auto;
   width: 12px;
   height: 12px;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 .cash-health-card__icon svg{
   display: block;
@@ -34901,7 +34916,7 @@ button.cash-health-card:focus-visible{
 .cash-health-card__icon--healthy{
   width: 7px;
   height: 7px;
-  margin-top: 5px;
+  margin-top: 6px;
   margin-left: 2.5px;
   margin-right: 2.5px;
   border-radius: 50%;
@@ -34912,19 +34927,19 @@ button.cash-health-card:focus-visible{
   flex-wrap: wrap;
   align-items: baseline;
   column-gap: 0.35em;
-  row-gap: 0;
+  row-gap: 1px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   margin-top: 2px;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .cash-health-card__amount{
   flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
-  font-size: 16px;
-  font-weight: 650;
+  font-size: 15px;
+  font-weight: 600;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -34937,33 +34952,17 @@ button.cash-health-card:focus-visible{
   font-size: 13px;
   font-weight: 400;
   letter-spacing: -0.01em;
-  color: rgba(87, 83, 78, 0.7);
+  color: rgba(87, 83, 78, 0.72);
   white-space: nowrap;
-}
-.cash-health-card__footer{
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 4px 10px;
-  width: 100%;
-  margin-top: 6px;
-  min-width: 0;
-  line-height: 1.25;
-}
-.cash-health-card__horizon{
-  min-width: 0;
-  font-size: 10.5px;
-  font-weight: 400;
-  color: rgba(120, 113, 108, 0.6);
 }
 .cash-health-card__view{
   flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 500;
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 400;
   white-space: nowrap;
   color: var(--accent);
-  opacity: 0.72;
+  opacity: 0.7;
 }
 button.cash-health-card:hover .cash-health-card__view{
   opacity: 1;
