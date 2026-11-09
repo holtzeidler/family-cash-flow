@@ -318,7 +318,7 @@ function buildCashHealthCopy(summary, expl) {
   const anchor = summary.anchor;
   const when = cashHealthMonthDay(anchor.date, today);
   const amountText = cashHealthMoney(anchor.amount);
-  const whenLabel = when === "today" ? "Today" : when;
+  const whenLabel = when === "today" ? "today" : `on ${when}`;
   const viewText = when === "today" ? "View today" : `View ${when}`;
   const kicker = summary.state === "negative" ? "Negative balance projected" : "Below minimum projected";
   const chipWhen = when === "today" ? "today" : when;

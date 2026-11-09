@@ -34875,58 +34875,70 @@ button.cash-health-card:focus-visible{
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.25;
-  color: rgba(55, 48, 42, 0.82);
+  color: rgba(28, 25, 23, 0.88);
 }
-.cash-health-card__kicker::before{
-  content: "";
+.cash-health-card__icon{
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+}
+.cash-health-card__icon svg{
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+.cash-health-card__icon--negative{
+  color: rgba(185, 28, 28, 0.58);
+}
+.cash-health-card__icon--below{
+  color: rgba(180, 83, 9, 0.58);
+}
+.cash-health-card__icon--healthy{
   width: 7px;
   height: 7px;
-  margin-top: 4px;
+  margin-top: 5px;
+  margin-left: 2.5px;
+  margin-right: 2.5px;
   border-radius: 50%;
-  flex: 0 0 auto;
-  background: rgba(120, 113, 108, 0.5);
+  background: rgba(21, 128, 61, 0.42);
 }
-.cash-health-card--negative .cash-health-card__kicker::before{
-  background: #b91c1c;
-}
-.cash-health-card--below .cash-health-card__kicker::before{
-  background: #b45309;
-}
-.cash-health-card--healthy .cash-health-card__kicker::before{
-  background: #15803d;
+.cash-health-card__figure{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.35em;
+  row-gap: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 2px;
+  line-height: 1.2;
 }
 .cash-health-card__amount{
-  display: block;
-  width: 100%;
-  margin-top: 2px;
-  font-size: 20px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 16px;
   font-weight: 650;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
-  max-width: 100%;
-  color: rgba(28, 25, 23, 0.94);
-}
-.cash-health-card--negative .cash-health-card__amount{
-  color: #991b1b;
-}
-.cash-health-card--below .cash-health-card__amount{
-  color: #9a3412;
+  color: rgba(28, 25, 23, 0.92);
 }
 .cash-health-card__when,
 .cash-health-card__desc{
-  display: block;
-  width: 100%;
-  margin-top: 1px;
-  font-size: 12px;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 1.25;
+  letter-spacing: -0.01em;
   color: rgba(87, 83, 78, 0.7);
+  white-space: nowrap;
 }
 .cash-health-card__footer{
   display: flex;
@@ -34935,24 +34947,26 @@ button.cash-health-card:focus-visible{
   align-items: baseline;
   gap: 4px 10px;
   width: 100%;
-  margin-top: 7px;
+  margin-top: 6px;
   min-width: 0;
   line-height: 1.25;
 }
 .cash-health-card__horizon{
   min-width: 0;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 400;
-  color: rgba(120, 113, 108, 0.68);
+  color: rgba(120, 113, 108, 0.6);
 }
 .cash-health-card__view{
   flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   white-space: nowrap;
   color: var(--accent);
+  opacity: 0.72;
 }
 button.cash-health-card:hover .cash-health-card__view{
+  opacity: 1;
   text-decoration: underline;
   text-underline-offset: 2px;
 }

@@ -2537,16 +2537,31 @@ function cashHealthCardFooterHtml(copy) {
   return `<span class="cash-health-card__footer"><span class="cash-health-card__horizon">${horizon}</span>${viewHtml}</span>`;
 }
 
+function cashHealthStatusIconHtml(tone) {
+  if (tone === "healthy") {
+    return `<span class="cash-health-card__icon cash-health-card__icon--healthy" aria-hidden="true"></span>`;
+  }
+  return `<span class="cash-health-card__icon cash-health-card__icon--${tone}" aria-hidden="true">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" focusable="false">
+        <path d="M8 2.2L14.2 13.4H1.8L8 2.2z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"></path>
+        <path d="M8 6.5v3.1M8 11.4v.01" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"></path>
+      </svg>
+    </span>`;
+}
+
 function cashHealthCardHtml(copy) {
   const amount = escapeHtml(copy.amountText || "");
   const when = escapeHtml(copy.whenLabel || "");
   const descriptor = escapeHtml(copy.descriptor || "");
   const kicker = escapeHtml(copy.kicker || copy.headline || "");
+  const figureBits = [];
+  if (amount) figureBits.push(`<span class="cash-health-card__amount">${amount}</span>`);
+  if (when) figureBits.push(`<span class="cash-health-card__when">${when}</span>`);
+  if (descriptor) figureBits.push(`<span class="cash-health-card__desc">${descriptor}</span>`);
+  const figure = figureBits.length ? `<span class="cash-health-card__figure">${figureBits.join("")}</span>` : "";
   const inner = `<span class="cash-health-card__body">
-      <span class="cash-health-card__kicker">${kicker}</span>
-      ${amount ? `<span class="cash-health-card__amount">${amount}</span>` : ""}
-      ${when ? `<span class="cash-health-card__when">${when}</span>` : ""}
-      ${descriptor ? `<span class="cash-health-card__desc">${descriptor}</span>` : ""}
+      <span class="cash-health-card__kicker">${cashHealthStatusIconHtml(copy.tone)}${kicker}</span>
+      ${figure}
       ${cashHealthCardFooterHtml(copy)}
     </span>`;
   if (copy.tone === "healthy") {
