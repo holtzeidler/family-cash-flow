@@ -947,6 +947,7 @@
       onAfterStepEnd = null;
       try { fn(); } catch (_) {}
     }
+    try { window.dispatchEvent(new CustomEvent("bw-tour-ended")); } catch (_) {}
   }
 
   // ---------------------------------------------------------------------
