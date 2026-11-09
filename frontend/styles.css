@@ -22109,23 +22109,6 @@ body.plans-page--polished .plans-quote{
   row-gap: 7px;
 }
 
-.calendar-balance-caption{
-  margin: 2px 2px 8px;
-  padding: 0 2px;
-  max-width: 40rem;
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 450;
-  color: rgba(71, 85, 105, 0.88);
-  text-wrap: pretty;
-}
-@media (max-width: 720px){
-  .calendar-balance-caption{
-    margin: 4px 0 8px;
-    max-width: none;
-    font-size: 12.5px;
-  }
-}
 .calendar-dow-row{
   display: grid;
   grid-template-columns: repeat(7, 1fr);

@@ -19612,24 +19612,11 @@ function dedupeCalendarDayTransactions(expectedItems, actualTxs) {
   return { actuals, expected };
 }
 
-function ensureCalendarBalanceCaption() {
-  const dow = document.getElementById("calendarDow");
-  if (!dow || !dow.parentNode) return;
-  let cap = document.getElementById("calendarBalanceCaption");
-  if (!cap) {
-    cap = document.createElement("p");
-    cap.id = "calendarBalanceCaption";
-    cap.className = "calendar-balance-caption";
-    dow.parentNode.insertBefore(cap, dow);
-  }
-  cap.textContent = "Each day's amount is your projected checking balance at the end of that day.";
-}
-
 function renderCalendar() {
   if (!calendarGrid) return;
   calendarGrid.innerHTML = "";
   const calendarDow = document.getElementById("calendarDow");
-  ensureCalendarBalanceCaption();
+  document.getElementById("calendarBalanceCaption")?.remove();
   if (calendarDow) calendarDow.innerHTML = "";
   const isMobileCalendarLayout =
     typeof window !== "undefined" && typeof window.matchMedia === "function"
