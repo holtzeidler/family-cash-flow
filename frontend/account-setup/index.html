@@ -37,7 +37,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=854" />
+    <link rel="stylesheet" href="../styles.css?v=882" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -328,7 +328,7 @@
                       <h2 class="account-setup-step3-lead__title">What would you like to add first?</h2>
                       <p class="account-setup-step3-lead__text">Start with a regular paycheck or an upcoming bill. You can always add more later.</p>
                     </div>
-                    <ul id="accountSetupStep3List" class="account-setup-step3-saved" hidden></ul>
+                    <div id="accountSetupStep3List" class="account-setup-step3-saved" hidden></div>
                     <p id="accountSetupStep3Summary" class="account-setup-step3-summary" aria-live="polite" hidden></p>
                     <section class="account-setup-step3-section account-setup-step3-section--actions" aria-label="Add income or bill">
                       <div class="account-setup-tx-choice-wrap">
@@ -412,23 +412,26 @@
                     <input id="asTxDate" type="date" class="account-setup-tx-schedule-grid__control" />
                   </div>
                   <div class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--repeat">
-                    <label for="asTxRecurrence" class="account-setup-tx-schedule-grid__label">Repeat</label>
-                    <select id="asTxRecurrence" class="tx-add-recurrence-select account-setup-tx-schedule-grid__control" title="How often this repeats">
-                      <option value="once" selected>Does not repeat</option>
-                      <option value="monthly">Every month</option>
-                      <option value="twice_monthly">Twice monthly</option>
+                    <label for="asTxRecurrence" id="asTxFrequencyLabel" class="account-setup-tx-schedule-grid__label">How often do you pay this?</label>
+                    <select id="asTxRecurrence" class="tx-add-recurrence-select account-setup-tx-schedule-grid__control" title="How often do you pay this?" aria-required="true" aria-describedby="asTxFrequencyError">
+                      <option value="" selected>Choose how often</option>
+                      <option value="weekly">Weekly</option>
                       <option value="biweekly">Every 2 weeks</option>
-                      <option value="weekly">Every week</option>
-                      <option value="quarterly">Every 3 months</option>
-                      <option value="semiannual">Twice Yearly</option>
-                      <option value="yearly">Every year</option>
+                      <option value="twice_monthly">Twice a month</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="once">One time</option>
                     </select>
-                    <p id="asTxScheduleSummary" class="account-setup-schedule-summary account-setup-tx-schedule-grid__summary" hidden></p>
+                    <p id="asTxFrequencyError" class="account-setup-frequency-error" role="alert" hidden></p>
                   </div>
-                  <div id="asTxSecondDayWrap" class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--second tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
-                    <label for="asTxSecondDayOfMonth" class="account-setup-tx-schedule-grid__label" id="asTxSecondOccurrenceLabel">Also occurs on</label>
-                    <select id="asTxSecondDayOfMonth" class="tx-add-recurrence-select account-setup-tx-schedule-grid__control" title="Second monthly date for twice-monthly schedules"></select>
-                    <input id="asTxSecondYearlyDate" type="date" class="account-setup-tx-schedule-grid__control" hidden title="Second yearly date for twice-yearly schedules" />
+                  <div class="account-setup-tx-schedule-grid__detail">
+                    <div id="asTxSecondDayWrap" class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--second tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
+                      <span class="account-setup-tx-schedule-grid__label" id="asTxSecondOccurrenceLabel">Also occurs on</span>
+                      <input id="asTxSecondDayOfMonth" type="hidden" value="" />
+                      <input id="asTxSecondMonthlyDate" type="date" class="account-setup-tx-schedule-grid__control account-setup-second-day__date" aria-labelledby="asTxSecondOccurrenceLabel" aria-describedby="asTxSecondMonthlyDateError asTxScheduleSummary" hidden />
+                      <p id="asTxSecondMonthlyDateError" class="account-setup-second-day__error" role="alert" hidden></p>
+                      <input id="asTxSecondYearlyDate" type="date" class="account-setup-tx-schedule-grid__control" hidden title="Second yearly date for twice-yearly schedules" />
+                    </div>
+                    <p id="asTxScheduleSummary" class="account-setup-schedule-summary account-setup-tx-schedule-grid__summary" hidden></p>
                   </div>
                   </div>
                   <div class="account-setup-tx-ends-wrap">
@@ -575,23 +578,26 @@
                       <input id="asExpTxDate" type="date" class="account-setup-tx-schedule-grid__control" />
                     </div>
                     <div class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--repeat">
-                      <label for="asExpRecurrence" class="account-setup-tx-schedule-grid__label">Repeat</label>
-                      <select id="asExpRecurrence" class="tx-add-recurrence-select account-setup-tx-schedule-grid__control" title="How often this repeats">
-                        <option value="once" selected>Does not repeat</option>
-                        <option value="monthly">Every month</option>
-                        <option value="twice_monthly">Twice monthly</option>
+                      <label for="asExpRecurrence" id="asExpFrequencyLabel" class="account-setup-tx-schedule-grid__label">How often do you pay this?</label>
+                      <select id="asExpRecurrence" class="tx-add-recurrence-select account-setup-tx-schedule-grid__control" title="How often do you pay this?" aria-required="true" aria-describedby="asExpFrequencyError">
+                        <option value="" selected>Choose how often</option>
+                        <option value="weekly">Weekly</option>
                         <option value="biweekly">Every 2 weeks</option>
-                        <option value="weekly">Every week</option>
-                        <option value="quarterly">Every 3 months</option>
-                        <option value="semiannual">Twice Yearly</option>
-                        <option value="yearly">Every year</option>
+                        <option value="twice_monthly">Twice a month</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="once">One time</option>
                       </select>
-                      <p id="asExpScheduleSummary" class="account-setup-schedule-summary account-setup-tx-schedule-grid__summary" hidden></p>
+                      <p id="asExpFrequencyError" class="account-setup-frequency-error" role="alert" hidden></p>
                     </div>
-                    <div id="asExpSecondDayWrap" class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--second tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
-                      <label for="asExpSecondDayOfMonth" class="account-setup-tx-schedule-grid__label" id="asExpSecondOccurrenceLabel">Also occurs on</label>
-                      <select id="asExpSecondDayOfMonth" class="tx-add-recurrence-select account-setup-tx-schedule-grid__control" title="Second monthly date for twice-monthly schedules"></select>
-                      <input id="asExpSecondYearlyDate" type="date" class="account-setup-tx-schedule-grid__control" hidden title="Second yearly date for twice-yearly schedules" />
+                    <div class="account-setup-tx-schedule-grid__detail">
+                      <div id="asExpSecondDayWrap" class="account-setup-tx-schedule-grid__cell account-setup-tx-schedule-grid__cell--second tx-add-schedule-field tx-add-schedule-field--second-day" hidden>
+                        <span class="account-setup-tx-schedule-grid__label" id="asExpSecondOccurrenceLabel">Also occurs on</span>
+                        <input id="asExpSecondDayOfMonth" type="hidden" value="" />
+                        <input id="asExpSecondMonthlyDate" type="date" class="account-setup-tx-schedule-grid__control account-setup-second-day__date" aria-labelledby="asExpSecondOccurrenceLabel" aria-describedby="asExpSecondMonthlyDateError asExpScheduleSummary" hidden />
+                        <p id="asExpSecondMonthlyDateError" class="account-setup-second-day__error" role="alert" hidden></p>
+                        <input id="asExpSecondYearlyDate" type="date" class="account-setup-tx-schedule-grid__control" hidden title="Second yearly date for twice-yearly schedules" />
+                      </div>
+                      <p id="asExpScheduleSummary" class="account-setup-schedule-summary account-setup-tx-schedule-grid__summary" hidden></p>
                     </div>
                     </div>
                     <div class="account-setup-tx-ends-wrap">
@@ -835,6 +841,6 @@
     </div>
 
     <script src="../signup/account-setup-finish-decision.js?v=3"></script>
-    <script src="../signup/signup.js?v=157"></script>
+    <script src="../signup/signup.js?v=163"></script>
   </body>
 </html>

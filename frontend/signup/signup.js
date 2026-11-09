@@ -1079,17 +1079,22 @@ function getAccountSetupTransactionCounts() {
   };
 }
 
-function accountSetupSavedRecurrenceLabel(value) {
+function accountSetupSavedRecurrenceLabel(txOrValue) {
   const labels = {
-    monthly: "Every month",
-    twice_monthly: "Twice monthly",
+    once: "One time",
+    weekly: "Weekly",
     biweekly: "Every 2 weeks",
-    weekly: "Every week",
+    twice_monthly: "Twice a month",
+    monthly: "Monthly",
     quarterly: "Every 3 months",
-    semiannual: "Twice Yearly",
+    semiannual: "Twice yearly",
     yearly: "Every year",
   };
-  return labels[String(value || "").trim()] || "";
+  if (txOrValue && typeof txOrValue === "object") {
+    const key = txOrValue.recurring && txOrValue.recurrence ? String(txOrValue.recurrence).trim() : "once";
+    return labels[key] || "";
+  }
+  return labels[String(txOrValue || "").trim()] || "";
 }
 
 function accountSetupSavedDateLabel(iso) {
@@ -1116,28 +1121,70 @@ function accountSetupStep3MoreGuidance(txs) {
   const list = Array.isArray(txs) ? txs : [];
   let income = 0;
   let expense = 0;
-  let paycheckOnly = true;
   for (const tx of list) {
     const kind = String((tx && tx.kind) || "").trim().toLowerCase();
-    if (kind === "income") {
-      income += 1;
-      const category = String((tx && tx.category) || "").trim().toLowerCase();
-      if (category !== "paycheck") paycheckOnly = false;
-    } else if (kind === "expense") {
-      expense += 1;
-    }
+    if (kind === "income") income += 1;
+    else if (kind === "expense") expense += 1;
   }
   if (income > 0 && expense > 0) {
     return "You're ready to see your first forecast! You can always add more transactions later.";
   }
   if (income > 0) {
-    const lead = paycheckOnly ? "Paycheck saved!" : "Income saved!";
-    return `${lead} Add a bill for a more complete forecast, or continue for now.`;
+    return "Add a bill to make your forecast more complete, or continue for now.";
   }
   if (expense > 0) {
-    return "Bill saved! Add income for a more complete forecast, or continue for now.";
+    return "Add income to make your forecast more complete, or continue for now.";
   }
   return "";
+}
+
+function buildAccountSetupStep3SavedItem(tx) {
+  const name = String((tx && tx.category) || "").trim() || "Uncategorized";
+  const scheduleParts = [accountSetupSavedRecurrenceLabel(tx), accountSetupSavedDateLabel(tx && tx.date)].filter(Boolean);
+  const item = document.createElement("li");
+  item.className = "account-setup-step3-saved__item";
+  const main = document.createElement("div");
+  main.className = "account-setup-step3-saved__main";
+  const nameEl = document.createElement("span");
+  nameEl.className = "account-setup-step3-saved__name";
+  name.split("/").forEach((segment, i) => {
+    if (i > 0) nameEl.append("/", document.createElement("wbr"));
+    nameEl.append(segment);
+  });
+  main.append(nameEl);
+  const metaEl = document.createElement("div");
+  metaEl.className = "account-setup-step3-saved__meta";
+  scheduleParts.forEach((part, i) => {
+    if (i > 0) metaEl.append("\u00a0· ");
+    const partEl = document.createElement("span");
+    partEl.className = "account-setup-step3-saved__metaPart";
+    partEl.textContent = part;
+    metaEl.append(partEl);
+  });
+  const amountEl = document.createElement("div");
+  amountEl.className = "account-setup-step3-saved__amount";
+  amountEl.textContent = accountSetupSavedAmountLabel(tx && tx.amount);
+  item.append(main, metaEl, amountEl);
+  return item;
+}
+
+function buildAccountSetupStep3SavedGroup(key, title, items) {
+  const group = document.createElement("section");
+  group.className = `account-setup-step3-saved__group account-setup-step3-saved__group--${key}`;
+  const headingId = `accountSetupStep3Saved${title}Heading`;
+  group.setAttribute("aria-labelledby", headingId);
+  const heading = document.createElement("h2");
+  heading.className = "account-setup-step3-saved__heading";
+  heading.id = headingId;
+  const count = document.createElement("span");
+  count.className = "account-setup-step3-saved__count";
+  count.textContent = `${items.length} added`;
+  heading.append(title, " ", count);
+  const listEl = document.createElement("ul");
+  listEl.className = "account-setup-step3-saved__items";
+  items.forEach((tx) => listEl.appendChild(buildAccountSetupStep3SavedItem(tx)));
+  group.append(heading, listEl);
+  return group;
 }
 
 function renderAccountSetupStep3SavedList() {
@@ -1163,32 +1210,11 @@ function renderAccountSetupStep3SavedList() {
   if (!list) return;
   list.replaceChildren();
   list.hidden = !hasAny;
-  for (const tx of txs) {
-    const kind = String((tx && tx.kind) || "").trim().toLowerCase() === "income" ? "Income" : "Bill";
-    const name = String((tx && tx.category) || "").trim() || "Uncategorized";
-    const meta = [accountSetupSavedDateLabel(tx && tx.date), accountSetupSavedRecurrenceLabel(tx && tx.recurrence)]
-      .filter(Boolean)
-      .join(" · ");
-    const item = document.createElement("li");
-    item.className = "account-setup-step3-saved__item";
-    const main = document.createElement("div");
-    main.className = "account-setup-step3-saved__main";
-    const kindEl = document.createElement("span");
-    kindEl.className = "account-setup-step3-saved__kind";
-    kindEl.textContent = kind;
-    const nameEl = document.createElement("span");
-    nameEl.className = "account-setup-step3-saved__name";
-    nameEl.textContent = name;
-    main.append(kindEl, nameEl);
-    const metaEl = document.createElement("div");
-    metaEl.className = "account-setup-step3-saved__meta";
-    metaEl.textContent = meta;
-    const amountEl = document.createElement("div");
-    amountEl.className = "account-setup-step3-saved__amount";
-    amountEl.textContent = accountSetupSavedAmountLabel(tx && tx.amount);
-    item.append(main, metaEl, amountEl);
-    list.appendChild(item);
-  }
+  const isIncome = (tx) => String((tx && tx.kind) || "").trim().toLowerCase() === "income";
+  const incomeTxs = txs.filter(isIncome);
+  const billTxs = txs.filter((tx) => !isIncome(tx));
+  if (incomeTxs.length) list.appendChild(buildAccountSetupStep3SavedGroup("income", "Income", incomeTxs));
+  if (billTxs.length) list.appendChild(buildAccountSetupStep3SavedGroup("bills", "Bills", billTxs));
 }
 
 function formatAccountSetupStep3Summary(incomeCount, expenseCount) {
@@ -2000,7 +2026,7 @@ function goToSignupFromAccountSetup() {
     const anyTx = !parsedTx.empty;
     if (anyTx) {
       if (!parsedTx.ok) {
-        setCallout(signupCalloutEl, parsedTx.message || "Please complete the transaction.", "error");
+        rejectAccountSetupParsedTransaction("asTx", parsedTx);
         return;
       }
     }
@@ -2071,6 +2097,66 @@ function normalizeAccountSetupRecurrenceSelection(raw) {
   return ACCOUNT_SETUP_REPEAT_RECURRENCES.has(v) ? v : null;
 }
 
+function accountSetupFrequencyKind(prefix) {
+  const group = prefix === "asExp" ? "asExpTxKind" : "asTxKind";
+  const kind = String(document.querySelector(`input[name="${group}"]:checked`)?.value || "").trim();
+  return kind === "income" ? "income" : "expense";
+}
+
+function accountSetupFrequencyQuestion(kind) {
+  return kind === "income" ? "How often do you get paid?" : "How often do you pay this?";
+}
+
+function accountSetupFrequencyRequiredMessage(kind) {
+  return kind === "income" ? "Choose how often you get paid." : "Choose how often you pay this.";
+}
+
+function accountSetupFrequencyErrorEl(prefix) {
+  return document.getElementById(prefix === "asExp" ? "asExpFrequencyError" : "asTxFrequencyError");
+}
+
+function clearAccountSetupFrequencyError(prefix) {
+  const err = accountSetupFrequencyErrorEl(prefix);
+  if (err) {
+    err.textContent = "";
+    err.hidden = true;
+  }
+  const fields = getAccountSetupScheduleFields(prefix);
+  if (fields.recurrenceEl) fields.recurrenceEl.removeAttribute("aria-invalid");
+}
+
+function showAccountSetupFrequencyError(prefix, message) {
+  const err = accountSetupFrequencyErrorEl(prefix);
+  if (err) {
+    err.textContent = message || accountSetupFrequencyRequiredMessage(accountSetupFrequencyKind(prefix));
+    err.hidden = false;
+  }
+  const fields = getAccountSetupScheduleFields(prefix);
+  if (fields.recurrenceEl) {
+    fields.recurrenceEl.setAttribute("aria-invalid", "true");
+    try {
+      fields.recurrenceEl.focus();
+    } catch (_) {}
+  }
+}
+
+function rejectAccountSetupParsedTransaction(prefix, parsed) {
+  const msg = (parsed && parsed.message) || "Please complete the transaction.";
+  if (parsed && parsed.frequencyMissing) {
+    showAccountSetupFrequencyError(prefix, msg);
+    return;
+  }
+  clearAccountSetupFrequencyError(prefix);
+  const focusId = /second monthly/i.test(msg)
+    ? accountSetupSecondDayFocusId(prefix)
+    : /date|first day/i.test(msg)
+      ? prefix === "asExp"
+        ? "asExpTxDate"
+        : "asTxDate"
+      : null;
+  revealAccountSetupFormError(msg, focusId);
+}
+
 function parseAccountSetupIsoDate(iso) {
   const raw = String(iso || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
@@ -2122,6 +2208,15 @@ function revealAccountSetupFormError(message, focusElId) {
 }
 
 function getAccountSetupScheduleFields(prefix) {
+  const p = prefix === "asExp" ? "asExp" : "asTx";
+  return {
+    ...getAccountSetupScheduleBaseFields(p),
+    secondMonthlyDateEl: document.getElementById(`${p}SecondMonthlyDate`),
+    secondMonthlyDateError: document.getElementById(`${p}SecondMonthlyDateError`),
+  };
+}
+
+function getAccountSetupScheduleBaseFields(prefix) {
   if (prefix === "asExp") {
     return {
       recurrenceEl: document.getElementById("asExpRecurrence"),
@@ -2157,7 +2252,7 @@ function getAccountSetupScheduleFields(prefix) {
 }
 
 function populateAccountSetupSecondDayOptions(selectEl) {
-  if (!selectEl || selectEl.dataset.secondDayInit === "1") return;
+  if (!selectEl || selectEl.tagName !== "SELECT" || selectEl.dataset.secondDayInit === "1") return;
   selectEl.dataset.secondDayInit = "1";
   selectEl.innerHTML = "";
   const placeholder = document.createElement("option");
@@ -2170,6 +2265,90 @@ function populateAccountSetupSecondDayOptions(selectEl) {
     opt.textContent = day === 31 ? "Last day" : formatAccountSetupOrdinalDay(day);
     selectEl.appendChild(opt);
   }
+}
+
+function accountSetupIsoOnDay(year, monthIndex, day) {
+  const first = new Date(year, monthIndex, 1, 12, 0, 0, 0);
+  const lastDay = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12, 0, 0, 0).getDate();
+  const d = Math.min(day, lastDay);
+  return `${first.getFullYear()}-${String(first.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/** Dates after Next Date and before its next monthly repeat, so each day of the month appears once. */
+function accountSetupSecondMonthlyDateRange(startIso) {
+  const start = parseAccountSetupIsoDate(startIso);
+  if (!start) return null;
+  const min = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1, 12, 0, 0, 0);
+  const nextRepeat = parseAccountSetupIsoDate(accountSetupIsoOnDay(start.getFullYear(), start.getMonth() + 1, start.getDate()));
+  const max = new Date(nextRepeat.getFullYear(), nextRepeat.getMonth(), nextRepeat.getDate() - 1, 12, 0, 0, 0);
+  return {
+    min: accountSetupIsoOnDay(min.getFullYear(), min.getMonth(), min.getDate()),
+    max: accountSetupIsoOnDay(max.getFullYear(), max.getMonth(), max.getDate()),
+  };
+}
+
+/** Stored second day (1–31, 31 = last day) → its first date after Next Date. */
+function accountSetupSecondDayToIso(startIso, day) {
+  const start = parseAccountSetupIsoDate(startIso);
+  const n = Number(day);
+  if (!start || !Number.isFinite(n) || n < 1 || n > 31) return "";
+  const sameMonth = accountSetupIsoOnDay(start.getFullYear(), start.getMonth(), n);
+  if (sameMonth > String(startIso)) return sameMonth;
+  return accountSetupIsoOnDay(start.getFullYear(), start.getMonth() + 1, n);
+}
+
+/** Picked date → stored second day; the last day of any month is saved as 31 ("last day"). */
+function accountSetupSecondDayFromIso(iso) {
+  const d = parseAccountSetupIsoDate(iso);
+  if (!d) return null;
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12, 0, 0, 0).getDate();
+  return d.getDate() === lastDay ? 31 : d.getDate();
+}
+
+function syncAccountSetupSecondMonthlyDate(fields, active, startIso) {
+  const dateEl = fields.secondMonthlyDateEl;
+  const errorEl = fields.secondMonthlyDateError;
+  if (!dateEl) return;
+  const setError = (msg) => {
+    if (errorEl) {
+      errorEl.textContent = msg;
+      errorEl.hidden = !msg;
+    }
+    dateEl.setAttribute("aria-invalid", msg ? "true" : "false");
+  };
+  dateEl.hidden = !active;
+  if (!active) {
+    dateEl.value = "";
+    delete dateEl.dataset.touched;
+    setError("");
+    return;
+  }
+  const range = accountSetupSecondMonthlyDateRange(startIso);
+  if (range) {
+    dateEl.min = range.min;
+    dateEl.max = range.max;
+  } else {
+    dateEl.removeAttribute("min");
+    dateEl.removeAttribute("max");
+  }
+  const value = String(fields.secondDayEl?.value || "").trim();
+  dateEl.value = value ? accountSetupSecondDayToIso(startIso, value) : "";
+  const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startIso || "")) ? Number(String(startIso).slice(8, 10)) : NaN;
+  let error = "";
+  if (value && Number(value) === startDay) {
+    error = `Choose a day other than the ${formatAccountSetupOrdinalDay(startDay)}.`;
+  } else if (!value && dateEl.dataset.touched === "1") {
+    error = "Choose the second date.";
+  }
+  setError(error);
+}
+
+function accountSetupSecondDayFocusId(prefix) {
+  const fields = getAccountSetupScheduleFields(prefix);
+  if (!fields.secondMonthlyDateEl) return null;
+  fields.secondMonthlyDateEl.dataset.touched = "1";
+  syncAccountSetupScheduleUi(prefix);
+  return fields.secondMonthlyDateEl.id;
 }
 
 function inferAccountSetupSecondDayValue(startIso) {
@@ -2195,7 +2374,11 @@ function accountSetupScheduleSummaryText(recurrence, startIso, secondDayValue) {
     if (!Number.isFinite(second) || second < 1 || second > 31) {
       return `Next date sets the first monthly date (${formatAccountSetupOrdinalDay(start.getDate())}). Choose the second date.`;
     }
-    return `Repeats twice monthly on the ${formatAccountSetupOrdinalDay(start.getDate())} and ${formatAccountSetupOrdinalDay(second, { useLastDayLabel: true })}.`;
+    if (second === start.getDate()) {
+      return `Next date sets the first monthly date (${formatAccountSetupOrdinalDay(start.getDate())}). Choose a different second date.`;
+    }
+    const shortMonthNote = second >= 29 && second <= 30 ? " In shorter months, it falls on the last day." : "";
+    return `Repeats twice monthly on the ${formatAccountSetupOrdinalDay(start.getDate())} and ${formatAccountSetupOrdinalDay(second, { useLastDayLabel: true })}.${shortMonthNote}`;
   }
   if (recurrence === "monthly") {
     return `Repeats monthly on the ${formatAccountSetupOrdinalDay(start.getDate())}.`;
@@ -2231,11 +2414,18 @@ function refreshAccountSetupScheduleLayout() {
 
 function syncAccountSetupScheduleUi(prefix) {
   const fields = getAccountSetupScheduleFields(prefix);
+  const frequencyKind = accountSetupFrequencyKind(prefix);
+  const frequencyQuestion = accountSetupFrequencyQuestion(frequencyKind);
+  const frequencyLabel = document.querySelector(`label[for="${fields.recurrenceEl?.id || ""}"]`);
+  if (frequencyLabel) frequencyLabel.textContent = frequencyQuestion;
+  if (fields.recurrenceEl) fields.recurrenceEl.title = frequencyQuestion;
   if (fields.dateEl) {
     const cur = String(fields.dateEl.value || "").trim();
     if (!cur) fields.dateEl.value = accountSetupDefaultNextDateIso();
   }
-  const recurrence = normalizeAccountSetupRecurrenceSelection(fields.recurrenceEl?.value || "");
+  const recurrenceRaw = String(fields.recurrenceEl?.value || "").trim().toLowerCase();
+  if (recurrenceRaw) clearAccountSetupFrequencyError(prefix);
+  const recurrence = normalizeAccountSetupRecurrenceSelection(recurrenceRaw);
   const repeats = !!recurrence;
   const startIso = String(fields.dateEl?.value || "").trim();
   if (fields.secondDayEl) populateAccountSetupSecondDayOptions(fields.secondDayEl);
@@ -2246,14 +2436,19 @@ function syncAccountSetupScheduleUi(prefix) {
     fields.secondLabelEl.textContent = recurrence === "semiannual" ? "Second yearly date" : "Also occurs on";
   }
   if (fields.secondDayEl) {
-    fields.secondDayEl.hidden = recurrence !== "twice_monthly";
+    const userPicked = fields.secondDayEl.dataset.userPicked === "1";
+    const current = String(fields.secondDayEl.value || "").trim();
     const needsSuggestedDefault =
       recurrence === "twice_monthly" &&
       startIso &&
-      (!String(fields.secondDayEl.value || "").trim() || Number(fields.secondDayEl.value) === Number(startIso.slice(8, 10)));
+      ((!current && !userPicked) || (!userPicked && Number(current) === Number(startIso.slice(8, 10))));
     if (needsSuggestedDefault) fields.secondDayEl.value = inferAccountSetupSecondDayValue(startIso);
-    if (recurrence !== "twice_monthly") fields.secondDayEl.value = "";
+    if (recurrence !== "twice_monthly") {
+      fields.secondDayEl.value = "";
+      delete fields.secondDayEl.dataset.userPicked;
+    }
     fields.secondDayEl.disabled = recurrence !== "twice_monthly";
+    syncAccountSetupSecondMonthlyDate(fields, recurrence === "twice_monthly", startIso);
   }
   if (fields.secondYearlyEl) {
     fields.secondYearlyEl.hidden = recurrence !== "semiannual";
@@ -2276,7 +2471,7 @@ function syncAccountSetupScheduleUi(prefix) {
     fields.secondYearlyEl.disabled = recurrence !== "semiannual";
   }
 
-  if (fields.endsRow) fields.endsRow.hidden = !repeats;
+  if (fields.endsRow) fields.endsRow.hidden = true;
   if (!repeats) {
     if (fields.endsModeEl) fields.endsModeEl.value = "never";
     if (fields.endDateWrap) fields.endDateWrap.hidden = true;
@@ -2308,7 +2503,13 @@ function syncAccountSetupScheduleUi(prefix) {
       recurrence === "semiannual"
         ? String(fields.secondYearlyEl?.value || "").trim()
         : String(fields.secondDayEl?.value || "").trim();
-    const summary = accountSetupScheduleSummaryText(recurrence, startIso, secondVal);
+    let summary = accountSetupScheduleSummaryText(recurrence, startIso, secondVal);
+    if (!summary && recurrenceRaw === "once") {
+      const onceStart = parseAccountSetupIsoDate(startIso);
+      summary = onceStart
+        ? `Happens once on ${ACCOUNT_SETUP_LONG_DATE_FORMATTER.format(onceStart)}.`
+        : "Happens once.";
+    }
     fields.summaryEl.textContent = summary;
     fields.summaryEl.hidden = !summary;
   }
@@ -2316,12 +2517,38 @@ function syncAccountSetupScheduleUi(prefix) {
 
 function readAccountSetupScheduleFromInputs(prefix, startDateIso) {
   const fields = getAccountSetupScheduleFields(prefix);
-  const recurrence = normalizeAccountSetupRecurrenceSelection(fields.recurrenceEl?.value || "");
-  if (!recurrence) {
+  const recurrenceRaw = String(fields.recurrenceEl?.value || "").trim().toLowerCase();
+  if (!recurrenceRaw) {
     return {
       recurring: false,
       recurrence: null,
       second_day_of_month: null,
+      second_occurrence_month: null,
+      end_date: null,
+      end_count: null,
+      message: accountSetupFrequencyRequiredMessage(accountSetupFrequencyKind(prefix)),
+      frequencyMissing: true,
+    };
+  }
+  const recurrence = normalizeAccountSetupRecurrenceSelection(recurrenceRaw);
+  if (!recurrence) {
+    if (recurrenceRaw !== "once") {
+      return {
+        recurring: false,
+        recurrence: null,
+        second_day_of_month: null,
+        second_occurrence_month: null,
+        end_date: null,
+        end_count: null,
+        message: accountSetupFrequencyRequiredMessage(accountSetupFrequencyKind(prefix)),
+        frequencyMissing: true,
+      };
+    }
+    return {
+      recurring: false,
+      recurrence: null,
+      second_day_of_month: null,
+      second_occurrence_month: null,
       end_date: null,
       end_count: null,
       message: "",
@@ -2388,7 +2615,8 @@ function readAccountSetupScheduleFromInputs(prefix, startDateIso) {
     secondOccurrenceMonth = sm;
   }
 
-  const endsMode = String(fields.endsModeEl?.value || "never").trim().toLowerCase();
+  // Ends stays hidden during onboarding. Ignore any leftover control value.
+  const endsMode = "never";
   let endDate = null;
   let endCount = null;
   if (endsMode === "on_date") {
@@ -2474,6 +2702,9 @@ function readAccountSetupTransactionFromInputs() {
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Next date is required — choose the first day this should occur." };
   const categoryResolved = txCategory || "Uncategorized";
   const schedule = readAccountSetupScheduleFromInputs("asTx", txDate);
+  if (schedule.frequencyMissing) {
+    return { ok: false, empty: false, tx: null, message: schedule.message, frequencyMissing: true };
+  }
   if (repeats && schedule.message) return { ok: false, empty: false, tx: null, message: schedule.message };
   return {
     ok: true,
@@ -2526,12 +2757,16 @@ function resetAccountSetupTransactionForm(forKind) {
   clearAccountSetupCategoryCombobox("asTxCategory");
   if (notesEl) notesEl.value = "";
   if (varEl) varEl.checked = false;
-  if (recSel) recSel.value = "once";
+  if (recSel) recSel.value = "";
   if (endsModeEl) endsModeEl.value = "never";
-  if (secondDayEl) secondDayEl.value = "";
+  if (secondDayEl) {
+    secondDayEl.value = "";
+    delete secondDayEl.dataset.userPicked;
+  }
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
   if (bgEl) bgEl.value = "";
+  clearAccountSetupFrequencyError("asTx");
   const swatches = document.getElementById("asTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
   let resolved =
@@ -2569,10 +2804,7 @@ function addMoreTransactionsFromAccountSetup() {
 
   const parsed = readAccountSetupTransactionFromInputs();
   if (!parsed.ok) {
-    if (!parsed.empty) {
-      const msg = parsed.message || "Please complete the transaction.";
-      revealAccountSetupFormError(msg, /date|first day/i.test(msg) ? "asTxDate" : null);
-    }
+    if (!parsed.empty) rejectAccountSetupParsedTransaction("asTx", parsed);
     return;
   }
 
@@ -2658,8 +2890,7 @@ async function accountSetupSaveIncomeClick() {
   }
   const parsed = readAccountSetupTransactionFromInputs();
   if (!parsed.ok) {
-    const msg = parsed.message || "Please complete the transaction.";
-    revealAccountSetupFormError(msg, /date|first day/i.test(msg) ? "asTxDate" : null);
+    rejectAccountSetupParsedTransaction("asTx", parsed);
     return;
   }
   const txs = [...existing, parsed.tx];
@@ -2810,6 +3041,9 @@ function readAccountSetupExpenseTransactionFromInputs() {
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Next date is required — choose the first day this should occur." };
   const categoryResolved = txCategory || "Uncategorized";
   const schedule = readAccountSetupScheduleFromInputs("asExp", txDate);
+  if (schedule.frequencyMissing) {
+    return { ok: false, empty: false, tx: null, message: schedule.message, frequencyMissing: true };
+  }
   if (repeats && schedule.message) return { ok: false, empty: false, tx: null, message: schedule.message };
   return {
     ok: true,
@@ -2849,12 +3083,16 @@ function resetAccountSetupExpenseForm() {
   clearAccountSetupCategoryCombobox("asExpTxCategory");
   if (notesEl) notesEl.value = "";
   if (varEl) varEl.checked = false;
-  if (recSel) recSel.value = "once";
+  if (recSel) recSel.value = "";
   if (endsModeEl) endsModeEl.value = "never";
-  if (secondDayEl) secondDayEl.value = "";
+  if (secondDayEl) {
+    secondDayEl.value = "";
+    delete secondDayEl.dataset.userPicked;
+  }
   if (endCountEl) endCountEl.value = "";
   if (endDateEl) endDateEl.value = "";
   if (bgEl) bgEl.value = "";
+  clearAccountSetupFrequencyError("asExp");
   const swatches = document.getElementById("asExpTxColorSwatches");
   if (swatches) for (const b of swatches.querySelectorAll("button.cat-swatch")) b.classList.remove("is-active");
   setAccountSetupKindRadioValue("asExpTxKind", "expense");
@@ -2882,10 +3120,7 @@ function addMoreExpensesFromAccountSetup() {
   }
   const parsed = readAccountSetupExpenseTransactionFromInputs();
   if (!parsed.ok) {
-    if (!parsed.empty) {
-      const msg = parsed.message || "Please complete the transaction.";
-      revealAccountSetupFormError(msg, /date|first day/i.test(msg) ? "asExpTxDate" : null);
-    }
+    if (!parsed.empty) rejectAccountSetupParsedTransaction("asExp", parsed);
     return;
   }
   const existing = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
@@ -2985,8 +3220,7 @@ async function accountSetupSaveExpenseClick() {
   }
   const parsed = readAccountSetupExpenseTransactionFromInputs();
   if (!parsed.ok) {
-    const msg = parsed.message || "Please complete the transaction.";
-    revealAccountSetupFormError(msg, /date|first day/i.test(msg) ? "asExpTxDate" : null);
+    rejectAccountSetupParsedTransaction("asExp", parsed);
     return;
   }
   const txs = [...existing, parsed.tx];
@@ -3183,6 +3417,7 @@ function hydrateAccountSetupDraft() {
           eSecondYearly.value = `${y}-${String(lastTx.second_occurrence_month).padStart(2, "0")}-${String(lastTx.second_day_of_month).padStart(2, "0")}`;
         } else if (eSecondDay && lastTx.second_day_of_month != null) {
           eSecondDay.value = String(lastTx.second_day_of_month);
+          eSecondDay.dataset.userPicked = "1";
         }
         if (eEndsMode) eEndsMode.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
         if (eEndDate && lastTx.end_date) eEndDate.value = String(lastTx.end_date);
@@ -3215,6 +3450,7 @@ function hydrateAccountSetupDraft() {
           txSecondYearlyEl.value = `${y}-${String(lastTx.second_occurrence_month).padStart(2, "0")}-${String(lastTx.second_day_of_month).padStart(2, "0")}`;
         } else if (txSecondDayEl && lastTx.second_day_of_month != null) {
           txSecondDayEl.value = String(lastTx.second_day_of_month);
+          txSecondDayEl.dataset.userPicked = "1";
         }
         if (txEndsModeEl) txEndsModeEl.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
         if (txEndDateEl && lastTx.end_date) txEndDateEl.value = String(lastTx.end_date);
@@ -5169,11 +5405,15 @@ function initAccountSetupQuickChips() {
       if (notesEl) notesEl.value = "";
       clearAccountSetupCategoryCombobox("asTxCategory");
       const recSel = document.getElementById("asTxRecurrence");
-      if (recSel) recSel.value = "once";
+      if (recSel) recSel.value = "";
+      clearAccountSetupFrequencyError("asTx");
       const endsModeEl = document.getElementById("asTxEndsMode");
       if (endsModeEl) endsModeEl.value = "never";
       const secondDayEl = document.getElementById("asTxSecondDayOfMonth");
-      if (secondDayEl) secondDayEl.value = "";
+      if (secondDayEl) {
+        secondDayEl.value = "";
+        delete secondDayEl.dataset.userPicked;
+      }
       const endCountEl = document.getElementById("asTxEndCount");
       if (endCountEl) endCountEl.value = "";
       const endDateEl = document.getElementById("asTxEndDate");
@@ -5207,6 +5447,7 @@ function initAccountSetupQuickChips() {
     const checked = document.querySelector('input[name="asExpTxKind"]:checked');
     const kind = checked ? checked.value : "expense";
     syncAccountSetupVariableHint("asExp", kind);
+    syncAccountSetupScheduleUi("asExp");
     syncAccountSetupCategorySelectionForKind("asExpTxCategory");
     renderAccountSetupCategoryChips("asExpTx", kind);
     const list = document.getElementById("asExpTxCategoryList");
@@ -5292,6 +5533,14 @@ function initAccountSetupTransactionUi() {
       }
       fields.endDateEl?.addEventListener("input", () => syncAccountSetupScheduleUi(prefix));
       fields.endCountEl?.addEventListener("input", () => syncAccountSetupScheduleUi(prefix));
+      fields.secondMonthlyDateEl?.addEventListener("change", () => {
+        if (!fields.secondDayEl) return;
+        const n = accountSetupSecondDayFromIso(fields.secondMonthlyDateEl.value);
+        fields.secondDayEl.value = n == null ? "" : String(n);
+        fields.secondDayEl.dataset.userPicked = "1";
+        fields.secondMonthlyDateEl.dataset.touched = "1";
+        syncAccountSetupScheduleUi(prefix);
+      });
       syncAccountSetupScheduleUi(prefix);
     }
 

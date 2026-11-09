@@ -14021,11 +14021,7 @@ async function loadCategoryUsageSummary() {
 }
 
 function categoryAssignmentsForCategoryId(catId) {
-  const s = state.categoryUsageSummary;
-  if (!s || catId == null) return 0;
-  const m = s.by_category_id || {};
-  const v = m[String(catId)] ?? m[String(Number(catId))];
-  return Number(v) || 0;
+  return categoryAssignmentCount(state.categoryUsageSummary, catId);
 }
 
 const CATS_GROUP_COLLAPSED_KEY = "familyCashFlow:catsGroupCollapsed";
@@ -14059,30 +14055,50 @@ function ensureCategoriesScanTips() {
   document.querySelectorAll(".cats-pane__scan-tips").forEach((el) => el.remove());
 }
 
+let categoriesUnusedOnly = false;
+
 function applyCategoriesSearch(raw) {
   const tree = document.getElementById("categoriesTree");
   const empty = document.getElementById("categoriesSearchEmpty");
   if (!tree) return;
-  const q = String(raw || "").trim().toLowerCase();
-  const searching = q.length > 0;
+  const q = String(raw || "");
+  const searching = q.trim().length > 0;
+  const unusedOnly = categoriesUnusedOnly;
+  const narrowing = searching || unusedOnly;
   tree.classList.toggle("is-searching", searching);
+  tree.classList.toggle("is-filtering", narrowing);
   let matches = 0;
+  let unusedTotal = 0;
+  tree.querySelectorAll(".cats-cat").forEach((row) => {
+    if (row.dataset.unused === "1") unusedTotal += 1;
+  });
   tree.querySelectorAll(".cats-group").forEach((card) => {
     let groupMatches = 0;
     card.querySelectorAll(".cats-cat").forEach((row) => {
       const name = row.querySelector(".cats-cat__name")?.textContent || "";
-      const hit = !searching || name.toLowerCase().includes(q);
+      const unused = row.dataset.unused === "1";
+      const hit = categoryRowMatchesListFilter(name, unused, q, unusedOnly);
       row.hidden = !hit;
       if (hit) groupMatches += 1;
     });
-    card.hidden = searching && groupMatches === 0;
-    card.classList.toggle("is-search-open", searching && groupMatches > 0);
-    if (searching) matches += groupMatches;
+    card.hidden = narrowing && groupMatches === 0;
+    card.classList.toggle("is-search-open", narrowing && groupMatches > 0);
+    matches += groupMatches;
     card.querySelectorAll(".cats-cat__handle, .cats-group__drag").forEach((handle) => {
-      handle.draggable = !searching;
+      handle.draggable = !narrowing;
     });
   });
-  if (empty) empty.hidden = !searching || matches > 0;
+  if (empty) {
+    const message = categoryFilterEmptyMessage({
+      searching,
+      unusedOnly,
+      unusedTotal,
+      visible: matches,
+      usageKnown: categoryUsageIsKnown(state.categoryUsageSummary),
+    });
+    empty.textContent = message;
+    empty.hidden = !message;
+  }
 }
 
 function setAllCategoryGroupsCollapsed(collapsed) {
@@ -14100,6 +14116,62 @@ function setAllCategoryGroupsCollapsed(collapsed) {
   applyCategoriesSearch(input ? input.value : "");
 }
 
+function syncCategoryUnusedMarkers() {
+  document.querySelectorAll("#categoriesTree .cats-cat").forEach((row) => {
+    const unused = categoryIsUnused(state.categoryUsageSummary, row.dataset.categoryId);
+    row.dataset.unused = unused ? "1" : "0";
+    let label = row.querySelector(".cats-cat__unused");
+    if (!label && unused) {
+      label = document.createElement("span");
+      label.className = "cats-cat__unused";
+      label.textContent = "Unused";
+      const menu = row.querySelector(".cats-cat__menu");
+      if (menu) row.insertBefore(label, menu);
+      else row.appendChild(label);
+    }
+    if (label) label.hidden = !unused;
+  });
+}
+
+function updateCategoriesUnusedSummary() {
+  const el = document.getElementById("categoriesUnusedSummary");
+  if (!el) return;
+  const ids = [...document.querySelectorAll("#categoriesTree .cats-cat")].map((row) => row.dataset.categoryId);
+  if (!categoryUsageIsKnown(state.categoryUsageSummary)) {
+    el.textContent = "";
+    el.hidden = true;
+    return;
+  }
+  const unused = ids.filter((id) => categoryIsUnused(state.categoryUsageSummary, id)).length;
+  el.hidden = false;
+  el.textContent = formatCategoryUnusedSummary(ids.length, unused);
+}
+
+function ensureCategoriesUsageControls() {
+  const tools = document.querySelector("[data-cats-pane] .cats-pane__tools");
+  if (!tools || document.getElementById("categoriesUsageFilter")) return;
+  const bar = document.createElement("div");
+  bar.className = "cats-pane__usage";
+  bar.id = "categoriesUsageFilter";
+  bar.innerHTML =
+    '<div class="cats-pane__filter" role="group" aria-label="Filter categories">' +
+    '<button type="button" class="cats-pane__filter-btn" data-cats-filter="all" aria-pressed="true">All categories</button>' +
+    '<button type="button" class="cats-pane__filter-btn" data-cats-filter="unused" aria-pressed="false">Unused only</button>' +
+    "</div>" +
+    '<p class="cats-pane__usage-count" id="categoriesUnusedSummary"></p>';
+  tools.insertAdjacentElement("afterend", bar);
+  bar.querySelectorAll("[data-cats-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      categoriesUnusedOnly = btn.dataset.catsFilter === "unused";
+      bar.querySelectorAll("[data-cats-filter]").forEach((other) => {
+        other.setAttribute("aria-pressed", other === btn ? "true" : "false");
+      });
+      const input = document.getElementById("categoriesSearch");
+      applyCategoriesSearch(input ? input.value : "");
+    });
+  });
+}
+
 let categoriesSearchBound = false;
 function bindCategoriesSearchControls() {
   if (categoriesSearchBound) return;
@@ -14108,6 +14180,7 @@ function bindCategoriesSearchControls() {
   const collapse = document.getElementById("categoriesCollapseAll");
   if (!input && !expand && !collapse) return;
   categoriesSearchBound = true;
+  ensureCategoriesUsageControls();
   input?.addEventListener("input", () => applyCategoriesSearch(input.value));
   expand?.addEventListener("click", () => setAllCategoryGroupsCollapsed(false));
   collapse?.addEventListener("click", () => setAllCategoryGroupsCollapsed(true));
@@ -14116,6 +14189,8 @@ function bindCategoriesSearchControls() {
 function refreshCategoriesManagerChrome() {
   ensureCategoriesScanTips();
   bindCategoriesSearchControls();
+  syncCategoryUnusedMarkers();
+  updateCategoriesUnusedSummary();
   const tree = state.categoryTree;
   const groups = (tree?.groups || []).filter(Boolean);
   const elG = document.getElementById("categoriesStatGroups");
@@ -14151,6 +14226,10 @@ function refreshCategoriesManagerChrome() {
   const uTx = s ? Number(s.uncategorized_transactions) || 0 : 0;
   if (callout) callout.hidden = !uTx;
   if (countEl) countEl.textContent = String(uTx);
+  const searchInput = document.getElementById("categoriesSearch");
+  if (document.querySelector("#categoriesTree .cats-cat")) {
+    applyCategoriesSearch(searchInput ? searchInput.value : "");
+  }
 }
 
 let _categoryDeleteReassignModalEl = null;
@@ -14868,14 +14947,22 @@ function renderCategoriesGrid(tree) {
     handle.draggable = true;
 
     const nUse = categoryAssignmentsForCategoryId(c.id);
+    const unused = categoryIsUnused(state.categoryUsageSummary, c.id);
+    row.dataset.unused = unused ? "1" : "0";
 
     const meta = document.createElement("span");
     meta.className = "cats-cat__meta";
     meta.textContent = nUse > 0 ? `${nUse} ${nUse === 1 ? "entry" : "entries"}` : "";
 
+    const unusedLabel = document.createElement("span");
+    unusedLabel.className = "cats-cat__unused";
+    unusedLabel.textContent = "Unused";
+    unusedLabel.hidden = !unused;
+
     row.appendChild(handle);
     row.appendChild(nameEl);
     row.appendChild(meta);
+    row.appendChild(unusedLabel);
     row.appendChild(menu);
 
     row.addEventListener("click", (ev) => {
@@ -14888,7 +14975,7 @@ function renderCategoriesGrid(tree) {
     });
 
     handle.addEventListener("dragstart", (e) => {
-      if (categoriesTree.classList.contains("is-searching")) {
+      if (categoriesTree.classList.contains("is-searching") || categoriesTree.classList.contains("is-filtering")) {
         e.preventDefault();
         return;
       }
@@ -15116,7 +15203,7 @@ function renderCategoriesGrid(tree) {
     });
 
     groupDragHandle.addEventListener("dragstart", (e) => {
-      if (categoriesTree.classList.contains("is-searching")) {
+      if (categoriesTree.classList.contains("is-searching") || categoriesTree.classList.contains("is-filtering")) {
         e.preventDefault();
         return;
       }
@@ -15304,6 +15391,8 @@ function renderCategoriesGrid(tree) {
   }
   applyCategoryListView(groups.length);
   bindCategoriesSearchControls();
+  syncCategoryUnusedMarkers();
+  updateCategoriesUnusedSummary();
   const searchInput = document.getElementById("categoriesSearch");
   applyCategoriesSearch(searchInput ? searchInput.value : "");
 }
@@ -18889,10 +18978,24 @@ function dedupeCalendarDayTransactions(expectedItems, actualTxs) {
   return { actuals, expected };
 }
 
+function ensureCalendarBalanceCaption() {
+  const dow = document.getElementById("calendarDow");
+  if (!dow || !dow.parentNode) return;
+  let cap = document.getElementById("calendarBalanceCaption");
+  if (!cap) {
+    cap = document.createElement("p");
+    cap.id = "calendarBalanceCaption";
+    cap.className = "calendar-balance-caption";
+    dow.parentNode.insertBefore(cap, dow);
+  }
+  cap.textContent = "Each day's amount is your projected checking balance at the end of that day.";
+}
+
 function renderCalendar() {
   if (!calendarGrid) return;
   calendarGrid.innerHTML = "";
   const calendarDow = document.getElementById("calendarDow");
+  ensureCalendarBalanceCaption();
   if (calendarDow) calendarDow.innerHTML = "";
   const isMobileCalendarLayout =
     typeof window !== "undefined" && typeof window.matchMedia === "function"
@@ -19413,7 +19516,17 @@ function renderCalendar() {
       else if (watchOnly) stripCue = "cal-balance-strip--cue-watch";
 
       const balanceClass = balParts.join(" ");
-      const balanceTitle = dayBalVerified ? "" : "Projected end-of-day balance";
+      const balanceMoney = `$${fmtMoneyParens(endNum)}`;
+      const balanceTitle = dayBalVerified
+        ? "Adjusted checking balance"
+        : isReconciled
+          ? "Reconciled checking balance"
+          : "Projected end-of-day balance";
+      const balanceAria = dayBalVerified
+        ? `Adjusted checking balance, ${balanceMoney}`
+        : isReconciled
+          ? `Reconciled checking balance, ${balanceMoney}`
+          : `Projected checking balance at the end of the day, ${balanceMoney}`;
       const riskIcon =
         negativeBal && !repeatedNegativeRun && !dayBalVerified
           ? `<span class="cal-balance-risk-icon" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>`
@@ -19430,9 +19543,7 @@ function renderCalendar() {
             ? buildCalBalanceStatusPill("starting", { accountId: startingAccountRow?.account_id })
             : "";
       const stripStatusClass = statusPill ? " cal-balance-strip--has-status" : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}"${balanceTitle ? ` title="${escapeHtml(balanceTitle)}"` : ""}>$${fmtMoneyParens(
-        endNum
-      )}</span></span>${statusPill}</div></div>`;
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="${escapeHtml(balanceTitle)}" aria-label="${escapeHtml(balanceAria)}">${balanceMoney}</span></span>${statusPill}</div></div>`;
       bindCalendarDayBalanceHit(metricsEl, iso, {
         isReconciled,
         dayBalVerified,
