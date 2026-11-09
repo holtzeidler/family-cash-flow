@@ -7392,6 +7392,33 @@ function buildAdjustedBalanceTipHtml(dayBal, iso) {
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
 
+function buildReconcileThisDateTipHtml(dayBal, iso) {
+  const d = normalizeIsoDate(iso) || "";
+  if (!d) return "";
+  const endNum = Number(dayBal?.end);
+  const parts = [
+    '<div class="cal-confirmed-tip cal-confirmed-tip--reconcile" data-bw-balance-record="reconcile">',
+    '<div class="cal-confirmed-tip__head">Projected end-of-day</div>',
+  ];
+  parts.push(`<p class="cal-confirmed-tip__date">${escapeHtml(fmtDateLongDisplay(d))}</p>`);
+  if (Number.isFinite(endNum)) {
+    parts.push('<dl class="cal-confirmed-tip__rows">');
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Balance</dt><dd>$${escapeHtml(fmtMoney(endNum))}</dd></div>`,
+    );
+    parts.push("</dl>");
+  }
+  if (!state.viewOnly && state.activeFamilyAccessMode !== "view") {
+    parts.push('<div class="cal-confirmed-tip__actions cal-confirmed-tip__actions--edit">');
+    parts.push(
+      `<button type="button" class="cal-confirmed-tip__edit-btn" data-bw-write data-bw-bal-action="reconcile-this-date" data-iso="${escapeHtml(d)}">Reconcile this date</button>`,
+    );
+    parts.push("</div>");
+  }
+  parts.push("</div>");
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
 function buildStartingPointTipHtml(_accountName) {
   const parts = [
     '<div class="cal-confirmed-tip">',
@@ -8127,6 +8154,36 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   parentEl.appendChild(line);
 }
 
+function activateCalendarBalanceHit(target, cell) {
+  if (!target || !cell) return false;
+  const iso = cell.dataset.iso;
+  if (!iso) return false;
+  const metricsEl = target.closest(".cal-ledger-metrics.cal-day-balance-hit");
+  if (!metricsEl) return false;
+  if (shouldShowBalanceRecordTipFromCalendarClick(target, cell)) {
+    const dayBal = state.monthDailyBalances?.get(iso);
+    const html = existingVerifiedBalanceOnDate(iso)
+      ? buildAdjustedBalanceTipHtml(dayBal, iso)
+      : buildReconciledBalanceTipHtml(dayBal, iso);
+    if (metricsEl && html) showPinnedBalanceRecordTip(metricsEl, html);
+    return true;
+  }
+  if (shouldOpenReconcileFromCalendarClick(target, cell)) {
+    const dayBal = state.monthDailyBalances?.get(iso);
+    const html = buildReconcileThisDateTipHtml(dayBal, iso);
+    if (metricsEl && html) {
+      showPinnedBalanceRecordTip(metricsEl, html);
+      requestAnimationFrame(() => {
+        try {
+          document.querySelector(".reports-risk-tip [data-bw-bal-action='reconcile-this-date']")?.focus();
+        } catch (_) {}
+      });
+    }
+    return true;
+  }
+  return false;
+}
+
 function shouldOpenReconcileFromCalendarClick(target, cell) {
   if (!target || !cell) return false;
   if (cell.classList.contains("cal-cell--before-start")) return false;
@@ -8195,13 +8252,19 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     metricsEl.classList.remove("cal-day-balance-hit", "cal-day-balance-hit--today-update");
     metricsEl.removeAttribute("aria-label");
     metricsEl.removeAttribute("title");
+    metricsEl.removeAttribute("role");
+    metricsEl.removeAttribute("tabindex");
+    metricsEl.removeAttribute("aria-haspopup");
     return;
   }
   metricsEl.classList.add("cal-day-balance-hit");
   metricsEl.classList.remove("cal-day-balance-hit--today-update");
   metricsEl.removeAttribute("title");
+  metricsEl.setAttribute("role", "button");
+  metricsEl.tabIndex = 0;
+  metricsEl.setAttribute("aria-haspopup", "dialog");
   const label = fmtDateMDY(iso);
-  metricsEl.setAttribute("aria-label", label ? `Reconcile balance for ${label}` : "Reconcile balance");
+  metricsEl.setAttribute("aria-label", label ? `End-of-day balance for ${label}` : "End-of-day balance");
 
   if (dayBalVerified && dayBal) {
     const html = buildAdjustedBalanceTipHtml(dayBal, iso);
@@ -8223,7 +8286,11 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     return;
   }
 
-  if (iso !== todayIso) metricsEl.title = "Reconcile balance";
+  metricsEl.title = "Reconcile this date";
+  metricsEl.setAttribute(
+    "aria-label",
+    label ? `End-of-day balance for ${label}. Reconcile this date.` : "Reconcile this date"
+  );
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -8237,8 +8304,13 @@ function bindCalendarCellAddTxClick(cell, iso) {
   }
   const onKeyActivate = (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
-    e.preventDefault();
+    if (activateCalendarBalanceHit(e.target, cell)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (!shouldOpenAddTxFromCalendarClick(e.target, cell)) return;
+    e.preventDefault();
     openCalendarDayAddTransaction(iso, e);
   };
   cell.addEventListener("keydown", onKeyActivate);
@@ -8335,23 +8407,9 @@ function handleCalendarPanelClick(e) {
   const iso = cell.dataset.iso;
   if (!iso) return;
 
-  if (shouldShowBalanceRecordTipFromCalendarClick(e.target, cell)) {
+  if (activateCalendarBalanceHit(e.target, cell)) {
     e.preventDefault();
     e.stopPropagation();
-    const iso = cell.dataset.iso;
-    const dayBal = state.monthDailyBalances?.get(iso);
-    const metricsEl = e.target.closest(".cal-ledger-metrics.cal-day-balance-hit") || cell.querySelector(".cal-ledger-metrics");
-    const html = existingVerifiedBalanceOnDate(iso)
-      ? buildAdjustedBalanceTipHtml(dayBal, iso)
-      : buildReconciledBalanceTipHtml(dayBal, iso);
-    if (metricsEl && html) showPinnedBalanceRecordTip(metricsEl, html);
-    return;
-  }
-
-  if (shouldOpenReconcileFromCalendarClick(e.target, cell)) {
-    e.preventDefault();
-    e.stopPropagation();
-    openReconcileModal(iso);
     return;
   }
 
@@ -19675,6 +19733,10 @@ async function handleBalanceRecordTipAction(action, iso) {
     }
     if (action === "remove-reconciliation") {
       await removeReconciliationForDate(iso);
+      return;
+    }
+    if (action === "reconcile-this-date") {
+      openReconcileModal(iso);
       return;
     }
   } catch (e) {

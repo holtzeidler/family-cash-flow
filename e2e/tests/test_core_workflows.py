@@ -673,8 +673,12 @@ def test_past_transaction_click_opens_editor_not_balance_check(page, guard):
     expect(past_balance).to_have_text(money("2000.00"))
 
     page.locator(f'.cal-cell[data-iso="{past.isoformat()}"] .cal-ledger-metrics.cal-day-balance-hit').click()
+    recon_btn = page.locator(".reports-risk-tip.reports-risk-tip--visible [data-bw-bal-action='reconcile-this-date']")
+    expect(recon_btn).to_have_text("Reconcile this date")
+    recon_btn.click()
     reconcile = page.locator("#reconcileModal.modal-overlay--open")
     expect(reconcile).to_be_visible()
+    expect(page.locator("#reconcileDateInput")).to_have_value(past.isoformat())
     expect(reconcile.locator("#reconcileTitle")).to_have_text("Check your balance")
     expect(reconcile.locator(".balance-check-in__forecast-k")).to_have_text("Projected end-of-day balance")
     expect(reconcile.locator(".balance-check-in__prep-note")).to_contain_text("haven't cleared")
@@ -757,8 +761,12 @@ def test_balance_record_does_not_block_transactions(page, guard):
 
     reconciled_label = _add_planned_item(page, reconciled_day, "50", kind="expense", name="Mortgage / Rent")
     expect(_balance(page, reconciled_day)).to_have_text(money("2050.00"))
-    page.locator(f'.cal-cell[data-iso="{reconciled_day}"] .cal-ledger-metrics').click()
+    page.locator(f'.cal-cell[data-iso="{reconciled_day}"] .cal-ledger-metrics.cal-day-balance-hit').click()
+    recon_btn = page.locator(".reports-risk-tip.reports-risk-tip--visible [data-bw-bal-action='reconcile-this-date']")
+    expect(recon_btn).to_have_text("Reconcile this date")
+    recon_btn.click()
     expect(page.locator("#reconcileModal.modal-overlay--open")).to_be_visible()
+    expect(page.locator("#reconcileDateInput")).to_have_value(reconciled_day)
     page.locator("#reconcileMatchYesBtn").click()
     expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
     reconciled_mark = page.locator(f'.cal-cell[data-iso="{reconciled_day}"] .cal-balance-reconciled-mark')
@@ -767,6 +775,40 @@ def test_balance_record_does_not_block_transactions(page, guard):
     expect(page.locator("#sidebarReconcileDetail")).to_contain_text("Sep 8")
     _hover_transaction_without_balance_tip(page, reconciled_day, reconciled_label, "Reconciled")
     _hover_balance_shows(page, reconciled_day, "Reconciled")
+    page.locator(f'.cal-cell[data-iso="{reconciled_day}"] .cal-ledger-metrics.cal-day-balance-hit').click()
+    expect(_balance_tip(page)).to_contain_text("Reconciled")
+    expect(page.locator("[data-bw-bal-action='reconcile-this-date']")).to_have_count(0)
+    expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Calendar EOD reconcile this date")
+def test_calendar_eod_balance_opens_reconcile_this_date(page, guard):
+    """Past and today balances offer Reconcile this date; future dates do not."""
+    today = date.today()
+    future = today + timedelta(days=3)
+    start = min(date(today.year, today.month, 1), today)
+    email = _register_checking("2000.00", start.isoformat())
+    login(page, email, PASSWORD)
+    show_month(page, today.strftime("%Y-%m"), today.isoformat())
+
+    today_metrics = page.locator(f'.cal-cell[data-iso="{today.isoformat()}"] .cal-ledger-metrics.cal-day-balance-hit')
+    expect(today_metrics).to_be_visible()
+    today_metrics.click()
+    today_btn = page.locator(".reports-risk-tip.reports-risk-tip--visible [data-bw-bal-action='reconcile-this-date']")
+    expect(today_btn).to_have_text("Reconcile this date")
+    today_btn.click()
+    expect(page.locator("#reconcileModal.modal-overlay--open")).to_be_visible()
+    expect(page.locator("#reconcileDateInput")).to_have_value(today.isoformat())
+    page.keyboard.press("Escape")
+    expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
+
+    show_month(page, future.strftime("%Y-%m"), future.isoformat())
+    future_cell = page.locator(f'.cal-cell[data-iso="{future.isoformat()}"]')
+    expect(future_cell.locator(".cal-ledger-metrics.cal-day-balance-hit")).to_have_count(0)
+    future_cell.locator(".cal-ledger-metrics").click()
+    expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator("[data-bw-bal-action='reconcile-this-date']")).to_have_count(0)
     guard.assert_clean()
 
 
