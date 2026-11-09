@@ -25914,13 +25914,18 @@ body[data-bw-view="transactions"] .tm__field label{
   gap: var(--tx-add-row-gap-y, 6px) var(--tx-add-row-gap-x, 14px);
 }
 .modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field),
-.modal--tx-add .tx-add-form .form-row-h.tx-add-cat-color-row{
+.modal--tx-add .tx-add-form .form-row-h.tx-add-variable-form-row{
   align-items: start;
 }
-.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field) .form-row-h__label,
-.modal--tx-add .tx-add-form .form-row-h.tx-add-cat-color-row .form-row-h__label{
+.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field) .form-row-h__label{
   align-items: flex-start;
   padding-top: 8px;
+  min-height: 0;
+}
+.modal--tx-add .tx-add-form .form-row-h.tx-add-variable-form-row .form-row-h__label{
+  align-self: start;
+  align-items: flex-start;
+  padding-top: 2px;
   min-height: 0;
 }
 .modal--tx-add .tx-add-form .form-row-h__label,
@@ -25969,7 +25974,7 @@ body[data-bw-view="transactions"] .tm__field label{
   gap: var(--tx-add-row-gap-y, 6px) var(--tx-add-row-gap-x, 14px);
 }
 .modal--tx-add .tx-add-variable-form-row{
-  display: contents;
+  align-items: start;
 }
 .modal--tx-add .tx-add-cat-color-row{
   margin-top: 2px;
@@ -26063,52 +26068,24 @@ body[data-bw-view="transactions"] .tm__field label{
   align-items: center;
 }
 .modal--tx-add .tx-add-variable-block{
-  display: grid;
-  grid-template-columns: var(--tx-add-label-col, calc(11.25rem - 2ch)) minmax(0, 1fr);
-  column-gap: var(--tx-add-row-gap-x, 9.8px);
-  row-gap: 2px;
-  align-items: center;
   width: 100%;
   margin: 3px 0 0;
   padding: 0 0 4px;
   box-sizing: border-box;
-  /* Width of “Amount varies” at 12px/600 — aligns caption with label text start. */
-  --tx-add-variable-label-text-width: 6.5rem;
-}
-.modal--tx-add .tx-add-variable-block .form-row-h__label{
-  grid-column: 1;
-  grid-row: 1;
-  justify-content: flex-end;
-  align-items: center;
-  align-self: center;
-  padding-right: var(--tx-add-label-inset, 2.1ch);
-  text-align: right;
-}
-.modal--tx-add .tx-add-variable-block .form-row-h__label label{
-  text-align: right;
 }
 .modal--tx-add .tx-add-variable-block .tx-add-variable-field-wrap{
-  grid-column: 2;
-  grid-row: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start;
-  align-self: center;
+  gap: 3px;
   width: 100%;
   min-width: 0;
   padding-top: 0;
 }
 .modal--tx-add .tx-add-variable-block__caption{
-  grid-column: 1 / -1;
-  grid-row: 2;
-  margin: 1px 0 0;
+  margin: 0;
   padding: 0;
-  padding-left: max(
-    0px,
-    calc(
-      var(--tx-add-label-col, calc(11.25rem - 2ch)) - var(--tx-add-label-inset, 2.1ch) - var(--tx-add-variable-label-text-width, 6.5rem) + 0.6em
-    )
-  );
   max-width: none;
   font-size: 9.5px;
   line-height: 1.38;
@@ -26140,9 +26117,8 @@ body[data-bw-view="transactions"] .tm__field label{
   white-space: nowrap;
 }
 .modal--tx-add .tx-add-variable-block .form-row-h__label label{
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.3;
-  overflow-wrap: anywhere;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-field{
   display: flex;
@@ -31626,36 +31602,14 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .modal--tx-add .tx-add-schedule-compact .form-row-h,
   .modal--tx-add .tx-add-end-detail__row,
   .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row,
-  .modal--tx-add .tx-add-variable-block,
-  .modal--tx-add .tx-add-advanced__panel{
+  .modal--tx-add .tx-add-variable-form-row,
+  .modal--tx-add .tx-add-cat-color-row{
     grid-template-columns: 1fr;
     row-gap: 8px;
   }
-  .modal--tx-add .tx-add-variable-form-row{
-    display: contents;
-  }
-  .modal--tx-add .tx-add-variable-block .form-row-h__label{
-    grid-column: 1;
-    grid-row: 1;
-    padding-right: 0;
-    justify-content: flex-end;
-    text-align: right;
-  }
   .modal--tx-add .tx-add-variable-block .form-row-h__label label{
-    text-align: right;
+    white-space: normal;
   }
-  .modal--tx-add .tx-add-variable-block__caption{
-    padding-left: 0;
-  }
-  .modal--tx-add .tx-add-variable-block .tx-add-variable-field-wrap{
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .modal--tx-add .tx-add-variable-block__caption{
-    grid-column: 1;
-    grid-row: 3;
-  }
-  .modal--tx-add .tx-add-cat-color-row,
   .modal--tx-add .tx-add-notes-row{
     display: grid;
     grid-template-columns: 1fr;
