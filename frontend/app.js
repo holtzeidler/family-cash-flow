@@ -4974,6 +4974,12 @@ function renderTxEditCategoryOptions() {
   syncCategoryComboboxCategories("txEditCategoryId", state.categories || []);
 }
 
+function syncTxEditDeleteLabel() {
+  const btn = document.getElementById("txEditDelete");
+  if (!btn) return;
+  btn.textContent = transactionEditMode === "recurring" ? "Skip or end" : "Delete";
+}
+
 function applyTransactionEditMode(mode, opts = {}) {
   if (opts.resetting) {
     transactionEditMode = "actual";
@@ -4998,6 +5004,7 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (saveRow) saveRow.style.display = "";
     const txEditDel = document.getElementById("txEditDelete");
     if (txEditDel) txEditDel.style.display = "";
+    syncTxEditDeleteLabel();
     setTxEditConfirmOccurrenceMode(false);
     return;
   }
@@ -5084,6 +5091,7 @@ function applyTransactionEditMode(mode, opts = {}) {
   if (txEditRecurringUpdateBtn) txEditRecurringUpdateBtn.style.display = "none";
   const txEditDel = document.getElementById("txEditDelete");
   if (txEditDel) txEditDel.style.display = "";
+  syncTxEditDeleteLabel();
 
   if (txEditCancel) {
     txEditCancel.textContent = recurring ? "Close" : "Cancel";
@@ -5219,6 +5227,7 @@ async function openTxEditModalAsync(tx) {
   try { txEditModal.style.display = ""; } catch (_) {}
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
+  syncBwTxEditVisualViewport();
   applyTransactionEditMode("actual");
   syncTransactionHistoryLink();
 }
@@ -5289,6 +5298,49 @@ function paintTxEditApplyScopeCopy() {
   return copy;
 }
 
+function currentTxEditDeleteScopeCopy() {
+  if (typeof formatTxEditDeleteScopeCopy !== "function") {
+    return {
+      title: "Skip or end this series",
+      helper: "Choose whether to skip only this date, or stop later dates from here. Past dates stay.",
+      instanceTitle: "Skip this occurrence",
+      instanceHint: "Takes this date off the schedule. Later dates stay. The series continues.",
+      seriesTitle: "End recurring series from this date",
+      seriesHint: "Stops this date and every later occurrence. Earlier dates stay.",
+      instanceConfirm: "Skip",
+      seriesConfirm: "End series",
+      idleConfirm: "Continue",
+    };
+  }
+  return formatTxEditDeleteScopeCopy({
+    openedIso: txEditOpenedDisplayIso || selectedExpectedInstance?.occurrence_date,
+  });
+}
+
+function paintTxEditDeleteScopeCopy() {
+  const copy = currentTxEditDeleteScopeCopy();
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  setText("txEditDeleteScopeTitle", copy.title);
+  setText("txEditDeleteScopeHelper", copy.helper);
+  setText("txEditDeleteScopeInstanceTitle", copy.instanceTitle);
+  setText("txEditDeleteScopeInstanceHint", copy.instanceHint);
+  setText("txEditDeleteScopeFutureTitle", copy.seriesTitle);
+  setText("txEditDeleteScopeFutureHint", copy.seriesHint);
+  const confirmBtn = document.getElementById("txEditDeleteScopeConfirmBtn");
+  if (confirmBtn && !txEditDeleteScopeChoice) confirmBtn.textContent = copy.idleConfirm;
+  return copy;
+}
+
+function txEditDeleteScopeConfirmLabel(choice) {
+  const copy = currentTxEditDeleteScopeCopy();
+  if (choice === "instance") return copy.instanceConfirm;
+  if (choice === "future") return copy.seriesConfirm;
+  return copy.idleConfirm;
+}
+
 function resetTxEditDeleteScopeSelection() {
   txEditDeleteScopeChoice = null;
   const futureBtn = document.getElementById("txEditDeleteScopeFutureBtn");
@@ -5299,7 +5351,10 @@ function resetTxEditDeleteScopeSelection() {
     btn.classList.remove("apply-scope-option--selected");
     btn.setAttribute("aria-pressed", "false");
   }
-  if (confirmBtn) confirmBtn.disabled = true;
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = txEditDeleteScopeConfirmLabel(null);
+  }
 }
 
 function setTxEditDeleteScopeChoice(choice) {
@@ -5317,8 +5372,36 @@ function setTxEditDeleteScopeChoice(choice) {
     instanceBtn.classList.toggle("apply-scope-option--selected", on);
     instanceBtn.setAttribute("aria-pressed", on ? "true" : "false");
   }
-  if (confirmBtn) confirmBtn.disabled = false;
+  if (confirmBtn) {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = txEditDeleteScopeConfirmLabel(choice);
+  }
 }
+
+function syncBwTxEditVisualViewport() {
+  const open =
+    txEditModal?.classList.contains("modal-overlay--open") ||
+    document.getElementById("txEditApplyScopeModal")?.classList.contains("modal-overlay--open") ||
+    document.getElementById("txEditDeleteScopeModal")?.classList.contains("modal-overlay--open");
+  const root = document.documentElement;
+  if (!root) return;
+  if (!open || !window.visualViewport) {
+    root.style.removeProperty("--bw-vv-height");
+    return;
+  }
+  root.style.setProperty("--bw-vv-height", `${Math.round(window.visualViewport.height)}px`);
+}
+
+function bindBwTxEditVisualViewport() {
+  if (window.__bwTxEditVvBound) return;
+  window.__bwTxEditVvBound = true;
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const sync = () => syncBwTxEditVisualViewport();
+  vv.addEventListener("resize", sync);
+  vv.addEventListener("scroll", sync);
+}
+bindBwTxEditVisualViewport();
 
 function closeTxEditApplyScopeModal() {
   const m = document.getElementById("txEditApplyScopeModal");
@@ -5327,6 +5410,7 @@ function closeTxEditApplyScopeModal() {
   m.setAttribute("aria-hidden", "true");
   show(document.getElementById("txEditApplyScopeErr"), "");
   resetTxEditApplyScopeSelection();
+  syncBwTxEditVisualViewport();
 }
 
 function closeTxEditDeleteScopeModal() {
@@ -5336,6 +5420,7 @@ function closeTxEditDeleteScopeModal() {
   m.setAttribute("aria-hidden", "true");
   show(document.getElementById("txEditDeleteScopeErr"), "");
   resetTxEditDeleteScopeSelection();
+  syncBwTxEditVisualViewport();
 }
 
 function openTxEditApplyScopeModal() {
@@ -5351,6 +5436,7 @@ function openTxEditApplyScopeModal() {
   } catch (_) {}
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
+  syncBwTxEditVisualViewport();
   const focusBtn =
     copy.defaultChoice === "instance"
       ? document.getElementById("txEditApplyScopeInstanceBtn")
@@ -5363,12 +5449,14 @@ function openTxEditDeleteScopeModal() {
   const m = document.getElementById("txEditDeleteScopeModal");
   if (!m) return;
   show(document.getElementById("txEditDeleteScopeErr"), "");
+  paintTxEditDeleteScopeCopy();
   resetTxEditDeleteScopeSelection();
   try {
     m.style.display = "";
   } catch (_) {}
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
+  syncBwTxEditVisualViewport();
   const firstOpt = document.getElementById("txEditDeleteScopeFutureBtn");
   requestAnimationFrame(() => firstOpt?.focus?.());
 }
@@ -5418,6 +5506,7 @@ function closeTxEditModal() {
     occurrenceHint.hidden = true;
   }
   syncTransactionHistoryLink();
+  syncBwTxEditVisualViewport();
 }
 
 function mountTxAddFormInModal() {
@@ -16434,6 +16523,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
   try { txEditModal.style.display = ""; } catch (_) {}
   txEditModal.classList.add("modal-overlay--open");
   txEditModal.setAttribute("aria-hidden", "false");
+  syncBwTxEditVisualViewport();
   applyTransactionEditMode("recurring");
   applyMinDateToTxEditDateInput();
   setTxEditConfirmOccurrenceMode(!!opts.confirmOccurrence && !!(calendarItem && calendarItem.variable));
@@ -16450,8 +16540,8 @@ function openExpectedDeleteModal(expectedId, occurrenceDate) {
   const hasOcc = !!expectedDeleteContext.occurrenceDate;
   if (expectedDeleteThisBtn) expectedDeleteThisBtn.disabled = !hasOcc;
   if (expectedDeleteFutureBtn) expectedDeleteFutureBtn.disabled = !hasOcc;
-  if (expectedDeleteThisBtn) expectedDeleteThisBtn.title = hasOcc ? "" : "Open from a specific calendar date to delete only one occurrence.";
-  if (expectedDeleteFutureBtn) expectedDeleteFutureBtn.title = hasOcc ? "" : "Open from a specific calendar date to delete future occurrences.";
+  if (expectedDeleteThisBtn) expectedDeleteThisBtn.title = hasOcc ? "" : "Open from a specific calendar date to skip only one occurrence.";
+  if (expectedDeleteFutureBtn) expectedDeleteFutureBtn.title = hasOcc ? "" : "Open from a specific calendar date to end the series from this date.";
 
   expectedDeleteModal.classList.add("modal-overlay--open");
   expectedDeleteModal.setAttribute("aria-hidden", "false");
@@ -16493,11 +16583,11 @@ async function runExpectedDeleteAction(mode) {
       await api(`/api/families/${state.activeFamilyId}/expected-transactions/${expectedId}`, "DELETE");
     } else if (mode === "this") {
       const occ = expectedDeleteContext.occurrenceDate;
-      if (!occ) throw new Error('Open from a specific calendar date to use "Delete only this transaction".');
+      if (!occ) throw new Error("Open from a specific calendar date to skip only one occurrence.");
       const ok = await bwConfirm({
-        title: "Delete this occurrence?",
-        body: "Remove only this date from the schedule. Other occurrences stay.",
-        confirmLabel: "Delete",
+        title: "Skip this occurrence?",
+        body: "Takes this date off the schedule. Later dates stay. The series continues.",
+        confirmLabel: "Skip",
         danger: true,
       });
       if (!ok) return;
@@ -16508,11 +16598,11 @@ async function runExpectedDeleteAction(mode) {
       );
     } else if (mode === "future") {
       const occ = expectedDeleteContext.occurrenceDate;
-      if (!occ) throw new Error('Open from a specific calendar date to use "Delete all future transactions".');
+      if (!occ) throw new Error("Open from a specific calendar date to end the series from this date.");
       const ok = await bwConfirm({
-        title: "Delete this and future occurrences?",
-        body: "End the series from this date forward. Past dates stay on the schedule.",
-        confirmLabel: "Delete future",
+        title: "End recurring series from this date?",
+        body: "Stops this date and every later occurrence. Earlier dates stay.",
+        confirmLabel: "End series",
         danger: true,
       });
       if (!ok) return;

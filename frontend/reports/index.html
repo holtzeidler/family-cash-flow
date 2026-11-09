@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=893" />
+    <link rel="stylesheet" href="../styles.css?v=894" />
   </head>
   <body>
     <h1 class="sr-only">Reports</h1>
@@ -1547,14 +1547,14 @@
 
     <div id="txEditDeleteScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
       <div class="modal modal--choice modal--apply-scope" role="dialog" aria-labelledby="txEditDeleteScopeTitle" aria-describedby="txEditDeleteScopeDesc" aria-modal="true">
-        <h3 id="txEditDeleteScopeTitle">Delete recurring transaction</h3>
+        <h3 id="txEditDeleteScopeTitle">Skip or end this series</h3>
         <div class="modal--apply-scope__body">
           <div id="txEditDeleteScopeDesc" class="modal--apply-scope__intro">
             <p class="modal--apply-scope__lede">This transaction is part of a recurring series.</p>
-            <p class="modal--apply-scope__helper">Choose whether to remove only this date or end the series from this date forward. Past dates stay. This cannot be undone.</p>
+            <p id="txEditDeleteScopeHelper" class="modal--apply-scope__helper">Choose whether to skip only this date, or stop later dates from here. Past dates stay.</p>
           </div>
           <div id="txEditDeleteScopeErr" class="error"></div>
-          <div class="apply-scope-actions" role="radiogroup" aria-label="How much to delete">
+          <div class="apply-scope-actions" role="radiogroup" aria-label="Skip this date or end later dates">
             <button type="button" id="txEditDeleteScopeFutureBtn" class="apply-scope-option apply-scope-option--recommended" role="radio" aria-pressed="false" data-delete-scope="future">
               <span class="apply-scope-option__row">
                 <span class="apply-scope-option__icon" aria-hidden="true">
@@ -1567,10 +1567,10 @@
                 </span>
                 <span class="apply-scope-option__copy">
                   <span class="apply-scope-option__title-row">
-                    <span class="apply-scope-option__title">This and all future</span>
+                    <span class="apply-scope-option__title" id="txEditDeleteScopeFutureTitle">End recurring series from this date</span>
                     <span class="apply-scope-option__badge">Recommended</span>
                   </span>
-                  <span class="apply-scope-option__hint">Ends the series from this date forward. Earlier dates stay on the schedule.</span>
+                  <span class="apply-scope-option__hint" id="txEditDeleteScopeFutureHint">Stops this date and every later occurrence. Earlier dates stay.</span>
                 </span>
               </span>
             </button>
@@ -1585,15 +1585,15 @@
                   </svg>
                 </span>
                 <span class="apply-scope-option__copy">
-                  <span class="apply-scope-option__title">This occurrence only</span>
-                  <span class="apply-scope-option__hint">Removes only this date from the schedule. Future recurring entries stay the same.</span>
+                  <span class="apply-scope-option__title" id="txEditDeleteScopeInstanceTitle">Skip this occurrence</span>
+                  <span class="apply-scope-option__hint" id="txEditDeleteScopeInstanceHint">Takes this date off the schedule. Later dates stay. The series continues.</span>
                 </span>
               </span>
             </button>
           </div>
           <div class="modal-actions modal-actions--apply-scope-foot">
             <button type="button" id="txEditDeleteScopeCancelBtn" class="secondary apply-scope-foot__cancel">Cancel</button>
-            <button type="button" id="txEditDeleteScopeConfirmBtn" class="apply-scope-foot__delete" disabled>Delete</button>
+            <button type="button" id="txEditDeleteScopeConfirmBtn" class="apply-scope-foot__delete" disabled>Continue</button>
           </div>
         </div>
       </div>
@@ -1614,15 +1614,15 @@
 
     <div id="expectedDeleteModal" class="modal-overlay" aria-hidden="true">
       <div class="modal" role="dialog" aria-labelledby="expectedDeleteTitle">
-        <h3 id="expectedDeleteTitle">Delete recurring transaction</h3>
+        <h3 id="expectedDeleteTitle">Skip or end this series</h3>
         <div id="expectedDeleteErr" class="error"></div>
         <p class="expected-modal-hint" style="margin-bottom: 12px">
-          Choose how much of the series to remove. This cannot be undone.
+          Choose whether to skip this date or end later dates from here. Past dates stay.
         </p>
         <div class="modal-actions">
           <div class="expected-delete-actions">
-            <button type="button" id="expectedDeleteThisBtn">Delete only this transaction</button>
-            <button type="button" id="expectedDeleteFutureBtn">Delete this and all future transactions</button>
+            <button type="button" id="expectedDeleteThisBtn">Skip this occurrence</button>
+            <button type="button" id="expectedDeleteFutureBtn">End recurring series from this date</button>
             <button type="button" id="expectedDeleteAllBtn" class="danger">Delete all transactions in the series</button>
           </div>
           <div style="height: 10px"></div>
@@ -1809,8 +1809,8 @@
     <script src="../favorite-transactions.js?v=2"></script>
     <script src="../cash-health-summary.js?v=3"></script>
     <script src="../needs-review.js?v=1"></script>
-    <script src="../tx-edit-scope.js?v=1"></script>
-    <script src="../app.js?v=567"></script>
+    <script src="../tx-edit-scope.js?v=2"></script>
+    <script src="../app.js?v=568"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=25" defer></script>
   </body>
