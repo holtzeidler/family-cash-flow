@@ -23047,7 +23047,7 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   border-top-color: rgba(11, 61, 46, 0.16);
 }
 .calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update::before{
-  content: "Update balance";
+  content: "Reconcile balance";
   display: block;
   margin-bottom: 1px;
   font-size: 10.5px;
@@ -31125,7 +31125,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     gap: 5px;
   }
 
-  /* Mobile hierarchy: date → transactions (events) → update balance (result). */
+  /* Mobile hierarchy: date → transactions (events) → reconcile balance (result). */
   .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance){
     --cal-tx-in-color: color-mix(in srgb, var(--ok) 88%, #003d34);
     --cal-tx-out-color: rgba(168, 62, 62, 0.82);
@@ -31236,7 +31236,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
-    content: "Update balance";
+    content: "Reconcile balance";
     font-weight: 500;
     color: rgba(100, 116, 139, 0.58);
   }

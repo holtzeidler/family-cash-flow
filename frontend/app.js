@@ -7073,7 +7073,7 @@ function applyForecastConfidenceUi(data) {
   let helper = "";
   let showLabel = false;
   let showCta = false;
-  const balanceCheckHelper = "Updating your current bank balance keeps future forecasts accurate.";
+  const balanceCheckHelper = "Confirming your checking balance keeps future forecasts accurate.";
 
   if (tier === "none") {
     showLabel = true;
@@ -7097,7 +7097,7 @@ function applyForecastConfidenceUi(data) {
   }
   if (forecastConfidenceVerifyBtn) {
     forecastConfidenceVerifyBtn.hidden = !showCta;
-    forecastConfidenceVerifyBtn.textContent = "Update Balance";
+    forecastConfidenceVerifyBtn.textContent = "Reconcile balance";
   }
 }
 
@@ -7782,7 +7782,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
   );
   metricsEl.removeAttribute("title");
   const label = fmtDateMDY(iso);
-  metricsEl.setAttribute("aria-label", label ? `Update balance for ${label}` : "Update balance");
+  metricsEl.setAttribute("aria-label", label ? `Reconcile balance for ${label}` : "Reconcile balance");
 
   if (dayBalVerified && dayBal) {
     const html = buildAdjustedBalanceTipHtml(dayBal, iso);
@@ -7804,7 +7804,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     return;
   }
 
-  metricsEl.title = "Update Balance";
+  metricsEl.title = "Reconcile balance";
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
