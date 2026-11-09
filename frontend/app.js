@@ -2518,13 +2518,31 @@ function syncSidebarCashHealthCardVisibility() {
   sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
 }
 
+function cashHealthPaymentRowHtml(p) {
+  const name = escapeHtml(String(p.label || "Payment").trim());
+  const est = p.variable ? ` <span class="cash-health-card__pay-est">(est.)</span>` : "";
+  const date = escapeHtml(cashHealthMonthDay(p.date));
+  const amt = `−$${Math.round(Number(p.amount) || 0).toLocaleString("en-US")}`;
+  return `<span class="cash-health-card__pay">
+      <span class="cash-health-card__pay-desc"><span class="cash-health-card__pay-name">${name}${est}</span><span class="cash-health-card__pay-sep" aria-hidden="true"> · </span><span class="cash-health-card__pay-date">${date}</span></span>
+      <span class="cash-health-card__pay-amt">${escapeHtml(amt)}</span>
+    </span>`;
+}
+
 function cashHealthCardHtml(copy) {
-  const line = (text, cls) => `<span class="cash-outlook-card__line ${cls}">${escapeHtml(text)}</span>`;
-  const lines = copy.lines.map((t, i) => line(t, i === 0 ? "cash-outlook-card__line--secondary" : "cash-outlook-card__line--tertiary"));
+  const notes = (copy.lines || []).map((t) => `<span class="cash-health-card__note">${escapeHtml(t)}</span>`).join("");
+  const payRows = (copy.payments || []).map(cashHealthPaymentRowHtml).join("");
+  const payBlock = payRows
+    ? `<span class="cash-health-card__payments"><span class="cash-health-card__payments-label">${escapeHtml(
+        copy.paymentsHeading || "Significant upcoming payments"
+      )}</span>${payRows}</span>`
+    : copy.paymentsNote
+      ? `<span class="cash-health-card__note cash-health-card__note--muted">${escapeHtml(copy.paymentsNote)}</span>`
+      : "";
   if (copy.tone === "healthy") {
     return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">
       <span class="cash-outlook-card__headline">${escapeHtml(copy.headline)}</span>
-      ${lines.join("")}
+      ${notes}
       <span class="cash-health-card__footer">${escapeHtml(copy.footer)}</span>
     </div>`;
   }
@@ -2537,7 +2555,8 @@ function cashHealthCardHtml(copy) {
           <span class="cash-outlook-card__date">${escapeHtml(copy.headline)}</span>
         </span>
       </span>
-      ${lines.join("")}
+      ${notes}
+      ${payBlock}
       <span class="cash-health-card__footer"><span>${escapeHtml(windowText)}</span><span class="cash-health-card__view">${escapeHtml(viewText)} <span aria-hidden="true">›</span></span></span>
     </button>`;
 }
