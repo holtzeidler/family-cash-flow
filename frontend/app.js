@@ -2528,21 +2528,6 @@ function syncSidebarCashHealthCardVisibility() {
   sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
 }
 
-function cashHealthPaymentRowHtml(p) {
-  const name = escapeHtml(String(p.label || "Payment").trim());
-  const est = p.variable ? `<span class="cash-health-card__pay-est">(est.)</span>` : "";
-  const date = escapeHtml(cashHealthMonthDay(p.date));
-  const amt = cashHealthMoney(-(Math.abs(Number(p.amount) || 0)));
-  return `<span class="cash-health-card__pay">
-      <span class="cash-health-card__pay-main">
-        <span class="cash-health-card__pay-name">${name}</span>
-        ${est}
-        <span class="cash-health-card__pay-date">${date}</span>
-      </span>
-      <span class="cash-health-card__pay-amt">${escapeHtml(amt)}</span>
-    </span>`;
-}
-
 function cashHealthCardFooterHtml(copy) {
   const horizon = escapeHtml(copy.horizon || copy.footer || "");
   const view = String(copy.viewAction || "").trim();
@@ -2553,48 +2538,29 @@ function cashHealthCardFooterHtml(copy) {
 }
 
 function cashHealthCardHtml(copy) {
-  const notes = (copy.lines || []).map((t) => `<span class="cash-health-card__note">${escapeHtml(t)}</span>`).join("");
-  const payRows = (copy.payments || []).map(cashHealthPaymentRowHtml).join("");
-  const payBlock = payRows
-    ? `<span class="cash-health-card__payments"><span class="cash-health-card__payments-label">${escapeHtml(
-        copy.paymentsHeading || "Significant upcoming payments"
-      )}</span>${payRows}</span>`
-    : copy.paymentsNote
-      ? `<span class="cash-health-card__note cash-health-card__note--muted">${escapeHtml(copy.paymentsNote)}</span>`
-      : "";
-  if (copy.tone === "healthy") {
-    return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">
-      <span class="cash-health-card__headline">${escapeHtml(copy.headline)}</span>
-      ${notes}
-      ${cashHealthCardFooterHtml(copy)}
-    </div>`;
-  }
-  const amount = escapeHtml(copy.amountText || copy.headline);
+  const amount = escapeHtml(copy.amountText || "");
   const when = escapeHtml(copy.whenLabel || "");
-  return `<button type="button" class="cash-outlook-card cash-health-card cash-health-card--${copy.tone}" data-cash-health-open="1" aria-label="${escapeHtml(copy.ariaLabel)}">
-      <span class="cash-health-card__status">
-        <span class="cash-health-card__kicker-row">
-          ${cashOutlookWarnIconHtml()}
-          <span class="cash-health-card__kicker">${escapeHtml(copy.kicker)}</span>
-        </span>
-        <span class="cash-health-card__figure">
-          <span class="cash-health-card__amount">${amount}</span>
-          ${when ? `<span class="cash-health-card__when">${when}</span>` : ""}
-        </span>
-      </span>
-      ${notes}
-      ${payBlock}
+  const descriptor = escapeHtml(copy.descriptor || "");
+  const kicker = escapeHtml(copy.kicker || copy.headline || "");
+  const inner = `<span class="cash-health-card__body">
+      <span class="cash-health-card__kicker">${kicker}</span>
+      ${amount ? `<span class="cash-health-card__amount">${amount}</span>` : ""}
+      ${when ? `<span class="cash-health-card__when">${when}</span>` : ""}
+      ${descriptor ? `<span class="cash-health-card__desc">${descriptor}</span>` : ""}
       ${cashHealthCardFooterHtml(copy)}
-    </button>`;
+    </span>`;
+  if (copy.tone === "healthy") {
+    return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">${inner}</div>`;
+  }
+  return `<button type="button" class="cash-outlook-card cash-health-card cash-health-card--${copy.tone}" data-cash-health-open="1" aria-label="${escapeHtml(copy.ariaLabel)}">${inner}</button>`;
 }
 
 function setSidebarCashHealthCard(copy) {
   if (!sidebarLowBalanceBanner) return;
-  const warn = copy.tone !== "healthy";
   sidebarLowBalanceBanner.innerHTML = cashHealthCardHtml(copy);
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted", "is-intro", "is-suggestion");
-  sidebarLowBalanceBanner.classList.add(warn ? "is-danger" : "is-muted");
+  sidebarLowBalanceBanner.classList.add("is-muted");
   if (sidebarLowBalanceBanner.dataset.cashHealthBound !== "1") {
     sidebarLowBalanceBanner.dataset.cashHealthBound = "1";
     sidebarLowBalanceBanner.addEventListener("click", (e) => {

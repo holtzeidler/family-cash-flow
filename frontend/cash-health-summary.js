@@ -283,95 +283,60 @@ function cashHealthHighlightRefs(expl) {
 
 /**
  * Card wording. Plain strings only; the caller escapes them.
- * @returns {{tone:"healthy"|"below"|"negative", kicker:string, headline:string, amountText:string, whenLabel:string, lines:string[],
+ * Payment selection stays on `expl` for calendar highlighting; the card itself is status-only.
+ * @returns {{tone:"healthy"|"below"|"negative", kicker:string, headline:string, amountText:string, whenLabel:string, descriptor:string, lines:string[],
  *   payments:Array, paymentsHeading:string, paymentsNote:string, horizon:string, viewAction:string, footer:string,
  *   actionIso:string|null, chip:string, ariaLabel:string}|null}
  */
 function buildCashHealthCopy(summary, expl) {
   if (!summary || summary.state === "unavailable") return null;
   const today = summary.todayIso;
-  const minText = summary.hasMinimum ? cashHealthMoney(summary.minimum) : "";
   const lowest = summary.lowest;
   const windowText = `Next ${summary.windowDays} days`;
-  const emptyPayments = { payments: [], paymentsHeading: "", paymentsNote: "" };
+  const emptyCard = { lines: [], payments: [], paymentsHeading: "", paymentsNote: "" };
 
   if (summary.state === "healthy") {
-    const headline = summary.hasMinimum
-      ? `Stays above your ${minText} minimum balance`
-      : "Stays above $0";
-    const lowText = lowest ? `Lowest ${cashHealthMoney(lowest.amount)} ${lowest.date === today ? "today" : `on ${cashHealthMonthDay(lowest.date)}`}` : "";
-    const lines = [lowText].filter(Boolean);
+    const amountText = lowest ? cashHealthMoney(lowest.amount) : "";
+    const descriptor = lowest ? "lowest projected" : "";
     return {
       tone: "healthy",
-      kicker: "",
-      headline,
-      amountText: "",
+      kicker: "Looking good",
+      headline: "Looking good",
+      amountText,
       whenLabel: "",
-      lines,
-      ...emptyPayments,
+      descriptor,
+      ...emptyCard,
       horizon: windowText,
       viewAction: "",
       footer: windowText,
       actionIso: null,
       chip: "",
-      ariaLabel: [headline, windowText, lowText].filter(Boolean).join(". "),
+      ariaLabel: ["Looking good", amountText && `${amountText} lowest projected`, windowText].filter(Boolean).join(". "),
     };
   }
 
   const anchor = summary.anchor;
   const when = cashHealthMonthDay(anchor.date, today);
-  const headline = when === "today" ? `${cashHealthMoney(anchor.amount)} today` : `${cashHealthMoney(anchor.amount)} on ${when}`;
-  const lines = [];
-  let kicker;
-  let chip;
-  if (summary.state === "negative") {
-    kicker = summary.startsToday ? "Balance is below $0" : "Projected negative balance";
-    chip = summary.startsToday
-      ? `Below $0 today · ${cashHealthMoney(anchor.amount)}`
-      : `Projected negative balance ${when} · ${cashHealthMoney(anchor.amount)}`;
-    if (summary.recovery && lowest && cashHealthDayDiff(lowest.date, summary.recovery.date) <= 14) {
-      lines.push(`Recovers ${cashHealthMonthDay(summary.recovery.date)}`);
-    } else if (lowest && lowest.date !== anchor.date) {
-      lines.push(`Lowest ${cashHealthMoney(lowest.amount)} on ${cashHealthMonthDay(lowest.date)}`);
-    }
-  } else {
-    kicker = "Below your minimum balance";
-    chip = summary.startsToday
-      ? `Below your minimum balance today · ${cashHealthMoney(anchor.amount)}`
-      : `Below your minimum balance ${when} · ${cashHealthMoney(anchor.amount)}`;
-    const shortBy = `$${Math.round(summary.minimum - lowest.amount).toLocaleString("en-US")} below your ${minText} minimum balance`;
-    lines.push(
-      lowest.date === anchor.date
-        ? shortBy.charAt(0).toUpperCase() + shortBy.slice(1)
-        : `Lowest ${cashHealthMoney(lowest.amount)} on ${cashHealthMonthDay(lowest.date)}, ${shortBy}`
-    );
-  }
-  const named = expl && expl.kind === "named" && expl.payments && expl.payments.length;
-  const payments = named ? expl.payments : [];
-  const paymentsHeading = payments.length ? "Significant upcoming payments" : "";
-  const paymentsNote = !payments.length && expl ? cashHealthPaymentsLine(expl) : "";
+  const amountText = cashHealthMoney(anchor.amount);
+  const whenLabel = when === "today" ? "Today" : when;
   const viewText = when === "today" ? "View today" : `View ${when}`;
-  const payAria = payments.length
-    ? payments.map((p) => cashHealthPaymentText(p, true)).join(". ")
-    : paymentsNote;
+  const kicker = summary.state === "negative" ? "Negative balance projected" : "Below minimum projected";
+  const chipWhen = when === "today" ? "today" : when;
+  const headline = when === "today" ? `${amountText} today` : `${amountText} on ${when}`;
   return {
     tone: summary.state,
     kicker,
     headline,
-    amountText: cashHealthMoney(anchor.amount),
-    whenLabel: when === "today" ? "today" : `on ${when}`,
-    lines,
-    payments,
-    paymentsHeading,
-    paymentsNote,
+    amountText,
+    whenLabel,
+    descriptor: "",
+    ...emptyCard,
     horizon: windowText,
     viewAction: viewText,
     footer: `${windowText} · ${viewText}`,
     actionIso: anchor.date,
-    chip,
-    ariaLabel: [kicker, headline, ...lines, payAria, windowText, `Opens ${when === "today" ? "today" : when} on the calendar.`]
-      .filter(Boolean)
-      .join(". "),
+    chip: `${kicker} ${chipWhen} · ${amountText}`,
+    ariaLabel: [kicker, headline, windowText, `Opens ${when === "today" ? "today" : when} on the calendar.`].filter(Boolean).join(". "),
   };
 }
 
