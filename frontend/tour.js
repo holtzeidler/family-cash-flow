@@ -213,6 +213,9 @@
   function findExpectedCalendarConfirmAnchor() {
     const today = new Date();
     const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayAction = document.querySelector(
+      `.cal-cell[data-iso="${todayIso}"]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-day-reconcile-action`
+    );
     const balanceHit =
       document.querySelector(
         `.cal-cell[data-iso="${todayIso}"]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit`
@@ -220,7 +223,7 @@
       document.querySelector(
         ".cal-cell[data-iso]:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit"
       );
-    const cell = balanceHit && balanceHit.closest(".cal-cell");
+    const cell = (todayAction && todayAction.closest(".cal-cell")) || (balanceHit && balanceHit.closest(".cal-cell"));
     if (cell && isVisible(cell)) return cell;
     const row = findExpectedCalendarRowTarget();
     const fromRow = row ? row.closest(".cal-cell") : null;

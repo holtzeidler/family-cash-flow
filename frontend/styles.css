@@ -23053,22 +23053,44 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   background: rgba(11, 61, 46, 0.055);
   border-top-color: rgba(11, 61, 46, 0.1);
 }
-.calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update::before{
-  content: "Reconcile balance";
-  display: block;
-  margin-bottom: 1px;
-  font-size: 10.5px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: 0.01em;
-  text-align: right;
-  white-space: nowrap;
-  color: rgba(11, 61, 46, 0.66);
+.cal-daynum:has(.cal-day-reconcile-action){
+  justify-content: flex-end;
 }
-.calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update:hover::before{
-  color: rgba(11, 61, 46, 0.92);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.cal-day-reconcile-action{
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  margin-right: 2px;
+  padding: 1px 5px 1px 3px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(71, 85, 105, 0.58);
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.cal-day-reconcile-action__icon{
+  display: block;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+}
+.cal-day-reconcile-action:hover,
+.cal-day-reconcile-action:focus-visible{
+  color: rgba(11, 61, 46, 0.86);
+  background: rgba(11, 61, 46, 0.06);
+}
+.cal-day-reconcile-action:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 1px;
 }
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-stat.cal-balance,
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within .cal-stat.cal-balance{
@@ -29564,6 +29586,7 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--calendar-add .cal-daynum
 body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head{
   background: color-mix(in srgb, var(--accent) 6%, #ffffff) !important;
 }
+body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head .cal-day-reconcile-action,
 body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head .cal-ledger-metrics.cal-day-balance-hit{
   background: color-mix(in srgb, var(--accent) 10%, #ffffff);
   border-radius: 8px;
@@ -31436,22 +31459,28 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     color: rgba(71, 85, 105, 0.88);
   }
 
-  /* Keep today / status / risk treatments readable above the quieter default balance. */
-  .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-stat.cal-balance,
+  /* Keep status / risk treatments readable above the quieter default balance. */
   .calendar--mobile .cal-balance-strip--has-status .cal-stat.cal-balance,
   .calendar--mobile .cal-stat.cal-balance.cal-balance--watch-zone,
   .calendar--mobile .cal-stat.cal-balance.cal-balance--risk,
   .calendar--mobile .cal-stat.cal-balance.is-negative{
     font-weight: 650;
   }
+  .calendar--mobile .cal-daynum:has(.cal-day-reconcile-action){
+    justify-content: space-between;
+  }
+  .calendar--mobile .cal-day-reconcile-action{
+    min-height: 32px;
+    margin-right: 0;
+    padding: 4px 6px;
+    font-size: 11px;
+    color: rgba(71, 85, 105, 0.7);
+  }
   .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
-    color: rgba(11, 61, 46, 0.72);
-    font-weight: 600;
+    content: "Balance";
+    font-weight: 500;
+    color: rgba(100, 116, 139, 0.62);
   }
-  .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--risk){
-    color: rgba(11, 61, 46, 0.88);
-  }
-
   .calendar--mobile .cal-stat.cal-balance.cal-balance--below-floor{
     font-size: 13px;
     font-weight: 600;
@@ -34281,15 +34310,15 @@ body[data-bw-view] #sidebarBodyMonth .total{
   justify-content: space-between;
   gap: 12px;
   margin: 0;
-  padding: 8px 2px;
+  padding: 6px 2px;
   border: none;
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
   border-radius: 0;
   background: transparent;
 }
 body[data-bw-view] #sidebarBodyMonth .total--net{
-  margin-top: 4px;
-  padding: 8px 2px;
+  margin-top: 3px;
+  padding: 6px 2px;
   border-bottom: none;
   border-radius: 8px;
   background: rgba(254, 242, 242, 0.42);
@@ -34300,7 +34329,7 @@ body[data-bw-view] #sidebarBodyMonth .total--net:not(:has(.v.danger)){
 body[data-bw-view] #sidebarBodyMonth .total .k{
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.01em;
   text-transform: none;
@@ -34310,7 +34339,7 @@ body[data-bw-view] #sidebarBodyMonth .total .v{
   flex: 0 0 auto;
   min-width: 6.5ch;
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.02em;
   text-align: right;

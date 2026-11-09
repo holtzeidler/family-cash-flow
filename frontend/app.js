@@ -8021,12 +8021,52 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   parentEl.appendChild(line);
 }
 
+function shouldOfferTodayReconcileAction(iso, opts = {}) {
+  const todayIso = toISODate(new Date());
+  if (!iso || iso !== todayIso) return false;
+  if (opts.isOutOfMonth) return false;
+  if (state.viewOnly || state.activeFamilyAccessMode === "view") return false;
+  if (opts.dayBalVerified || existingVerifiedBalanceOnDate(iso)) return false;
+  if (opts.isReconciled || isReconciledOnDate(iso)) return false;
+  return true;
+}
+
+const CAL_RECONCILE_ACTION_SVG =
+  '<svg class="cal-day-reconcile-action__icon" viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M13.15 8.05A5.15 5.15 0 0 1 4.55 11.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13.15 8.05v2.45h-2.45" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.85 7.95A5.15 5.15 0 0 1 11.45 4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.85 7.95V5.5h2.45" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function mountTodayReconcileAction(cell, iso, opts) {
+  const dayNumEl = cell?.querySelector(".cal-daynum");
+  if (!dayNumEl) return;
+  dayNumEl.querySelector(".cal-day-reconcile-action")?.remove();
+  if (!shouldOfferTodayReconcileAction(iso, opts)) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "cal-day-reconcile-action";
+  btn.setAttribute("aria-label", "Reconcile today's balance");
+  btn.innerHTML = `${CAL_RECONCILE_ACTION_SVG}<span class="cal-day-reconcile-action__label">Reconcile</span>`;
+  const openTodayReconcile = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openReconcileModal(iso);
+  };
+  btn.addEventListener("click", openTodayReconcile);
+  btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+  btn.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    openTodayReconcile(e);
+  });
+  const dateEl = dayNumEl.querySelector(".cal-daynum-num");
+  if (dateEl) dayNumEl.insertBefore(btn, dateEl);
+  else dayNumEl.appendChild(btn);
+}
+
 function shouldOpenReconcileFromCalendarClick(target, cell) {
   if (!target || !cell) return false;
   if (cell.classList.contains("cal-cell--before-start")) return false;
   if (cell.classList.contains("cal-cell--out")) return false;
   if (state.viewOnly || state.activeFamilyAccessMode === "view") return false;
   if (target.closest(".cal-balance-status-pill--starting")) return false;
+  if (target.closest(".cal-day-reconcile-action")) return true;
   const iso = cell.dataset.iso;
   const todayIso = toISODate(new Date());
   if (!iso || iso > todayIso) return false;
@@ -8051,6 +8091,7 @@ function shouldOpenAddTxFromCalendarClick(target, cell) {
   if (cell.classList.contains("cal-cell--before-start")) return false;
   if (shouldOpenReconcileFromCalendarClick(target, cell)) return false;
   if (target.closest(".cal-daynum")) return false;
+  if (target.closest(".cal-day-reconcile-action")) return false;
   if (target.closest(".cal-ledger-metrics")) return false;
   if (target.closest(".cal-day-tx-line--expected")) return false;
   if (target.closest(".cal-day-start-balance .cal-start-milestone")) return false;
@@ -8092,10 +8133,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     return;
   }
   metricsEl.classList.add("cal-day-balance-hit");
-  metricsEl.classList.toggle(
-    "cal-day-balance-hit--today-update",
-    iso === todayIso && !dayBalVerified && !isReconciled && !existingVerifiedBalanceOnDate(iso) && !isReconciledOnDate(iso)
-  );
+  metricsEl.classList.remove("cal-day-balance-hit--today-update");
   metricsEl.removeAttribute("title");
   const label = fmtDateMDY(iso);
   metricsEl.setAttribute("aria-label", label ? `Reconcile balance for ${label}` : "Reconcile balance");
@@ -8120,7 +8158,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     return;
   }
 
-  metricsEl.title = "Reconcile balance";
+  if (iso !== todayIso) metricsEl.title = "Reconcile balance";
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -20339,6 +20377,11 @@ function renderCalendar() {
     }
 
     bindCalendarCellAddTxClick(cell, iso);
+    mountTodayReconcileAction(cell, iso, {
+      isReconciled,
+      dayBalVerified: isVerifiedBalance,
+      isOutOfMonth: isOutOfMonth || isBeforeStart,
+    });
     wrapper.appendChild(cell);
     revealClippedCalendarTxLabels(cell);
     cells.push(cell);
