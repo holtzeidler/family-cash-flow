@@ -2532,11 +2532,23 @@ function cashHealthPaymentRowHtml(p) {
   const name = escapeHtml(String(p.label || "Payment").trim());
   const est = p.variable ? ` <span class="cash-health-card__pay-est">(est.)</span>` : "";
   const date = escapeHtml(cashHealthMonthDay(p.date));
-  const amt = `−$${Math.round(Number(p.amount) || 0).toLocaleString("en-US")}`;
+  const amt = cashHealthMoney(-(Math.abs(Number(p.amount) || 0)));
   return `<span class="cash-health-card__pay">
-      <span class="cash-health-card__pay-desc"><span class="cash-health-card__pay-name">${name}${est}</span><span class="cash-health-card__pay-sep" aria-hidden="true"> · </span><span class="cash-health-card__pay-date">${date}</span></span>
+      <span class="cash-health-card__pay-main">
+        <span class="cash-health-card__pay-name">${name}${est}</span>
+        <span class="cash-health-card__pay-date">${date}</span>
+      </span>
       <span class="cash-health-card__pay-amt">${escapeHtml(amt)}</span>
     </span>`;
+}
+
+function cashHealthCardFooterHtml(copy) {
+  const horizon = escapeHtml(copy.horizon || copy.footer || "");
+  const view = String(copy.viewAction || "").trim();
+  const viewHtml = view
+    ? `<span class="cash-health-card__view">${escapeHtml(view)} <span aria-hidden="true">›</span></span>`
+    : "";
+  return `<span class="cash-health-card__footer"><span class="cash-health-card__horizon">${horizon}</span>${viewHtml}</span>`;
 }
 
 function cashHealthCardHtml(copy) {
@@ -2551,23 +2563,25 @@ function cashHealthCardHtml(copy) {
       : "";
   if (copy.tone === "healthy") {
     return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">
-      <span class="cash-outlook-card__headline">${escapeHtml(copy.headline)}</span>
+      <span class="cash-health-card__headline">${escapeHtml(copy.headline)}</span>
       ${notes}
-      <span class="cash-health-card__footer">${escapeHtml(copy.footer)}</span>
+      ${cashHealthCardFooterHtml(copy)}
     </div>`;
   }
-  const [windowText, viewText] = copy.footer.split(" · ");
+  const amount = escapeHtml(copy.amountText || copy.headline);
+  const when = escapeHtml(copy.whenLabel || "");
   return `<button type="button" class="cash-outlook-card cash-health-card cash-health-card--${copy.tone}" data-cash-health-open="1" aria-label="${escapeHtml(copy.ariaLabel)}">
-      <span class="cash-outlook-card__row">
-        ${cashOutlookWarnIconHtml()}
-        <span class="cash-outlook-card__body">
-          <span class="cash-outlook-card__kicker">${escapeHtml(copy.kicker)}</span>
-          <span class="cash-outlook-card__date">${escapeHtml(copy.headline)}</span>
+      <span class="cash-health-card__status">
+        <span class="cash-health-card__kicker-row">
+          ${cashOutlookWarnIconHtml()}
+          <span class="cash-health-card__kicker">${escapeHtml(copy.kicker)}</span>
         </span>
+        <span class="cash-health-card__amount">${amount}</span>
+        ${when ? `<span class="cash-health-card__when">${when}</span>` : ""}
       </span>
       ${notes}
       ${payBlock}
-      <span class="cash-health-card__footer"><span>${escapeHtml(windowText)}</span><span class="cash-health-card__view">${escapeHtml(viewText)} <span aria-hidden="true">›</span></span></span>
+      ${cashHealthCardFooterHtml(copy)}
     </button>`;
 }
 

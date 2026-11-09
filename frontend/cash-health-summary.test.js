@@ -59,7 +59,11 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   assert.strictEqual(summary.lowest.date, TODAY);
   assert.strictEqual(copy.tone, "healthy");
   assert.strictEqual(copy.headline, "Stays above your $1,000 minimum balance");
+  assert.strictEqual(copy.amountText, "");
+  assert.strictEqual(copy.whenLabel, "");
   assert.deepStrictEqual(copy.lines, ["Lowest $3,000 today"]);
+  assert.strictEqual(copy.horizon, "Next 90 days");
+  assert.strictEqual(copy.viewAction, "");
   assert.strictEqual(copy.footer, "Next 90 days");
   assert.strictEqual(copy.actionIso, null);
 }
@@ -89,6 +93,8 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   assert.strictEqual(expl.kind, "named");
   assert.strictEqual(copy.kicker, "Below your minimum balance");
   assert.strictEqual(copy.headline, "$750 on Nov 19");
+  assert.strictEqual(copy.amountText, "$750");
+  assert.strictEqual(copy.whenLabel, "on Nov 19");
   assert.strictEqual(copy.lines[0], "Lowest $650 on Nov 20, $350 below your $1,000 minimum balance");
   assert.deepStrictEqual(copy.payments.map((p) => p.label), ["Car Repair"]);
   assert.strictEqual(copy.paymentsHeading, "Significant upcoming payments");
@@ -120,6 +126,8 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   assert.deepStrictEqual(expl.payments.map((p) => p.label), ["Mortgage", "Property Tax"]);
   assert.strictEqual(copy.kicker, "Projected negative balance");
   assert.strictEqual(copy.headline, "−$1,555 on Dec 1");
+  assert.strictEqual(copy.amountText, "−$1,555");
+  assert.strictEqual(copy.whenLabel, "on Dec 1");
   assert.strictEqual(copy.lines[0], "Back above $0 on Dec 18");
   assert.deepStrictEqual(copy.payments.map((p) => [p.label, p.date]), [["Mortgage", "2026-12-01"], ["Property Tax", "2026-11-30"]]);
   assert.strictEqual(copy.actionIso, "2026-12-01");
@@ -255,8 +263,12 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   assert.ok(!expl.payments.some((p) => p.date === "2026-11-18"), "the mid-size earlier bill is not listed once the shortfall is explained");
   assert.strictEqual(copy.kicker, "Projected negative balance");
   assert.strictEqual(copy.headline, "−$135 on Nov 23");
+  assert.strictEqual(copy.amountText, "−$135");
+  assert.strictEqual(copy.whenLabel, "on Nov 23");
   assert.strictEqual(copy.lines[0], "Back above $0 on Nov 27");
   assert.strictEqual(copy.paymentsHeading, "Significant upcoming payments");
+  assert.strictEqual(copy.horizon, "Next 90 days");
+  assert.strictEqual(copy.viewAction, "View Nov 23");
 }
 
 // One payment on the crossing day is enough when it dominates.

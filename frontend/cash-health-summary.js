@@ -283,8 +283,8 @@ function cashHealthHighlightRefs(expl) {
 
 /**
  * Card wording. Plain strings only; the caller escapes them.
- * @returns {{tone:"healthy"|"below"|"negative", kicker:string, headline:string, lines:string[],
- *   payments:Array, paymentsHeading:string, paymentsNote:string, footer:string,
+ * @returns {{tone:"healthy"|"below"|"negative", kicker:string, headline:string, amountText:string, whenLabel:string, lines:string[],
+ *   payments:Array, paymentsHeading:string, paymentsNote:string, horizon:string, viewAction:string, footer:string,
  *   actionIso:string|null, chip:string, ariaLabel:string}|null}
  */
 function buildCashHealthCopy(summary, expl) {
@@ -305,8 +305,12 @@ function buildCashHealthCopy(summary, expl) {
       tone: "healthy",
       kicker: "",
       headline,
+      amountText: "",
+      whenLabel: "",
       lines,
       ...emptyPayments,
+      horizon: windowText,
+      viewAction: "",
       footer: windowText,
       actionIso: null,
       chip: "",
@@ -354,10 +358,14 @@ function buildCashHealthCopy(summary, expl) {
     tone: summary.state,
     kicker,
     headline,
+    amountText: cashHealthMoney(anchor.amount),
+    whenLabel: when === "today" ? "today" : `on ${when}`,
     lines,
     payments,
     paymentsHeading,
     paymentsNote,
+    horizon: windowText,
+    viewAction: viewText,
     footer: `${windowText} · ${viewText}`,
     actionIso: anchor.date,
     chip,
