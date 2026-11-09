@@ -126,19 +126,21 @@ function formatTxEditApplyScopeCopy({
 function formatTxEditDeleteScopeCopy({ openedIso } = {}) {
   const label = formatTxEditMonthDay(openedIso);
   return {
-    title: "Skip or end this series",
+    title: "Delete this transaction?",
     helper: label
-      ? `Choose whether to skip ${label} only, or stop later dates from here. Past dates stay.`
-      : "Choose whether to skip only this date, or stop later dates from here. Past dates stay.",
-    instanceTitle: "Skip this occurrence",
-    instanceHint: label
-      ? `Takes ${label} off the schedule. Later dates stay. The series continues.`
-      : "Takes this date off the schedule. Later dates stay. The series continues.",
-    seriesTitle: "End recurring series from this date",
-    seriesHint: "Stops this date and every later occurrence. Earlier dates stay.",
-    instanceConfirm: "Skip",
-    seriesConfirm: "End series",
-    idleConfirm: "Continue",
+      ? `${label} is one date in a recurring series.`
+      : "This date is one occurrence in a recurring series.",
+    instanceTitle: label ? `Delete only ${label}` : "Delete only this date",
+    instanceHint: "All other dates stay the same.",
+    seriesTitle: label
+      ? `Delete ${label} and future occurrences`
+      : "Delete this date and future occurrences",
+    seriesHint: "Earlier dates stay the same.",
+    instanceConfirm: "Delete",
+    seriesConfirm: "Delete",
+    idleConfirm: "Delete",
+    recommended: "instance",
+    defaultChoice: "instance",
   };
 }
 

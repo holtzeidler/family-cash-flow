@@ -81,16 +81,18 @@ assert.ok(formatTxEditSeriesOnlyError(["Notes", "Repeat"]).includes("Notes and R
 
 {
   const copy = formatTxEditDeleteScopeCopy({ openedIso: "2026-11-15" });
-  assert.strictEqual(copy.title, "Skip or end this series");
-  assert.strictEqual(copy.instanceTitle, "Skip this occurrence");
-  assert.strictEqual(copy.seriesTitle, "End recurring series from this date");
-  assert.strictEqual(copy.instanceConfirm, "Skip");
-  assert.strictEqual(copy.seriesConfirm, "End series");
-  assert.ok(copy.helper.includes("skip Nov 15"));
-  assert.ok(copy.instanceHint.includes("Nov 15"));
+  assert.strictEqual(copy.title, "Delete this transaction?");
+  assert.strictEqual(copy.instanceTitle, "Delete only Nov 15");
+  assert.strictEqual(copy.seriesTitle, "Delete Nov 15 and future occurrences");
+  assert.strictEqual(copy.instanceHint, "All other dates stay the same.");
+  assert.strictEqual(copy.seriesHint, "Earlier dates stay the same.");
+  assert.strictEqual(copy.instanceConfirm, "Delete");
+  assert.strictEqual(copy.seriesConfirm, "Delete");
+  assert.strictEqual(copy.defaultChoice, "instance");
+  assert.strictEqual(copy.recommended, "instance");
+  assert.ok(!/\bskip\b/i.test(`${copy.title} ${copy.helper} ${copy.instanceTitle} ${copy.seriesTitle}`));
+  assert.ok(!/\bend series\b/i.test(`${copy.title} ${copy.helper} ${copy.instanceTitle} ${copy.seriesTitle}`));
   assert.ok(!copy.helper.toLowerCase().includes("cannot be undone"));
-  assert.ok(!copy.instanceHint.toLowerCase().includes("cannot be undone"));
-  assert.ok(!copy.seriesHint.toLowerCase().includes("cannot be undone"));
   assert.ok(!/\bundo\b/i.test(`${copy.helper} ${copy.instanceHint} ${copy.seriesHint}`));
 }
 

@@ -5090,7 +5090,7 @@ function renderTxEditCategoryOptions() {
 function syncTxEditDeleteLabel() {
   const btn = document.getElementById("txEditDelete");
   if (!btn) return;
-  btn.textContent = transactionEditMode === "recurring" ? "Skip or end" : "Delete";
+  btn.textContent = "Delete";
 }
 
 function applyTransactionEditMode(mode, opts = {}) {
@@ -5411,15 +5411,17 @@ function paintTxEditApplyScopeCopy() {
 function currentTxEditDeleteScopeCopy() {
   if (typeof formatTxEditDeleteScopeCopy !== "function") {
     return {
-      title: "Skip or end this series",
-      helper: "Choose whether to skip only this date, or stop later dates from here. Past dates stay.",
-      instanceTitle: "Skip this occurrence",
-      instanceHint: "Takes this date off the schedule. Later dates stay. The series continues.",
-      seriesTitle: "End recurring series from this date",
-      seriesHint: "Stops this date and every later occurrence. Earlier dates stay.",
-      instanceConfirm: "Skip",
-      seriesConfirm: "End series",
-      idleConfirm: "Continue",
+      title: "Delete this transaction?",
+      helper: "This date is one occurrence in a recurring series.",
+      instanceTitle: "Delete only this date",
+      instanceHint: "All other dates stay the same.",
+      seriesTitle: "Delete this date and future occurrences",
+      seriesHint: "Earlier dates stay the same.",
+      instanceConfirm: "Delete",
+      seriesConfirm: "Delete",
+      idleConfirm: "Delete",
+      recommended: "instance",
+      defaultChoice: "instance",
     };
   }
   return formatTxEditDeleteScopeCopy({
@@ -5439,6 +5441,10 @@ function paintTxEditDeleteScopeCopy() {
   setText("txEditDeleteScopeInstanceHint", copy.instanceHint);
   setText("txEditDeleteScopeFutureTitle", copy.seriesTitle);
   setText("txEditDeleteScopeFutureHint", copy.seriesHint);
+  const futureBtn = document.getElementById("txEditDeleteScopeFutureBtn");
+  const instanceBtn = document.getElementById("txEditDeleteScopeInstanceBtn");
+  if (futureBtn) futureBtn.classList.toggle("apply-scope-option--recommended", copy.recommended === "future");
+  if (instanceBtn) instanceBtn.classList.toggle("apply-scope-option--recommended", copy.recommended === "instance");
   const confirmBtn = document.getElementById("txEditDeleteScopeConfirmBtn");
   if (confirmBtn && !txEditDeleteScopeChoice) confirmBtn.textContent = copy.idleConfirm;
   return copy;
@@ -5559,15 +5565,19 @@ function openTxEditDeleteScopeModal() {
   const m = document.getElementById("txEditDeleteScopeModal");
   if (!m) return;
   show(document.getElementById("txEditDeleteScopeErr"), "");
-  paintTxEditDeleteScopeCopy();
+  const copy = paintTxEditDeleteScopeCopy();
   resetTxEditDeleteScopeSelection();
+  setTxEditDeleteScopeChoice(copy.defaultChoice || "instance");
   try {
     m.style.display = "";
   } catch (_) {}
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
   syncBwTxEditVisualViewport();
-  const firstOpt = document.getElementById("txEditDeleteScopeFutureBtn");
+  const firstOpt =
+    copy.defaultChoice === "future"
+      ? document.getElementById("txEditDeleteScopeFutureBtn")
+      : document.getElementById("txEditDeleteScopeInstanceBtn");
   requestAnimationFrame(() => firstOpt?.focus?.());
 }
 

@@ -1553,34 +1553,15 @@
 
     <div id="txEditDeleteScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
       <div class="modal modal--choice modal--apply-scope" role="dialog" aria-labelledby="txEditDeleteScopeTitle" aria-describedby="txEditDeleteScopeDesc" aria-modal="true">
-        <h3 id="txEditDeleteScopeTitle">Skip or end this series</h3>
+        <h3 id="txEditDeleteScopeTitle">Delete this transaction?</h3>
         <div class="modal--apply-scope__body">
           <div id="txEditDeleteScopeDesc" class="modal--apply-scope__intro">
-            <p class="modal--apply-scope__lede">This transaction is part of a recurring series.</p>
-            <p id="txEditDeleteScopeHelper" class="modal--apply-scope__helper">Choose whether to skip only this date, or stop later dates from here. Past dates stay.</p>
+            <p class="modal--apply-scope__lede">This date is one occurrence in a recurring series.</p>
+            <p id="txEditDeleteScopeHelper" class="modal--apply-scope__helper">This date is one occurrence in a recurring series.</p>
           </div>
           <div id="txEditDeleteScopeErr" class="error"></div>
-          <div class="apply-scope-actions" role="radiogroup" aria-label="Skip this date or end later dates">
-            <button type="button" id="txEditDeleteScopeFutureBtn" class="apply-scope-option apply-scope-option--recommended" role="radio" aria-pressed="false" data-delete-scope="future">
-              <span class="apply-scope-option__row">
-                <span class="apply-scope-option__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M4 12a8 8 0 0 1 13.5-5.7"></path>
-                    <path d="M17.5 6.3V10h-3.6"></path>
-                    <path d="M20 12a8 8 0 0 1-13.5 5.7"></path>
-                    <path d="M6.5 17.7V14h3.6"></path>
-                  </svg>
-                </span>
-                <span class="apply-scope-option__copy">
-                  <span class="apply-scope-option__title-row">
-                    <span class="apply-scope-option__title" id="txEditDeleteScopeFutureTitle">End recurring series from this date</span>
-                    <span class="apply-scope-option__badge">Recommended</span>
-                  </span>
-                  <span class="apply-scope-option__hint" id="txEditDeleteScopeFutureHint">Stops this date and every later occurrence. Earlier dates stay.</span>
-                </span>
-              </span>
-            </button>
-            <button type="button" id="txEditDeleteScopeInstanceBtn" class="apply-scope-option" role="radio" aria-pressed="false" data-delete-scope="instance">
+          <div class="apply-scope-actions" role="radiogroup" aria-label="How much to delete">
+            <button type="button" id="txEditDeleteScopeInstanceBtn" class="apply-scope-option apply-scope-option--recommended" role="radio" aria-pressed="false" data-delete-scope="instance">
               <span class="apply-scope-option__row">
                 <span class="apply-scope-option__icon apply-scope-option__icon--single" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -1591,15 +1572,34 @@
                   </svg>
                 </span>
                 <span class="apply-scope-option__copy">
-                  <span class="apply-scope-option__title" id="txEditDeleteScopeInstanceTitle">Skip this occurrence</span>
-                  <span class="apply-scope-option__hint" id="txEditDeleteScopeInstanceHint">Takes this date off the schedule. Later dates stay. The series continues.</span>
+                  <span class="apply-scope-option__title-row">
+                    <span class="apply-scope-option__title" id="txEditDeleteScopeInstanceTitle">Delete only this date</span>
+                    <span class="apply-scope-option__badge">Recommended</span>
+                  </span>
+                  <span class="apply-scope-option__hint" id="txEditDeleteScopeInstanceHint">All other dates stay the same.</span>
+                </span>
+              </span>
+            </button>
+            <button type="button" id="txEditDeleteScopeFutureBtn" class="apply-scope-option" role="radio" aria-pressed="false" data-delete-scope="future">
+              <span class="apply-scope-option__row">
+                <span class="apply-scope-option__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 12a8 8 0 0 1 13.5-5.7"></path>
+                    <path d="M17.5 6.3V10h-3.6"></path>
+                    <path d="M20 12a8 8 0 0 1-13.5 5.7"></path>
+                    <path d="M6.5 17.7V14h3.6"></path>
+                  </svg>
+                </span>
+                <span class="apply-scope-option__copy">
+                  <span class="apply-scope-option__title" id="txEditDeleteScopeFutureTitle">Delete this date and future occurrences</span>
+                  <span class="apply-scope-option__hint" id="txEditDeleteScopeFutureHint">Earlier dates stay the same.</span>
                 </span>
               </span>
             </button>
           </div>
           <div class="modal-actions modal-actions--apply-scope-foot">
             <button type="button" id="txEditDeleteScopeCancelBtn" class="secondary apply-scope-foot__cancel">Cancel</button>
-            <button type="button" id="txEditDeleteScopeConfirmBtn" class="apply-scope-foot__delete" disabled>Continue</button>
+            <button type="button" id="txEditDeleteScopeConfirmBtn" class="apply-scope-foot__delete" disabled>Delete</button>
           </div>
         </div>
       </div>
@@ -1816,8 +1816,8 @@
     <script src="../favorite-transactions.js?v=2"></script>
     <script src="../cash-health-summary.js?v=6"></script>
     <script src="../needs-review.js?v=1"></script>
-    <script src="../tx-edit-scope.js?v=2"></script>
-    <script src="../app.js?v=583"></script>
+    <script src="../tx-edit-scope.js?v=3"></script>
+    <script src="../app.js?v=584"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=26" defer></script>
   </body>
