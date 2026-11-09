@@ -6052,15 +6052,16 @@ function positionCalAddTxMenu() {
   if (!menu || !btn) return;
   const anchor = btn.closest(".cal-add-split") || btn;
   const rect = anchor.getBoundingClientRect();
-  menu.style.minWidth = `${Math.max(Math.round(rect.width), 168)}px`;
-  let left = rect.left;
-  let top = rect.bottom + 6;
+  menu.style.minWidth = "";
+  menu.style.width = "";
+  let top = rect.bottom + 4;
   menu.hidden = false;
   const width = menu.offsetWidth;
+  let left = rect.right - width;
   left = Math.min(left, window.innerWidth - width - 12);
   left = Math.max(12, left);
   if (top + menu.offsetHeight > window.innerHeight - 12) {
-    top = Math.max(12, rect.top - menu.offsetHeight - 6);
+    top = Math.max(12, rect.top - menu.offsetHeight - 4);
   }
   menu.style.left = `${left}px`;
   menu.style.top = `${top}px`;
@@ -6074,13 +6075,18 @@ function ensureCalAddTxMenu() {
   menu.className = "cal-add-tx-menu";
   menu.hidden = true;
   menu.setAttribute("role", "menu");
-  menu.setAttribute("aria-label", "Add options");
+  menu.setAttribute("aria-label", "Add from favorites");
   const item = document.createElement("button");
   item.type = "button";
   item.id = "calAddTxFromFavorites";
   item.className = "cal-add-tx-menu__item";
   item.setAttribute("role", "menuitem");
-  item.textContent = "From favorites";
+  item.innerHTML =
+    '<span class="cal-add-tx-menu__icon" aria-hidden="true">☆</span>' +
+    '<span class="cal-add-tx-menu__copy">' +
+    '<span class="cal-add-tx-menu__label">Add from favorites</span>' +
+    '<span class="cal-add-tx-menu__hint">Use a saved transaction</span>' +
+    "</span>";
   item.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
