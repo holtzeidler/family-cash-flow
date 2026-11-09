@@ -7877,12 +7877,16 @@ async function openCalendarExpectedFromLine(expectedLine) {
 const CAL_STARTING_POINT_FLAG_SVG =
   '<svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg>';
 
+const CAL_RECONCILED_CHECK_SVG =
+  '<svg class="cal-balance-reconciled-mark__icon" viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3.2 8.35 6.55 11.5 12.8 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function buildCalBalanceReconciledMark() {
+  return `<span class="cal-balance-reconciled-mark" title="Reconciled" role="img" aria-label="Reconciled">${CAL_RECONCILED_CHECK_SVG}</span>`;
+}
+
 function buildCalBalanceStatusPill(type, opts = {}) {
   if (type === "adjusted") {
     return '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>';
-  }
-  if (type === "reconciled") {
-    return '<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>';
   }
   if (type === "starting") {
     const accountId = opts.accountId != null ? String(opts.accountId) : "";
@@ -16088,14 +16092,23 @@ function pillStyleForTransaction(txOrItem) {
   return null;
 }
 
+/** Calendar fill only: mix toward white. Does not change stored category colors. */
+function mixCssColorWithWhite(bgCss, whiteShare) {
+  const rgb = parseCssColorToRgb(bgCss);
+  if (!rgb) return String(bgCss || "").trim();
+  const t = Math.min(1, Math.max(0, Number(whiteShare) || 0));
+  return `rgb(${Math.round(rgb.r + (255 - rgb.r) * t)}, ${Math.round(rgb.g + (255 - rgb.g) * t)}, ${Math.round(rgb.b + (255 - rgb.b) * t)})`;
+}
+
 /** Category background on the label column only; amounts keep income/expense colors. */
 function applyCalendarDayTxCategoryFill(labelWrap, row) {
   if (!labelWrap || !row || row._type === "start_balance") return;
   const pill = pillStyleForTransaction(row);
   if (!pill || !pill.bg) return;
-  const fg = pill.fg || accessibleTextOnBackground(pill.bg);
+  const displayBg = mixCssColorWithWhite(pill.bg, 0.4);
+  const fg = resolvedPillForeground(displayBg, pill.fg) || accessibleTextOnBackground(displayBg);
   labelWrap.classList.add("cal-tx-label-wrap--category-fill");
-  labelWrap.style.setProperty("--cal-tx-fill-bg", pill.bg);
+  labelWrap.style.setProperty("--cal-tx-fill-bg", displayBg);
   labelWrap.style.setProperty("--cal-tx-fill-fg", fg);
 }
 
@@ -20184,15 +20197,14 @@ function renderCalendar() {
         belowFloor && !negativeBal && !dayBalVerified
           ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
+      const reconciledMark = !dayBalVerified && isReconciled ? buildCalBalanceReconciledMark() : "";
       const statusPill = dayBalVerified
         ? buildCalBalanceStatusPill("adjusted")
-        : isReconciled
-          ? buildCalBalanceStatusPill("reconciled")
-          : hasStartingPoint
-            ? buildCalBalanceStatusPill("starting", { accountId: startingAccountRow?.account_id })
-            : "";
+        : hasStartingPoint && !isReconciled
+          ? buildCalBalanceStatusPill("starting", { accountId: startingAccountRow?.account_id })
+          : "";
       const stripStatusClass = statusPill ? " cal-balance-strip--has-status" : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="${escapeHtml(balanceTitle)}" aria-label="${escapeHtml(balanceAria)}">${balanceMoney}</span></span>${statusPill}</div></div>`;
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="${escapeHtml(balanceTitle)}" aria-label="${escapeHtml(balanceAria)}">${balanceMoney}</span>${reconciledMark}</span>${statusPill}</div></div>`;
       bindCalendarDayBalanceHit(metricsEl, iso, {
         isReconciled,
         dayBalVerified,

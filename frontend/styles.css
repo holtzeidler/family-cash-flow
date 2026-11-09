@@ -22202,7 +22202,7 @@ body.plans-page--polished .plans-quote{
   cursor: pointer;
 }
 
-/* Reconciled / Adjusted days use compact status pills only — cell surface stays neutral. */
+/* Reconciled days use a compact check beside the balance; Adjusted / Starting stay as pills. Cell surface stays neutral. */
 
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover{
   border-color: rgba(17, 24, 39, 0.1);
@@ -23033,7 +23033,7 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   margin-top: auto;
   padding-top: 5px;
   padding-bottom: 3px;
-  border-top: 1px solid rgba(11, 61, 46, 0.1);
+  border-top: 1px solid rgba(11, 61, 46, 0.055);
   min-height: 22px;
   align-self: stretch;
 }
@@ -23051,7 +23051,7 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover,
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within{
   background: rgba(11, 61, 46, 0.055);
-  border-top-color: rgba(11, 61, 46, 0.16);
+  border-top-color: rgba(11, 61, 46, 0.1);
 }
 .calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update::before{
   content: "Reconcile balance";
@@ -24544,6 +24544,24 @@ body[data-bw-view="transactions"] .tm__field label{
   justify-content: flex-end;
   gap: 3px;
   white-space: nowrap;
+}
+.cal-balance-strip__amt:has(.cal-balance-reconciled-mark){
+  align-items: center;
+}
+.cal-balance-reconciled-mark{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  color: #15803d;
+  line-height: 1;
+}
+.cal-balance-reconciled-mark__icon{
+  display: block;
+  width: 12px;
+  height: 12px;
 }
 .cal-balance-strip--has-status .cal-balance-strip__amt{
   flex: 1 1 auto;
@@ -31274,7 +31292,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .calendar--mobile .cal-ledger-metrics{
     margin-top: 4px;
     padding-top: 8px;
-    border-top: 1px solid rgba(17, 24, 39, 0.06);
+    border-top: 1px solid rgba(17, 24, 39, 0.04);
     align-items: stretch;
     text-align: left;
   }
@@ -32523,11 +32541,6 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   background: rgba(226, 232, 240, 0.98);
   border-color: rgba(100, 116, 139, 0.38);
   outline: none;
-}
-.cal-balance-status-pill--reconciled{
-  color: rgba(22, 101, 52, 0.9);
-  background: rgba(220, 252, 231, 0.72);
-  border-color: rgba(22, 101, 52, 0.14);
 }
 .cal-balance-status-pill--adjusted{
   color: rgba(130, 112, 94, 0.88);
