@@ -20074,7 +20074,7 @@ body.account-setup-page .account-setup-step3-saved__main{
 body.account-setup-page .account-setup-step3-saved__name{
   display: block;
   min-width: 0;
-  font-size: 1.09rem;
+  font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.3;
   color: #12261f;
@@ -20445,9 +20445,6 @@ body.account-setup-page .account-setup-wizard__shell .account-setup-actions--she
   }
   body.account-setup-page .account-setup-step3-saved__heading{
     padding-top: 0.8rem;
-  }
-  body.account-setup-page .account-setup-step3-saved__name{
-    font-size: 1.0625rem;
   }
   body.account-setup-page .account-setup-step3-saved__amount{
     align-self: start;
