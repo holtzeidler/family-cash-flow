@@ -789,6 +789,8 @@
     ensureTooltip();
     backdropEl.classList.add("bw-tour-backdrop--open");
     tooltipEl.classList.add("bw-tour-tooltip--open");
+    tooltipEl.removeAttribute("aria-hidden");
+    tooltipEl.inert = false;
 
     tooltipEl.querySelector("[data-bw-tour-counter]").textContent = `${stepIdx + 1} of ${STEPS.length}`;
     tooltipEl.dataset.bwTourStep = step.id;
@@ -917,7 +919,16 @@
   function endTour(opts) {
     clearTargetHighlight();
     if (backdropEl) backdropEl.classList.remove("bw-tour-backdrop--open");
-    if (tooltipEl) tooltipEl.classList.remove("bw-tour-tooltip--open");
+    if (tooltipEl) {
+      const hadFocus = tooltipEl.contains(document.activeElement);
+      tooltipEl.classList.remove("bw-tour-tooltip--open");
+      // The closed popover only fades out, so keep its buttons out of Tab order and screen readers.
+      tooltipEl.setAttribute("aria-hidden", "true");
+      tooltipEl.inert = true;
+      if (hadFocus) {
+        try { document.activeElement.blur(); } catch (_) {}
+      }
+    }
     if (resizeHandler) {
       window.removeEventListener("resize", resizeHandler);
       resizeHandler = null;

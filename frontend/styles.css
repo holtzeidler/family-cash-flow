@@ -23026,6 +23026,23 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   background: rgba(11, 61, 46, 0.055);
   border-top-color: rgba(11, 61, 46, 0.16);
 }
+.calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update::before{
+  content: "Update balance";
+  display: block;
+  margin-bottom: 1px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  text-align: right;
+  white-space: nowrap;
+  color: rgba(11, 61, 46, 0.66);
+}
+.calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update:hover::before{
+  color: rgba(11, 61, 46, 0.92);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-stat.cal-balance,
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within .cal-stat.cal-balance{
   color: rgba(11, 61, 46, 0.94);
@@ -34312,6 +34329,65 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   border-color: rgba(11, 61, 46, 0.19);
   background: rgba(4, 120, 87, 0.06);
   color: rgba(11, 61, 46, 0.92);
+}
+.cal-add-tx-btn{
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: inherit;
+  white-space: nowrap;
+  border-radius: 9px;
+  border: 1px solid rgba(4, 120, 87, 0.28);
+  background: rgba(4, 120, 87, 0.07);
+  color: rgba(11, 61, 46, 0.94);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  cursor: pointer;
+}
+.cal-add-tx-btn > span{
+  font-size: 1.15em;
+  font-weight: 700;
+  line-height: 1;
+}
+.cal-add-tx-btn:hover{
+  border-color: rgba(4, 120, 87, 0.4);
+  background: rgba(4, 120, 87, 0.12);
+}
+.cal-add-tx-btn:focus-visible{
+  outline: 2px solid rgba(4, 120, 87, 0.35);
+  outline-offset: 2px;
+}
+@media (max-width: 768px){
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn){
+    grid-template-rows: auto auto auto;
+  }
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-nav-leading{
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-detail-toggle{
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+}
+@media (max-width: 360px){
+  body[data-bw-view="calendar"] .cal-nav-leading{
+    gap: 5px;
+  }
+  body[data-bw-view="calendar"] .cal-nav-leading .cal-today-ic{
+    display: none;
+  }
+  body[data-bw-view="calendar"] .cal-nav-leading .cal-today-btn,
+  body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn,
+  body[data-bw-view="calendar"] .cal-nav-leading .cal-add-tx-btn{
+    padding-left: 7px;
+    padding-right: 7px;
+  }
 }
 .fav-menu{
   position: fixed;

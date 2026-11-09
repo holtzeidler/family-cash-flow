@@ -2072,7 +2072,7 @@ function updateTxAddFormValidity(opts = {}) {
   }
   setTxAddFieldValidation(
     txAddCategoryValidation,
-    txAddCategoryValidationShown && !st.categoryOk ? "Choose a category." : ""
+    txAddCategoryValidationShown && !st.categoryOk ? "Choose a category to continue." : ""
   );
 }
 
@@ -6129,6 +6129,21 @@ function ensureFavoriteLaunchers() {
 
 ensureFavoriteLaunchers();
 
+function ensureCalendarAddTransactionButton() {
+  const today = document.getElementById("calendarGoToday");
+  const cluster = today ? today.closest(".cal-nav-leading") : null;
+  if (!cluster || document.getElementById("calAddTxBtn")) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = "calAddTxBtn";
+  btn.className = "cal-add-tx-btn";
+  btn.innerHTML = '<span aria-hidden="true">+</span> Add transaction';
+  btn.addEventListener("click", (e) => openCalendarDayAddTransaction(toISODate(new Date()), e));
+  today.after(btn);
+}
+
+ensureCalendarAddTransactionButton();
+
 function openTxAddModal(opts = {}) {
   void openTxAddModalAsync(opts);
 }
@@ -6236,6 +6251,11 @@ function bindTxAddModalDismiss() {
     },
     true
   );
+  modal.addEventListener("click", (e) => {
+    if (!e.target.closest("#txAddCancel") || !modal.classList.contains("modal-overlay--open")) return;
+    e.preventDefault();
+    closeTxAddModal();
+  });
 }
 bindTxAddModalDismiss();
 
@@ -7590,12 +7610,16 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
   const todayIso = toISODate(new Date());
   const isFuture = iso > todayIso;
   if (isOutOfMonth || isFuture || state.viewOnly || state.activeFamilyAccessMode === "view") {
-    metricsEl.classList.remove("cal-day-balance-hit");
+    metricsEl.classList.remove("cal-day-balance-hit", "cal-day-balance-hit--today-update");
     metricsEl.removeAttribute("aria-label");
     metricsEl.removeAttribute("title");
     return;
   }
   metricsEl.classList.add("cal-day-balance-hit");
+  metricsEl.classList.toggle(
+    "cal-day-balance-hit--today-update",
+    iso === todayIso && !dayBalVerified && !isReconciled && !existingVerifiedBalanceOnDate(iso) && !isReconciledOnDate(iso)
+  );
   metricsEl.removeAttribute("title");
   const label = fmtDateMDY(iso);
   metricsEl.setAttribute("aria-label", label ? `Update balance for ${label}` : "Update balance");
@@ -17010,6 +17034,8 @@ function onboardingCategoryLookupKey(name) {
 }
 
 const ONBOARDING_CATEGORY_ALIAS_KEYS = {
+  utility: "utilities",
+  subscription: "subscriptions",
   reimbursement: "otherincome",
   investment: "investmenttransfer",
   miscellaneous: "other",
@@ -17027,7 +17053,7 @@ function categoryIdMatchingOnboardingLabel(label) {
   return null;
 }
 
-async function categoryIdForOnboardingDraftLabel(label) {
+async function categoryIdForOnboardingDraftLabel(label, kind) {
   if (!state.categories || !state.categories.length) {
     try {
       await loadCategories();
@@ -17038,8 +17064,13 @@ async function categoryIdForOnboardingDraftLabel(label) {
   const raw = String(label || "").trim();
   const key = onboardingCategoryLookupKey(raw);
   if (!key || key === "uncategorized" || key === "transaction" || !state.activeFamilyId) return null;
+  const groupId = categoryGroupIdForNewCategory(kind);
   try {
-    const created = await api(`/api/families/${state.activeFamilyId}/categories`, "POST", { name: raw });
+    const created = await api(
+      `/api/families/${state.activeFamilyId}/categories`,
+      "POST",
+      Number.isFinite(Number(groupId)) && groupId ? { name: raw, group_id: Number(groupId) } : { name: raw }
+    );
     const id = created && created.id != null ? Number(created.id) : NaN;
     if (Number.isFinite(id) && id > 0) {
       if (!Array.isArray(state.categories)) state.categories = [];
@@ -18061,6 +18092,48 @@ async function loadCalendarMonthDaily(gen) {
   computeMonthDailyBalancesLegacy();
 }
 
+/** Phones open the current month at today once per page load; any user input turns this off. */
+let calendarMobileTodayScroll = "pending";
+for (const evt of ["touchstart", "wheel", "keydown", "mousedown"]) {
+  window.addEventListener(
+    evt,
+    () => {
+      calendarMobileTodayScroll = "off";
+    },
+    { capture: true, once: true, passive: true }
+  );
+}
+
+function maybeScrollMobileCalendarToToday({ final = false } = {}) {
+  if (calendarMobileTodayScroll === "off") return;
+  const stop = () => {
+    calendarMobileTodayScroll = "off";
+  };
+  const isMobile = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 768px)").matches;
+  let navType = "";
+  try {
+    navType = performance.getEntriesByType("navigation")[0]?.type || "";
+  } catch (_) {}
+  const todayIso = toISODate(new Date());
+  if (!isMobile || navType === "back_forward" || getCalendarViewYm() !== todayIso.slice(0, 7)) return stop();
+  if (document.querySelector(".bw-tour-tooltip--open, .modal-overlay--open:not(#bwForecastReadyModal)")) return stop();
+  if (calendarMobileTodayScroll === "pending" && window.scrollY > 0) return stop();
+  const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
+  if (!cell) {
+    if (final) stop();
+    return;
+  }
+  let headerBottom = 0;
+  for (const el of document.elementsFromPoint(window.innerWidth / 2, 1)) {
+    const pos = getComputedStyle(el).position;
+    if (pos === "fixed" || pos === "sticky") headerBottom = Math.max(headerBottom, el.getBoundingClientRect().bottom);
+  }
+  const top = Math.max(0, cell.getBoundingClientRect().top + window.scrollY - headerBottom - 12);
+  if (calendarMobileTodayScroll === "pending" && top < window.innerHeight * 0.4) return stop();
+  if (Math.abs(window.scrollY - top) > 1) window.scrollTo({ top, behavior: "auto" });
+  calendarMobileTodayScroll = final ? "off" : "scrolled";
+}
+
 let calendarLoadingGuardTimer = null;
 
 function setCalendarLoadingUi(on) {
@@ -18161,9 +18234,11 @@ async function loadMonthAndCalendar() {
     renderMonthSummaryTotalsFromState();
     renderCalendar();
     updateCalendarEmptyStateBanner();
+    maybeScrollMobileCalendarToToday();
     await runStep("low-balance", () => refreshLowBalanceAlert());
     await runStep("forecast-confidence", () => refreshForecastConfidence());
     if (!stillCurrent()) return;
+    maybeScrollMobileCalendarToToday({ final: true });
     if (loadErrors.length && (!state.monthDailyBalances || state.monthDailyBalances.size === 0)) {
       const last = loadErrors[loadErrors.length - 1];
       show(calendarErr, (last && last.message) || "Failed to load calendar");
@@ -24123,7 +24198,7 @@ async function tryRecoverAccountSetupDraft() {
           kind: t.kind,
           amount: amt,
           variable: !!t.variable,
-          category_id: await categoryIdForOnboardingDraftLabel(t.category),
+          category_id: await categoryIdForOnboardingDraftLabel(t.category, t.kind),
           bg_color: t.bg_color ? t.bg_color : null,
           fg_color: null,
         });
@@ -24135,7 +24210,7 @@ async function tryRecoverAccountSetupDraft() {
           notes: t.notes ? t.notes : null,
           kind: t.kind,
           amount: amt,
-          category_id: await categoryIdForOnboardingDraftLabel(t.category),
+          category_id: await categoryIdForOnboardingDraftLabel(t.category, t.kind),
           fg_color: null,
           bg_color: t.bg_color ? t.bg_color : null,
           reimbursable: false,

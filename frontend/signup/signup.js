@@ -691,6 +691,16 @@ function clearAccountSetupCategoryCombobox(hiddenId) {
     list.innerHTML = "";
   }
   if (input) input.setAttribute("aria-expanded", "false");
+  clearAccountSetupCategoryError(hiddenId === "asExpTxCategory" ? "asExp" : "asTx");
+}
+
+/** @type {Map<string, () => void>} */
+const accountSetupCategoryResolvers = new Map();
+
+/** Save can run before the search box's delayed blur commits typed text, so commit it first. */
+function flushAccountSetupCategoryInput(hiddenId) {
+  const resolve = accountSetupCategoryResolvers.get(hiddenId);
+  if (resolve) resolve();
 }
 
 function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
@@ -699,6 +709,9 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
   const list = document.getElementById(listId);
   if (!hidden || !input || !list || input.dataset.categoryComboInit === "1") return;
   input.dataset.categoryComboInit = "1";
+  hidden.addEventListener("change", () => {
+    if (String(hidden.value || "").trim()) clearAccountSetupCategoryError(hiddenId === "asExpTxCategory" ? "asExp" : "asTx");
+  });
 
   let activeIdx = -1;
 
@@ -737,6 +750,9 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
       hidden.dispatchEvent(new Event("change", { bubbles: true }));
       return;
     }
+    const cur = ACCOUNT_SETUP_CATEGORY_ITEMS.find((i) => i.value === hidden.value);
+    const shown = String(cur ? cur.label : hidden.value || "").trim();
+    if (shown && (shown === raw || String(hidden.value).trim() === raw)) return;
     const exactPreset = accountSetupCategoryExactMatchItem(raw, allowedKind);
     if (exactPreset) {
       commit(exactPreset);
@@ -747,13 +763,13 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
       commit(ranked[0]);
       return;
     }
-    const cur = ACCOUNT_SETUP_CATEGORY_ITEMS.find((i) => i.value === hidden.value);
-    if (cur && cur.label.trim() !== input.value.trim()) {
+    if (hidden.value) {
       hidden.value = "";
       delete hidden.dataset.asCategoryKindForCustom;
       hidden.dispatchEvent(new Event("change", { bubbles: true }));
     }
   }
+  accountSetupCategoryResolvers.set(hiddenId, resolveInputOnBlur);
 
   function renderDropdown() {
     const q = input.value;
@@ -2140,8 +2156,45 @@ function showAccountSetupFrequencyError(prefix, message) {
   }
 }
 
+function accountSetupCategoryFieldIds(prefix) {
+  return prefix === "asExp"
+    ? { hiddenId: "asExpTxCategory", searchId: "asExpTxCategorySearch", errorId: "asExpTxCategoryError" }
+    : { hiddenId: "asTxCategory", searchId: "asTxCategorySearch", errorId: "asTxCategoryError" };
+}
+
+function clearAccountSetupCategoryError(prefix) {
+  const ids = accountSetupCategoryFieldIds(prefix);
+  const err = document.getElementById(ids.errorId);
+  if (err) {
+    err.textContent = "";
+    err.hidden = true;
+  }
+  document.getElementById(ids.searchId)?.removeAttribute("aria-invalid");
+}
+
+function showAccountSetupCategoryError(prefix, message) {
+  const ids = accountSetupCategoryFieldIds(prefix);
+  const err = document.getElementById(ids.errorId);
+  if (err) {
+    err.textContent = message || ACCOUNT_SETUP_CATEGORY_REQUIRED_MESSAGE;
+    err.hidden = false;
+  }
+  const search = document.getElementById(ids.searchId);
+  if (search) {
+    search.setAttribute("aria-invalid", "true");
+    try {
+      search.focus();
+    } catch (_) {}
+  }
+}
+
 function rejectAccountSetupParsedTransaction(prefix, parsed) {
   const msg = (parsed && parsed.message) || "Please complete the transaction.";
+  if (parsed && parsed.categoryMissing) {
+    clearAccountSetupFrequencyError(prefix);
+    showAccountSetupCategoryError(prefix, msg);
+    return;
+  }
   if (parsed && parsed.frequencyMissing) {
     showAccountSetupFrequencyError(prefix, msg);
     return;
@@ -2682,7 +2735,9 @@ function readAccountSetupTransactionFromInputs() {
   const txKind = String(document.querySelector('input[name="asTxKind"]:checked')?.value || "").trim();
   const txAmountRaw = document.getElementById("asTxAmount")?.value || "";
   const txAmount = toMoneyNumber(txAmountRaw);
-  const txCategory = (document.getElementById("asTxCategory")?.value || "").trim();
+  flushAccountSetupCategoryInput("asTxCategory");
+  const txCategoryEl = document.getElementById("asTxCategory");
+  const txCategory = (txCategoryEl?.value || "").trim();
   const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
   const txVariable = !!document.getElementById("asTxVariable")?.checked;
@@ -2699,8 +2754,12 @@ function readAccountSetupTransactionFromInputs() {
   if (!anyTx) return { ok: false, empty: true, tx: null, message: "" };
   if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
+  const categoryMessage = accountSetupCategoryValidationMessage(
+    txCategory,
+    accountSetupStoredCategoryMatchesKind(txCategoryEl, txKind)
+  );
+  if (categoryMessage) return { ok: false, empty: false, tx: null, message: categoryMessage, categoryMissing: true };
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Next date is required — choose the first day this should occur." };
-  const categoryResolved = txCategory || "Uncategorized";
   const schedule = readAccountSetupScheduleFromInputs("asTx", txDate);
   if (schedule.frequencyMissing) {
     return { ok: false, empty: false, tx: null, message: schedule.message, frequencyMissing: true };
@@ -2712,7 +2771,7 @@ function readAccountSetupTransactionFromInputs() {
     tx: {
       kind: txKind,
       amount: txAmount,
-      category: categoryResolved,
+      category: txCategory,
       date: txDate,
       notes: txNotes,
       variable: repeats ? txVariable : false,
@@ -3021,7 +3080,9 @@ function readAccountSetupExpenseTransactionFromInputs() {
   const txKind = String(document.querySelector('input[name="asExpTxKind"]:checked')?.value || "").trim();
   const txAmountRaw = document.getElementById("asExpTxAmount")?.value || "";
   const txAmount = toMoneyNumber(txAmountRaw);
-  const txCategory = (document.getElementById("asExpTxCategory")?.value || "").trim();
+  flushAccountSetupCategoryInput("asExpTxCategory");
+  const txCategoryEl = document.getElementById("asExpTxCategory");
+  const txCategory = (txCategoryEl?.value || "").trim();
   const txDate = String(document.getElementById("asExpTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asExpTxNotes")?.value || "").trim();
   const txVariable = !!document.getElementById("asExpVariable")?.checked;
@@ -3038,8 +3099,12 @@ function readAccountSetupExpenseTransactionFromInputs() {
   if (!anyTx) return { ok: false, empty: true, tx: null, message: "" };
   if (!txKind) return { ok: false, empty: false, tx: null, message: "Transaction type is required." };
   if (txAmount == null || txAmount <= 0) return { ok: false, empty: false, tx: null, message: "Transaction amount is required." };
+  const categoryMessage = accountSetupCategoryValidationMessage(
+    txCategory,
+    accountSetupStoredCategoryMatchesKind(txCategoryEl, txKind)
+  );
+  if (categoryMessage) return { ok: false, empty: false, tx: null, message: categoryMessage, categoryMissing: true };
   if (!txDate) return { ok: false, empty: false, tx: null, message: "Next date is required — choose the first day this should occur." };
-  const categoryResolved = txCategory || "Uncategorized";
   const schedule = readAccountSetupScheduleFromInputs("asExp", txDate);
   if (schedule.frequencyMissing) {
     return { ok: false, empty: false, tx: null, message: schedule.message, frequencyMissing: true };
@@ -3051,7 +3116,7 @@ function readAccountSetupExpenseTransactionFromInputs() {
     tx: {
       kind: txKind,
       amount: txAmount,
-      category: categoryResolved,
+      category: txCategory,
       date: txDate,
       notes: txNotes,
       variable: repeats ? txVariable : false,
@@ -3637,6 +3702,8 @@ function onboardingCategoryLookupKey(name) {
 
 /** Onboarding labels that don't match the seeded category name exactly. */
 const ONBOARDING_CATEGORY_ALIAS_KEYS = {
+  utility: "utilities",
+  subscription: "subscriptions",
   reimbursement: "otherincome",
   investment: "investmenttransfer",
   miscellaneous: "other",
@@ -3644,6 +3711,8 @@ const ONBOARDING_CATEGORY_ALIAS_KEYS = {
 
 async function signupCategoryIdByKey(familyId) {
   const byKey = new Map();
+  /** @type {Map<number, string>} */
+  const groupNames = new Map();
   try {
     const resp = await request(`/api/families/${encodeURIComponent(String(familyId))}/categories`, "GET");
     const rows = resp && resp.ok && Array.isArray(resp.data) ? resp.data : [];
@@ -3651,23 +3720,27 @@ async function signupCategoryIdByKey(familyId) {
       const key = onboardingCategoryLookupKey(c && c.name);
       const id = c && c.id != null ? Number(c.id) : NaN;
       if (key && Number.isFinite(id) && id > 0 && !byKey.has(key)) byKey.set(key, id);
+      const gid = c && c.group_id != null ? Number(c.group_id) : NaN;
+      if (Number.isFinite(gid) && gid > 0 && !groupNames.has(gid)) groupNames.set(gid, String(c.group_name || ""));
     }
   } catch (_) {}
-  return byKey;
+  return { byKey, groupNames };
 }
 
-async function ensureOnboardingCategoryId(familyId, byKey, label) {
+async function ensureOnboardingCategoryId(familyId, lookup, label, kind) {
+  const { byKey, groupNames } = lookup;
   const raw = String(label || "").trim();
   const key = onboardingCategoryLookupKey(raw);
   if (!key || key === "uncategorized" || key === "transaction") return null;
   const want = ONBOARDING_CATEGORY_ALIAS_KEYS[key] || key;
   if (byKey.has(want)) return byKey.get(want);
   if (byKey.has(key)) return byKey.get(key);
+  const groupId = onboardingCategoryGroupIdForKind(groupNames, kind);
   try {
     const created = await requestWithRetry(
       `/api/families/${encodeURIComponent(String(familyId))}/categories`,
       "POST",
-      { name: raw },
+      groupId ? { name: raw, group_id: groupId } : { name: raw },
       { maxMs: 12000 }
     );
     const id = created && created.ok && created.data && created.data.id != null ? Number(created.data.id) : NaN;
@@ -3701,7 +3774,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, kno
   let createdCount = 0;
   let totalApplicable = 0;
   let lastError = null;
-  const categoryIds = await signupCategoryIdByKey(familyId);
+  const categoryLookup = await signupCategoryIdByKey(familyId);
 
   for (const t of list) {
     const description = (t.category || "").trim() || "Transaction";
@@ -3709,7 +3782,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, kno
     if (!Number.isFinite(amount) || amount <= 0) continue;
     totalApplicable += 1;
     const txDate = accountSetupEffectiveTxDate(t.date, draft);
-    const categoryId = await ensureOnboardingCategoryId(familyId, categoryIds, t.category);
+    const categoryId = await ensureOnboardingCategoryId(familyId, categoryLookup, t.category, t.kind);
     try {
       if (t.recurring) {
         const accountId = Number(createdAccountId);
