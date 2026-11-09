@@ -6811,33 +6811,13 @@ function paintSidebarReconcileRow() {
     return;
   }
   sidebarReconcileRow.hidden = false;
-  const todayIso = toISODate(new Date());
   const lastIso = state.lastReconciledIso;
-  const days = typeof sidebarReconcileDaysSince === "function" ? sidebarReconcileDaysSince(lastIso, todayIso) : null;
-  const tone = typeof sidebarReconcileTone === "function" ? sidebarReconcileTone(days) : "none";
   if (sidebarReconcileDetail) {
-    sidebarReconcileDetail.replaceChildren();
-    if (!lastIso) {
-      sidebarReconcileDetail.textContent = "Not reconciled yet.";
-    } else {
-      const dateEl = document.createElement("span");
-      dateEl.className = "sidebar-reconcile__date";
-      dateEl.textContent =
-        typeof formatSidebarReconcileDate === "function" ? formatSidebarReconcileDate(lastIso) : lastIso;
-      sidebarReconcileDetail.append(dateEl);
-      const elapsed =
-        typeof formatSidebarReconcileElapsed === "function" ? formatSidebarReconcileElapsed(days) : "";
-      if (elapsed) {
-        const sep = document.createElement("span");
-        sep.className = "sidebar-reconcile__sep";
-        sep.setAttribute("aria-hidden", "true");
-        sep.textContent = "·";
-        const ago = document.createElement("span");
-        ago.className = `sidebar-reconcile__elapsed${tone === "stale" ? " is-stale" : ""}`;
-        ago.textContent = elapsed;
-        sidebarReconcileDetail.append(" ", sep, " ", ago);
-      }
-    }
+    sidebarReconcileDetail.textContent = lastIso
+      ? typeof formatSidebarReconcileDate === "function"
+        ? formatSidebarReconcileDate(lastIso)
+        : lastIso
+      : "Not reconciled yet";
   }
   if (sidebarReconcileBtn) {
     const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";

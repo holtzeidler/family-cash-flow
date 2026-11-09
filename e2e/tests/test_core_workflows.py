@@ -407,6 +407,7 @@ def test_updating_the_balance_resets_later_days(page, guard):
     expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"] .cal-day-reconcile-action')).to_have_count(0)
     expect(page.locator("#sidebarReconcileRow")).to_contain_text("Not reconciled yet")
     expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
+    expect(page.locator("#sidebarReconcileBtn")).to_have_text("Reconcile balance")
     page.locator("#sidebarReconcileBtn").click()
     expect(page.locator("#reconcileModal.modal-overlay--open")).to_be_visible()
     start_day = date(today.year, today.month, 1)

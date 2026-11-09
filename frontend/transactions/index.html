@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=915" />
+    <link rel="stylesheet" href="../styles.css?v=916" />
   </head>
   <body>
     <h1 class="sr-only">Transactions</h1>
@@ -120,11 +120,11 @@
                 </div>
 
                 <div id="sidebarReconcileRow" class="sidebar-reconcile" hidden>
-                  <div class="sidebar-reconcile__top">
+                  <div class="sidebar-reconcile__status">
                     <span class="sidebar-reconcile__label">Last reconciled</span>
-                    <button type="button" id="sidebarReconcileBtn" class="sidebar-reconcile__action">Reconcile</button>
+                    <span id="sidebarReconcileDetail" class="sidebar-reconcile__date">Not reconciled yet</span>
                   </div>
-                  <p id="sidebarReconcileDetail" class="sidebar-reconcile__detail">Not reconciled yet.</p>
+                  <button type="button" id="sidebarReconcileBtn" class="secondary sidebar-reconcile__action">Reconcile balance</button>
                 </div>
               </div>
             </section>
@@ -1905,7 +1905,7 @@
     <script src="../needs-review.js?v=1"></script>
     <script src="../sidebar-reconcile.js?v=1"></script>
     <script src="../tx-edit-scope.js?v=3"></script>
-    <script src="../app.js?v=586"></script>
+    <script src="../app.js?v=587"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=27" defer></script>
   </body>
