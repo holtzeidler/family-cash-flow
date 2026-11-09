@@ -1868,12 +1868,70 @@ const instanceAccountId = document.getElementById("instanceAccountId");
 const seriesVariable = document.getElementById("seriesVariable");
 const txEditRecurringUpdateBtn = document.getElementById("txEditRecurringUpdateBtn");
 let txEditConfirmOccurrence = false;
+let txEditOpenedFromUpcoming = false;
+let txEditOpenedDisplayIso = "";
+let txEditSeriesBaseline = null;
+
+function readTxEditSeriesFields() {
+  return {
+    notes: (txEditNotes?.value || "").trim(),
+    recurrence: instanceRecurrence?.value || "",
+    endsMode: instanceEndsMode?.value || "never",
+    endCount: instanceEndCount?.value != null ? String(instanceEndCount.value).trim() : "",
+    secondDay: instanceSecondDayOfMonth?.value || "",
+  };
+}
+
+function captureTxEditSeriesBaseline() {
+  txEditSeriesBaseline = readTxEditSeriesFields();
+}
+
+function currentTxEditSeriesOnlyChanges() {
+  return detectTxEditSeriesOnlyChanges(txEditSeriesBaseline, readTxEditSeriesFields());
+}
+
+function setTxEditSeriesFieldsEnabled(on) {
+  const disabled = !on;
+  if (instanceRecurrence) instanceRecurrence.disabled = disabled;
+  if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = disabled;
+  if (instanceEndCount) instanceEndCount.disabled = disabled;
+  if (instanceEndsMode) instanceEndsMode.disabled = disabled;
+  if (txEditNotes) txEditNotes.disabled = disabled;
+  const marks = document.querySelectorAll("#txEditModal .tx-edit-series-mark");
+  for (const el of marks) el.hidden = disabled;
+}
+
+function syncTxEditOccurrenceChrome() {
+  const iso =
+    txEditOpenedDisplayIso ||
+    selectedExpectedMovedToDate ||
+    selectedExpectedInstance?.occurrence_date ||
+    "";
+  const copy = formatTxEditOccurrenceBanner(iso, {
+    fromUpcoming: txEditOpenedFromUpcoming,
+    confirmOccurrence: txEditConfirmOccurrence,
+  });
+  const modeBanner = document.getElementById("txEditModeBanner");
+  if (modeBanner) {
+    modeBanner.style.display = "block";
+    modeBanner.textContent = copy.title;
+  }
+  const hint = document.getElementById("txEditOccurrenceHint");
+  if (hint) {
+    hint.textContent = copy.hint || "";
+    hint.hidden = !copy.hint;
+  }
+}
 
 function setTxEditConfirmOccurrenceMode(on) {
   txEditConfirmOccurrence = !!on;
   const hint = document.getElementById("txEditConfirmHint");
   if (hint) hint.hidden = !txEditConfirmOccurrence;
   if (txEditSave) txEditSave.textContent = txEditConfirmOccurrence ? "Confirm this amount" : "Save";
+  if (transactionEditMode === "recurring") {
+    setTxEditSeriesFieldsEnabled(!txEditConfirmOccurrence);
+    syncTxEditOccurrenceChrome();
+  }
 }
 
 function updateInstanceTwiceMonthlyVisibility() {
@@ -4975,15 +5033,33 @@ function applyTransactionEditMode(mode, opts = {}) {
     title.textContent = recurring ? "Recurring transaction" : "Edit Transaction";
   }
   const modeBanner = document.getElementById("txEditModeBanner");
-  if (modeBanner) {
-    modeBanner.style.display = "block";
-    modeBanner.textContent = recurring ? "Recurring transaction" : "Edit Transaction";
+  const occurrenceHint = document.getElementById("txEditOccurrenceHint");
+  if (recurring) {
+    syncTxEditOccurrenceChrome();
+  } else {
+    if (modeBanner) {
+      modeBanner.style.display = "block";
+      modeBanner.textContent = "Edit Transaction";
+    }
+    if (occurrenceHint) {
+      occurrenceHint.textContent = "";
+      occurrenceHint.hidden = true;
+    }
   }
   const txEditTopStrip = document.querySelector("#txEditModal .tx-edit-top");
   if (txEditTopStrip) txEditTopStrip.style.display = "";
 
   const notesLabel = document.getElementById("txEditNotesLabel");
-  if (notesLabel) notesLabel.textContent = "Notes";
+  if (notesLabel) {
+    notesLabel.textContent = "Notes";
+    if (recurring) {
+      notesLabel.append(" ");
+      const mark = document.createElement("span");
+      mark.className = "tx-edit-series-mark";
+      mark.textContent = "Series";
+      notesLabel.append(mark);
+    }
+  }
   const dateLabel = document.getElementById("txEditDateLabel");
   if (dateLabel) dateLabel.textContent = "Date";
 
@@ -5199,6 +5275,38 @@ function setTxEditApplyScopeChoice(choice) {
   if (saveBtn) saveBtn.disabled = false;
 }
 
+function paintTxEditApplyScopeCopy() {
+  const seriesNames = currentTxEditSeriesOnlyChanges();
+  const copy = formatTxEditApplyScopeCopy({
+    openedIso: txEditOpenedDisplayIso || selectedExpectedInstance?.occurrence_date,
+    editedIso: txEditEditedOccurrenceIso() || txEditOpenedDisplayIso,
+    seriesFieldNames: seriesNames,
+  });
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  setText("txEditApplyScopeInstanceTitle", copy.instanceTitle);
+  setText("txEditApplyScopeInstanceHint", copy.instanceHint);
+  setText("txEditApplyScopeSeriesTitle", copy.seriesTitle);
+  setText("txEditApplyScopeSeriesHint", copy.seriesHint);
+  setText("txEditApplyScopeHelper", copy.helper);
+  const seriesBtn = document.getElementById("txEditApplyScopeSeriesBtn");
+  const instanceBtn = document.getElementById("txEditApplyScopeInstanceBtn");
+  if (seriesBtn) seriesBtn.classList.toggle("apply-scope-option--recommended", copy.recommended === "series");
+  if (instanceBtn) instanceBtn.classList.toggle("apply-scope-option--recommended", copy.recommended === "instance");
+  const instanceBadge = document.getElementById("txEditApplyScopeInstanceBadge");
+  const seriesBadge = document.getElementById("txEditApplyScopeSeriesBadge");
+  if (instanceBadge) instanceBadge.hidden = copy.recommended !== "instance";
+  if (seriesBadge) seriesBadge.hidden = copy.recommended !== "series";
+  const notice = document.getElementById("txEditApplyScopeSeriesNotice");
+  if (notice) {
+    notice.hidden = !copy.seriesNotice;
+    notice.textContent = copy.seriesNotice || "";
+  }
+  return copy;
+}
+
 function resetTxEditDeleteScopeSelection() {
   txEditDeleteScopeChoice = null;
   const futureBtn = document.getElementById("txEditDeleteScopeFutureBtn");
@@ -5253,14 +5361,19 @@ function openTxEditApplyScopeModal() {
   const m = document.getElementById("txEditApplyScopeModal");
   if (!m) return;
   show(document.getElementById("txEditApplyScopeErr"), "");
+  const copy = paintTxEditApplyScopeCopy();
   resetTxEditApplyScopeSelection();
+  setTxEditApplyScopeChoice(copy.defaultChoice);
   try {
     m.style.display = "";
   } catch (_) {}
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
-  const firstOpt = document.getElementById("txEditApplyScopeSeriesBtn");
-  requestAnimationFrame(() => firstOpt?.focus?.());
+  const focusBtn =
+    copy.defaultChoice === "instance"
+      ? document.getElementById("txEditApplyScopeInstanceBtn")
+      : document.getElementById("txEditApplyScopeSeriesBtn");
+  requestAnimationFrame(() => focusBtn?.focus?.());
 }
 
 function openTxEditDeleteScopeModal() {
@@ -5313,6 +5426,15 @@ function closeTxEditModal() {
   txEditColorTouched = false;
   applyTransactionEditMode("actual", { resetting: true });
   setTxEditConfirmOccurrenceMode(false);
+  txEditOpenedFromUpcoming = false;
+  txEditOpenedDisplayIso = "";
+  txEditSeriesBaseline = null;
+  setTxEditSeriesFieldsEnabled(true);
+  const occurrenceHint = document.getElementById("txEditOccurrenceHint");
+  if (occurrenceHint) {
+    occurrenceHint.textContent = "";
+    occurrenceHint.hidden = true;
+  }
   syncTransactionHistoryLink();
 }
 
@@ -13162,6 +13284,10 @@ if (txEditApplyScopeSaveBtn) {
     if (!txEditApplyScopeChoice) return;
     try {
       show(document.getElementById("txEditApplyScopeErr"), "");
+      const seriesNames = currentTxEditSeriesOnlyChanges();
+      if (txEditApplyScopeChoice === "instance" && seriesNames.length) {
+        throw new Error(formatTxEditSeriesOnlyError(seriesNames));
+      }
       if (txEditApplyScopeChoice === "instance") await saveExpectedInstanceOverride();
       else await saveExpectedSeriesFromInstance();
       closeTxEditApplyScopeModal();
@@ -16208,6 +16334,9 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
   if (await guardBillingWriteAsync()) return;
   if (!txEditModal || !expectedEditId) return;
   const calendarItem = opts.calendarItem ?? null;
+  txEditOpenedFromUpcoming = !calendarItem;
+  txEditOpenedDisplayIso = "";
+  txEditSeriesBaseline = null;
 
   if (txEditId) txEditId.value = "";
   expectedEditId.value = String(tx.id);
@@ -16216,6 +16345,10 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
 
   if (calendarItem) {
     selectExpectedInstance(calendarItem);
+    txEditOpenedDisplayIso =
+      normalizeIsoDate(calendarItem.date) ||
+      normalizeIsoDate(calendarItem.occurrence_date) ||
+      "";
   } else {
     // Opened from a non-calendar surface (ex: Transaction View recurring filter list).
     // Seed the modal with the next scheduled occurrence so instance editing endpoints have a date.
@@ -16265,8 +16398,13 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
         bg_color: tx && tx.bg_color ? String(tx.bg_color) : null,
         fg_color: tx && tx.fg_color ? String(tx.fg_color) : null,
       };
+      txEditOpenedDisplayIso = nextIso;
       // `selectExpectedInstance` is defined later in this file; schedule after parse completes.
-      queueMicrotask(() => selectExpectedInstance(synthetic));
+      queueMicrotask(() => {
+        selectExpectedInstance(synthetic);
+        captureTxEditSeriesBaseline();
+        syncTxEditOccurrenceChrome();
+      });
     }
   }
 
@@ -16326,6 +16464,8 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
   applyTransactionEditMode("recurring");
   applyMinDateToTxEditDateInput();
   setTxEditConfirmOccurrenceMode(!!opts.confirmOccurrence && !!(calendarItem && calendarItem.variable));
+  captureTxEditSeriesBaseline();
+  syncTxEditOccurrenceChrome();
   syncTransactionHistoryLink();
 }
 
@@ -16891,7 +17031,7 @@ function renderUpcomingTransactionsFiltered() {
     if (tx?.id != null) row.dataset.tmExpectedId = String(tx.id);
     if (nextIso) row.dataset.tmNextIso = String(nextIso);
     row.tabIndex = 0;
-    row.setAttribute("title", "Open series editor — updates your forecast");
+    row.setAttribute("title", "Edit the next upcoming occurrence");
     row.addEventListener("click", (e) => {
       if (e.target.closest(".tm-row__edit")) return;
       openExpectedEditModal(tx, { nextOccurrenceIso: nextIso });
@@ -17203,7 +17343,7 @@ function renderRecurringFilteredList() {
     el.appendChild(left);
     el.appendChild(amtBtn);
     bindFastTxnTipHover(left, `Recurring schedule #${tx.id} · next ${nextIso}`);
-    bindFastTxnTipHover(amtBtn, "Edit recurring transaction");
+    bindFastTxnTipHover(amtBtn, "Edit the next upcoming occurrence");
     el.addEventListener("click", () => openExpectedEditModal(tx, { nextOccurrenceIso: nextIso }));
     recurringFilteredList.appendChild(el);
   }

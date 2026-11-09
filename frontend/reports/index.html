@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=902" />
+    <link rel="stylesheet" href="../styles.css?v=903" />
   </head>
   <body>
     <h1 class="sr-only">Reports</h1>
@@ -1335,7 +1335,10 @@
         </div>
 
         <div class="tx-edit-top">
-          <div id="txEditModeBanner" class="tx-edit-mode-banner" style="display: none" role="presentation"></div>
+          <div class="tx-edit-mode-banner-wrap">
+            <div id="txEditModeBanner" class="tx-edit-mode-banner" style="display: none" role="status"></div>
+            <p id="txEditOccurrenceHint" class="tx-edit-occurrence-hint" hidden></p>
+          </div>
         </div>
 
         <div id="expectedEditInstancePanel" class="expected-edit-panel">
@@ -1377,7 +1380,7 @@
           <div id="txEditRecurringScheduleWrap" style="display: none">
             <div class="tx-edit-recurrence-ends-row">
               <div class="form-row-h tx-edit-recurrence-field">
-                <div class="form-row-h__label"><label for="instanceRecurrence">Repeat</label></div>
+                <div class="form-row-h__label"><label for="instanceRecurrence">Repeat <span class="tx-edit-series-mark">Series</span></label></div>
                 <div class="form-row-h__field">
                   <select id="instanceRecurrence" title="How often this repeats">
                     <option value="once">Does not repeat</option>
@@ -1393,7 +1396,7 @@
               </div>
               <div class="form-row-h tx-edit-ends-field">
                 <div class="form-row-h__label">
-                  <label for="instanceEndsMode" title="When the recurring series stops.">Ends</label>
+                  <label for="instanceEndsMode" title="When the recurring series stops.">Ends <span class="tx-edit-series-mark">Series</span></label>
                 </div>
                 <div class="form-row-h__field">
                   <select id="instanceEndsMode" class="tx-edit-ends-mode-select" title="When the recurring series stops.">
@@ -1490,12 +1493,32 @@
         <h3 id="txEditApplyScopeTitle">How should this change apply?</h3>
         <div class="modal--apply-scope__body">
           <div id="txEditApplyScopeDesc" class="modal--apply-scope__intro">
-            <p class="modal--apply-scope__lede">This transaction is part of a recurring series.</p>
-            <p class="modal--apply-scope__helper">Choose whether to update just this occurrence or future ones too.</p>
+            <p class="modal--apply-scope__lede">This date is one occurrence in a recurring series.</p>
+            <p id="txEditApplyScopeHelper" class="modal--apply-scope__helper">Choose whether to update just this occurrence or future ones too.</p>
+            <p id="txEditApplyScopeSeriesNotice" class="modal--apply-scope__series-notice" hidden></p>
           </div>
           <div id="txEditApplyScopeErr" class="error"></div>
           <div class="apply-scope-actions" role="radiogroup" aria-label="How to apply changes">
-            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-option apply-scope-option--recommended" role="radio" aria-pressed="false" data-apply-scope="series">
+            <button type="button" id="txEditApplyScopeInstanceBtn" class="apply-scope-option apply-scope-option--recommended" role="radio" aria-pressed="false" data-apply-scope="instance">
+              <span class="apply-scope-option__row">
+                <span class="apply-scope-option__icon apply-scope-option__icon--single" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <rect x="4" y="5" width="16" height="16" rx="2"></rect>
+                    <path d="M8 3v4"></path>
+                    <path d="M16 3v4"></path>
+                    <circle cx="12" cy="14" r="2.25"></circle>
+                  </svg>
+                </span>
+                <span class="apply-scope-option__copy">
+                  <span class="apply-scope-option__title-row">
+                    <span class="apply-scope-option__title" id="txEditApplyScopeInstanceTitle">Only this occurrence</span>
+                    <span class="apply-scope-option__badge" id="txEditApplyScopeInstanceBadge">Recommended</span>
+                  </span>
+                  <span class="apply-scope-option__hint" id="txEditApplyScopeInstanceHint">Only this date changes. Later dates stay as they are.</span>
+                </span>
+              </span>
+            </button>
+            <button type="button" id="txEditApplyScopeSeriesBtn" class="apply-scope-option" role="radio" aria-pressed="false" data-apply-scope="series">
               <span class="apply-scope-option__row">
                 <span class="apply-scope-option__icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -1507,26 +1530,10 @@
                 </span>
                 <span class="apply-scope-option__copy">
                   <span class="apply-scope-option__title-row">
-                    <span class="apply-scope-option__title">Update this and future transactions</span>
-                    <span class="apply-scope-option__badge">Recommended</span>
+                    <span class="apply-scope-option__title" id="txEditApplyScopeSeriesTitle">This and future occurrences</span>
+                    <span class="apply-scope-option__badge" id="txEditApplyScopeSeriesBadge" hidden>Recommended</span>
                   </span>
-                  <span class="apply-scope-option__hint">Changes this transaction and all upcoming recurring entries.</span>
-                </span>
-              </span>
-            </button>
-            <button type="button" id="txEditApplyScopeInstanceBtn" class="apply-scope-option" role="radio" aria-pressed="false" data-apply-scope="instance">
-              <span class="apply-scope-option__row">
-                <span class="apply-scope-option__icon apply-scope-option__icon--single" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <rect x="4" y="5" width="16" height="16" rx="2"></rect>
-                    <path d="M8 3v4"></path>
-                    <path d="M16 3v4"></path>
-                    <circle cx="12" cy="14" r="2.25"></circle>
-                  </svg>
-                </span>
-                <span class="apply-scope-option__copy">
-                  <span class="apply-scope-option__title">Only update this occurrence</span>
-                  <span class="apply-scope-option__hint">Only changes this transaction. Future recurring entries stay the same.</span>
+                  <span class="apply-scope-option__hint" id="txEditApplyScopeSeriesHint">Updates this date and every later occurrence in the series.</span>
                 </span>
               </span>
             </button>
@@ -1804,7 +1811,8 @@
     <script src="../favorite-transactions.js?v=2"></script>
     <script src="../cash-health-summary.js?v=6"></script>
     <script src="../needs-review.js?v=1"></script>
-    <script src="../app.js?v=575"></script>
+    <script src="../tx-edit-scope.js?v=1"></script>
+    <script src="../app.js?v=576"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=25" defer></script>
   </body>

@@ -43,6 +43,11 @@ jobs:
           node --check frontend/needs-review.js
           node frontend/needs-review.test.js
 
+      - name: Transaction edit scope
+        run: |
+          node --check frontend/tx-edit-scope.js
+          node frontend/tx-edit-scope.test.js
+
       - name: Build staging frontend
         env:
           API_BASE: ${{ secrets.API_BASE_STAGING }}

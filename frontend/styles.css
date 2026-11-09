@@ -24993,7 +24993,7 @@ body[data-bw-view="transactions"] .tm__field label{
   background: rgba(15, 23, 42, 0.36);
 }
 .modal.modal--apply-scope{
-  max-width: 360px;
+  max-width: 380px;
   padding: 0;
   border-radius: 14px;
   box-shadow:
@@ -27640,6 +27640,52 @@ body.account-setup-page
   letter-spacing: -0.01em;
   line-height: 1.25;
   color: rgba(255, 255, 255, 0.95);
+}
+.tx-edit-mode-banner-wrap{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.tx-edit-occurrence-hint{
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 450;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.72);
+}
+.tx-edit-occurrence-hint[hidden]{
+  display: none;
+}
+.tx-edit-series-mark{
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.72);
+  background: rgba(241, 245, 249, 0.95);
+  vertical-align: 1px;
+}
+.tx-edit-series-mark[hidden]{
+  display: none;
+}
+.modal.modal--apply-scope .modal--apply-scope__series-notice{
+  margin: 8px 0 0;
+  padding: 8px 9px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: rgba(120, 53, 15, 0.92);
+  background: rgba(255, 247, 237, 0.95);
+  border: 1px solid rgba(180, 83, 9, 0.16);
+}
+.modal.modal--apply-scope .modal--apply-scope__series-notice[hidden]{
+  display: none;
 }
 .modal--expected-edit .tx-edit-top #txEditNotesRow{
   /* Notes is moved out for recurring; hide any residual notes inside the header. */
