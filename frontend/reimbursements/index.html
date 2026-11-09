@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=907" />
+    <link rel="stylesheet" href="../styles.css?v=908" />
   </head>
   <body>
     <h1 class="sr-only">Reimbursements</h1>
@@ -1386,16 +1386,7 @@
         <div id="expectedEditInstancePanel" class="expected-edit-panel">
           <div class="tx-edit-divider" aria-hidden="true"></div>
 
-          <div class="form-row-h">
-            <div class="form-row-h__label"><label>Type</label></div>
-            <div class="form-row-h__field">
-              <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
-                <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
-                <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
-              </div>
-            </div>
-          </div>
-          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <select id="instanceAccountId" hidden tabindex="-1" aria-hidden="true"></select>
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditAmount">Amount</label></div>
             <div class="form-row-h__field">
@@ -1408,17 +1399,27 @@
               </p>
             </div>
           </div>
-          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label>Type</label></div>
+            <div class="form-row-h__field">
+              <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
+                <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
+              </div>
+            </div>
+          </div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
             <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
-          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
             <div class="form-row-h__field"><input id="txEditDate" type="date" /></div>
           </div>
-
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
           <div id="txEditRecurringScheduleWrap" style="display: none">
             <div class="tx-edit-recurrence-ends-row">
               <div class="form-row-h tx-edit-recurrence-field">
@@ -1436,7 +1437,7 @@
                   </select>
                 </div>
               </div>
-              <div class="form-row-h tx-edit-ends-field">
+              <div class="form-row-h tx-edit-ends-field" id="txEditEndsRow" hidden>
                 <div class="form-row-h__label">
                   <label for="instanceEndsMode" title="When the recurring series stops.">Ends <span class="tx-edit-series-mark">Series</span></label>
                 </div>
@@ -1445,6 +1446,17 @@
                     <option value="never" selected>Never</option>
                     <option value="after_count">After number of times</option>
                   </select>
+                </div>
+              </div>
+            </div>
+            <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
+              <div class="form-row-h__label">
+                <label for="instanceEndCount">Occurrences</label>
+              </div>
+              <div class="form-row-h__field">
+                <div class="tx-edit-ends-after-row">
+                  <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Total number of occurrences." />
+                  <span class="tx-add-field-hint">total</span>
                 </div>
               </div>
             </div>
@@ -1461,57 +1473,46 @@
                 <p class="expected-second-day-row__hint">Choose a different day of the month than the start date.</p>
               </div>
             </div>
-            <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
-              <div class="form-row-h__label">
-                <label for="instanceEndCount">Occurrences</label>
+          </div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+          <div class="tx-add-advanced" id="txEditMoreOptions">
+            <button type="button" id="txEditMoreOptionsToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txEditMoreOptionsPanel">
+              <span class="tx-add-advanced__expander-chev" aria-hidden="true">
+                <svg viewBox="0 0 8 8" width="8" height="8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 1.5 6 4 2 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="tx-add-advanced__expander-label">More options</span>
+            </button>
+            <div id="txEditMoreOptionsPanel" class="tx-add-advanced__panel" hidden>
+              <div id="txEditNotesRow" class="form-row-h tx-edit-notes-row">
+                <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
+                <div class="form-row-h__field">
+                  <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                </div>
               </div>
-              <div class="form-row-h__field">
-                <div class="tx-edit-ends-after-row">
-                  <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Total number of occurrences." />
-                  <span class="tx-add-field-hint">total</span>
+              <div id="txEditRecurringVariableWrap" class="tx-edit-variable-form-row" style="display: none">
+                <label class="tx-edit-variable-toggle" for="seriesVariable">
+                  <span class="tx-edit-variable-toggle__head">
+                    <input
+                      id="seriesVariable"
+                      type="checkbox"
+                      class="tx-edit-variable-row__input"
+                      title="Amount is an estimate that may change month to month"
+                    />
+                    <span class="tx-edit-variable-toggle__label">Amount varies</span>
+                  </span>
+                  <span class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</span>
+                </label>
+              </div>
+              <div id="txEditCategoryColorRow" class="form-row-h tx-edit-cat-color-row">
+                <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
+                <div class="form-row-h__field tx-edit-cat-color-field">
+                  <div class="cat-color-row tx-edit-cat-color-panel">
+                    <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
+                    <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div class="tx-add-vspace" aria-hidden="true"></div>
-          <div id="txEditAccountCol" style="display: none">
-            <div class="form-row-h">
-              <div class="form-row-h__label"><label for="instanceAccountId">Account</label></div>
-              <div class="form-row-h__field"><select id="instanceAccountId"></select></div>
-            </div>
-            <div class="tx-add-vspace" aria-hidden="true"></div>
-          </div>
-          <div id="txEditNotesRow" class="form-row-h tx-edit-notes-row">
-            <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
-            <div class="form-row-h__field">
-              <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-            </div>
-          </div>
-          <div class="tx-add-vspace" aria-hidden="true"></div>
-          <div id="txEditCategoryColorRow" class="form-row-h tx-edit-cat-color-row">
-            <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
-            <div class="form-row-h__field tx-edit-cat-color-field">
-              <div class="cat-color-row tx-edit-cat-color-panel">
-                <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
-                <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
-              </div>
-            </div>
-          </div>
-
-          <div id="txEditRecurringVariableWrap" class="tx-edit-variable-form-row" style="display: none">
-            <label class="tx-edit-variable-toggle" for="seriesVariable">
-              <span class="tx-edit-variable-toggle__head">
-                <input
-                  id="seriesVariable"
-                  type="checkbox"
-                  class="tx-edit-variable-row__input"
-                  title="Amount is an estimate that may change month to month"
-                />
-                <span class="tx-edit-variable-toggle__label">Amount varies month to month</span>
-              </span>
-              <span class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</span>
-            </label>
           </div>
 
           <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none"></div>
@@ -2031,7 +2032,7 @@ Date,Vendor,Amount
     <script src="../cash-health-summary.js?v=6"></script>
     <script src="../needs-review.js?v=1"></script>
     <script src="../tx-edit-scope.js?v=2"></script>
-    <script src="../app.js?v=580"></script>
+    <script src="../app.js?v=581"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=25" defer></script>
   </body>

@@ -1977,6 +1977,7 @@ if (instanceRecurrence) {
   instanceRecurrence.addEventListener("change", () => {
     updateInstanceTwiceMonthlyVisibility();
     updateTxEditActualScheduleUi();
+    syncTxEditEndsRowVisibility();
   });
 }
 if (instanceEndsMode) {
@@ -2153,6 +2154,58 @@ function bindTxAddMoreOptions() {
   txAddVariable?.addEventListener("change", syncTxAddMoreOptionsReveal);
 }
 
+function syncTxEditHiddenAccount(preferredId) {
+  if (!instanceAccountId) return "";
+  renderAccountSelect(instanceAccountId, state.accounts || []);
+  const preferred = preferredId != null && String(preferredId).trim() ? String(preferredId) : "";
+  const validPreferred = preferred && (state.accounts || []).some((a) => String(a.id) === preferred);
+  const next = validPreferred ? preferred : defaultCheckingAccountId();
+  instanceAccountId.value = next;
+  return next;
+}
+
+function txEditMoreOptionsHasValues() {
+  const notes = String(txEditNotes?.value || "").trim();
+  const variableWrap = document.getElementById("txEditRecurringVariableWrap");
+  const variableVisible = !!(variableWrap && variableWrap.style.display !== "none");
+  const variable = variableVisible && !!(seriesVariable && seriesVariable.checked);
+  const color = !!(txEditSelectedBgColor && String(txEditSelectedBgColor).trim());
+  return !!(notes || variable || color);
+}
+
+function setTxEditMoreOptionsOpen(open) {
+  const btn = document.getElementById("txEditMoreOptionsToggle");
+  const panel = document.getElementById("txEditMoreOptionsPanel");
+  if (!btn || !panel) return;
+  const isOpen = !!open;
+  panel.hidden = !isOpen;
+  btn.classList.toggle("is-open", isOpen);
+  btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function syncTxEditMoreOptionsReveal() {
+  if (txEditMoreOptionsHasValues()) setTxEditMoreOptionsOpen(true);
+}
+
+function bindTxEditMoreOptions() {
+  const btn = document.getElementById("txEditMoreOptionsToggle");
+  if (!btn || btn.dataset.bound === "1") return;
+  btn.dataset.bound = "1";
+  btn.addEventListener("click", () => {
+    const panel = document.getElementById("txEditMoreOptionsPanel");
+    setTxEditMoreOptionsOpen(!!(panel && panel.hidden));
+  });
+  txEditNotes?.addEventListener("input", syncTxEditMoreOptionsReveal);
+  seriesVariable?.addEventListener("change", syncTxEditMoreOptionsReveal);
+}
+
+function syncTxEditEndsRowVisibility() {
+  const endsRow = document.getElementById("txEditEndsRow");
+  if (!endsRow) return;
+  const show = transactionEditMode === "recurring" || txEditScheduleRecurrenceActive();
+  endsRow.hidden = !show;
+}
+
 function setTxAddSaveBusy(busy) {
   txAddSaveInFlight = !!busy;
   const btn = txAddSave || document.getElementById("txAddSave");
@@ -2225,6 +2278,7 @@ function bindTxAddFormValidation() {
     syncTxAddSecondYearlyDateDefault();
   });
   bindTxAddMoreOptions();
+  bindTxEditMoreOptions();
 }
 
 function txAddRepeatsActive() {
@@ -2297,10 +2351,7 @@ function updateTxEditActualScheduleUi() {
   setTxEditEndsModeInteractive(on);
   if (instanceEndCount) instanceEndCount.disabled = !on;
   if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = !on;
-  if (instanceAccountId) {
-    instanceAccountId.disabled = !on;
-    instanceAccountId.title = on ? "" : "Choose an account when you set this transaction to repeat.";
-  }
+  if (on) syncTxEditHiddenAccount(instanceAccountId?.value);
   const varWrap = document.getElementById("txEditRecurringVariableWrap");
   if (varWrap) varWrap.style.display = on ? "block" : "none";
   const wrapSch = document.getElementById("txEditRecurringScheduleWrap");
@@ -2309,6 +2360,8 @@ function updateTxEditActualScheduleUi() {
     updateInstanceEndsDetailUi();
   } catch (_) {}
   updateInstanceTwiceMonthlyVisibility();
+  syncTxEditEndsRowVisibility();
+  if (on) syncTxEditMoreOptionsReveal();
 }
 
 function syncTxAddSecondMonthlyDateDefault() {
@@ -5057,6 +5110,9 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (txEditTopStrip) txEditTopStrip.style.display = "";
     if (instanceRecurrence) instanceRecurrence.disabled = false;
     if (instanceAccountId) instanceAccountId.disabled = false;
+    bindTxEditMoreOptions();
+    setTxEditMoreOptionsOpen(false);
+    syncTxEditEndsRowVisibility();
     if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
     if (instanceEndCount) instanceEndCount.disabled = false;
     if (instanceEndsMode) {
@@ -5127,7 +5183,11 @@ function applyTransactionEditMode(mode, opts = {}) {
     instanceRecurrence.title = "How often this repeats";
   }
   const acctCol = document.getElementById("txEditAccountCol");
-  if (acctCol) acctCol.style.display = "block";
+  if (acctCol) acctCol.style.display = "none";
+  if (instanceAccountId) {
+    instanceAccountId.disabled = false;
+    instanceAccountId.removeAttribute("title");
+  }
   if (recurring) {
     if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
     if (instanceEndCount) instanceEndCount.disabled = false;
@@ -5135,16 +5195,17 @@ function applyTransactionEditMode(mode, opts = {}) {
     try {
       updateInstanceEndsDetailUi();
     } catch (_) {}
-    if (instanceAccountId) {
-      instanceAccountId.disabled = false;
-      instanceAccountId.title = "";
-    }
+    syncTxEditHiddenAccount(instanceAccountId?.value);
     updateInstanceTwiceMonthlyVisibility();
     const varWrap = document.getElementById("txEditRecurringVariableWrap");
     if (varWrap) varWrap.style.display = "block";
   } else {
     updateTxEditActualScheduleUi();
   }
+  syncTxEditEndsRowVisibility();
+  bindTxEditMoreOptions();
+  setTxEditMoreOptionsOpen(false);
+  syncTxEditMoreOptionsReveal();
 
   const prim = document.getElementById("txEditRecurringPrimaryActions");
   if (prim) prim.style.display = "none";
@@ -5162,16 +5223,7 @@ function applyTransactionEditMode(mode, opts = {}) {
     txEditCancel.classList.toggle("tx-edit-dismiss--close", recurring);
   }
 
-  const varWrapEl = document.getElementById("txEditRecurringVariableWrap");
   const schWrap = document.getElementById("txEditRecurringScheduleWrap");
-  const panel = document.getElementById("expectedEditInstancePanel");
-  if (recurring) {
-    if (varWrapEl && schWrap && varWrapEl.parentNode !== schWrap) {
-      schWrap.appendChild(varWrapEl);
-    }
-  } else if (varWrapEl && panel && schWrap && varWrapEl.parentNode === schWrap) {
-    panel.appendChild(varWrapEl);
-  }
   if (schWrap) {
     schWrap.classList.toggle("tx-edit-recurring-group", recurring);
   }
@@ -5278,9 +5330,7 @@ async function openTxEditModalAsync(tx) {
   }
   txEditColorTouched = false;
   refreshTxCategoryColorPickers();
-  if (instanceAccountId && state.accounts && state.accounts.length > 0) {
-    instanceAccountId.value = String(state.accounts[0].id);
-  }
+  syncTxEditHiddenAccount(tx && tx.account_id != null ? tx.account_id : "");
   show(txEditErr, "");
   closeFavoriteNamePrompt();
   txEditLinkedFavoriteId = null;
@@ -5830,14 +5880,14 @@ function ensureFavoriteStar(mode) {
     btn = document.createElement("button");
     btn.type = "button";
     btn.id = id;
-    btn.className = mode === "edit" ? "secondary tx-fav-action" : "tx-fav-action tx-fav-action--quiet";
+    btn.className = "tx-fav-action tx-fav-action--quiet";
     btn.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       openFavoriteNamePrompt(mode);
     });
   }
-  btn.className = mode === "edit" ? "secondary tx-fav-action" : "tx-fav-action tx-fav-action--quiet";
+  btn.className = "tx-fav-action tx-fav-action--quiet";
   if (mode === "edit") {
     if (!document.querySelector("#txEditModal .tx-edit-foot-leading, #txEditModal .modal-actions--tx-edit-foot")) return;
     placeEditFavoriteButton(btn);
@@ -7531,7 +7581,7 @@ if (txEditModal) {
   if (!txEditModal || !txEditInner) return;
   const handle = txEditModal.querySelector(".tx-edit-top");
   if (!handle) return;
-  handle.title = "Drag to move";
+  handle.removeAttribute("title");
 
   let pointerId = null;
   let startX = 0;
@@ -14400,6 +14450,7 @@ const txEditCategoryColorPicker = renderCategoryColorPicker({
   setBg: (v) => {
     txEditColorTouched = true;
     txEditSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
+    syncTxEditMoreOptionsReveal();
   },
 });
 
@@ -16413,7 +16464,7 @@ async function loadAccounts() {
   if (expectedAccountIdEl) renderAccountSelect(expectedAccountIdEl, state.accounts);
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
   if (txAddAccountId) syncTxAddHiddenAccount(txAddAccountId.value);
-  if (instanceAccountId) renderAccountSelect(instanceAccountId, state.accounts);
+  if (instanceAccountId) syncTxEditHiddenAccount(instanceAccountId.value);
   renderAccountDetailsPanel();
   if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {
     expectedAccountIdEl.value = String(state.accounts[0].id);
@@ -16516,7 +16567,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
         if (radio) radio.checked = true;
       }
       if (txEditAmount) txEditAmount.value = String(tx.amount ?? "");
-      if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
+      syncTxEditHiddenAccount(tx.account_id != null ? tx.account_id : "");
       setCategoryFieldValue("txEditCategoryId", tx.category_id);
       {
         const bg = tx && tx.bg_color ? String(tx.bg_color).trim() : "";
@@ -19599,7 +19650,7 @@ function selectExpectedInstance(item) {
   }
   if (txEditAmount) txEditAmount.value = Number(item.amount);
   if (txEditNotes) txEditNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
-  if (instanceAccountId) instanceAccountId.value = String(item.account_id);
+  syncTxEditHiddenAccount(item.account_id != null ? item.account_id : "");
   setCategoryFieldValue("txEditCategoryId", item.category_id);
   {
     const bg = item && item.bg_color ? String(item.bg_color).trim() : "";
@@ -19632,6 +19683,8 @@ function selectExpectedInstance(item) {
     }
   }
 
+  syncTxEditEndsRowVisibility();
+  syncTxEditMoreOptionsReveal();
   show(txEditErr, "");
 }
 

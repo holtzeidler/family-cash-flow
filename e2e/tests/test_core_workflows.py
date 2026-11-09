@@ -454,6 +454,14 @@ def _settle_calendar(page, iso: str) -> None:
     expect(page.locator("#bwForecastStatusRibbon")).to_be_hidden()
 
 
+def _open_tx_edit_more_options(page) -> None:
+    toggle = page.locator("#txEditMoreOptionsToggle")
+    panel = page.locator("#txEditMoreOptionsPanel")
+    if toggle.count() and panel.is_hidden():
+        toggle.click()
+    expect(panel).to_be_visible()
+
+
 def _open_calendar_item(page, iso: str, text: str, *, expected: bool = False):
     kind = ".cal-day-tx-line--expected" if expected else ".cal-tx-part"
     line = page.locator(f'.cal-cell[data-iso="{iso}"] {kind}', has_text=text).first
@@ -997,6 +1005,7 @@ def test_notes_repeat_ends_require_series_scope(page, guard):
     show_month(page, "2026-11", "2026-11-09")
     label = _add_planned_item(page, "2026-11-09", "80", kind="expense", repeat="monthly", name="Mortgage / Rent")
     _open_calendar_item(page, "2026-11-09", label, expected=True)
+    _open_tx_edit_more_options(page)
     page.locator("#txEditNotes").fill("Call the utility")
     page.locator("#txEditSave").click()
     scope = page.locator("#txEditApplyScopeModal.modal-overlay--open")
@@ -1011,6 +1020,7 @@ def test_notes_repeat_ends_require_series_scope(page, guard):
     scope.get_by_role("button", name="Save Changes").click()
     expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
     _open_calendar_item(page, "2026-11-09", label, expected=True)
+    expect(page.locator("#txEditMoreOptionsPanel")).to_be_visible()
     expect(page.locator("#txEditNotes")).to_have_value("Call the utility")
     page.locator("#txEditCancel").click()
     guard.assert_clean()
