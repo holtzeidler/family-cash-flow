@@ -2559,19 +2559,20 @@ function cashHealthCardHtml(copy) {
   if (when) figureBits.push(`<span class="cash-health-card__when">${when}</span>`);
   if (descriptor) figureBits.push(`<span class="cash-health-card__desc">${descriptor}</span>`);
   const figure = figureBits.length ? `<span class="cash-health-card__figure">${figureBits.join("")}</span>` : "";
-  const view = String(copy.viewAction || "").trim();
-  const viewHtml = view
-    ? `<span class="cash-health-card__view">${escapeHtml(view)} <span aria-hidden="true">›</span></span>`
-    : "";
+  const chevron = `<span class="cash-health-card__chevron" aria-hidden="true">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" focusable="false">
+        <path d="M6 3.5L11 8l-5 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </span>`;
+  const figureBlock =
+    copy.tone !== "healthy" && figure
+      ? `<button type="button" class="cash-health-card__nav" data-cash-health-open="1" aria-label="${escapeHtml(copy.ariaLabel)}">${figure}${chevron}</button>`
+      : figure;
   const inner = `<span class="cash-health-card__body">
       <span class="cash-health-card__kicker">${cashHealthStatusIconHtml(copy.tone)}${kicker}</span>
-      ${figure}
-      ${viewHtml}
+      ${figureBlock}
     </span>`;
-  if (copy.tone === "healthy") {
-    return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">${inner}</div>`;
-  }
-  return `<button type="button" class="cash-outlook-card cash-health-card cash-health-card--${copy.tone}" data-cash-health-open="1" aria-label="${escapeHtml(copy.ariaLabel)}">${inner}</button>`;
+  return `<div class="cash-outlook-card cash-health-card cash-health-card--${copy.tone}">${inner}</div>`;
 }
 
 function setSidebarCashHealthCard(copy) {

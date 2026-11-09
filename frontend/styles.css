@@ -34832,7 +34832,7 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   }
 }
 
-/* Cash Health: compact status snapshot. Warning cards open their date on the calendar. */
+/* Cash Health: compact status snapshot. Warning amount/date opens that day on the calendar. */
 .calendar-low-balance--sidebar:has(.cash-health-card),
 .calendar-low-balance--sidebar.is-muted:has(.cash-health-card){
   padding: 0;
@@ -34859,21 +34859,6 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   text-align: left;
   appearance: none;
   -webkit-appearance: none;
-}
-button.cash-health-card{
-  cursor: pointer;
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
-  filter: none;
-}
-button.cash-health-card:hover{
-  filter: none;
-}
-button.cash-health-card:focus-visible{
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
 }
 .cash-health-card__body{
   display: flex;
@@ -34968,22 +34953,58 @@ button.cash-health-card:focus-visible{
   color: rgba(87, 83, 78, 0.72);
   white-space: nowrap;
 }
-.cash-health-card__view{
-  display: block;
-  align-self: flex-end;
-  flex: 0 0 auto;
-  margin-top: 8px;
+.cash-health-card__nav{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
-  font-size: 13px;
-  font-weight: 400;
-  white-space: nowrap;
-  color: var(--accent);
-  opacity: 0.7;
+  margin: 2px 0 0;
+  padding: 1px 2px 1px 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  filter: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
 }
-button.cash-health-card:hover .cash-health-card__view{
-  opacity: 1;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.cash-health-card__nav .cash-health-card__figure{
+  flex: 1 1 auto;
+  width: auto;
+  margin-top: 0;
+}
+.cash-health-card__nav:hover{
+  filter: none;
+  background: rgba(28, 25, 23, 0.035);
+}
+.cash-health-card__nav:focus{
+  outline: none;
+}
+.cash-health-card__nav:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.cash-health-card__chevron{
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  width: 12px;
+  height: 12px;
+  color: rgba(87, 83, 78, 0.38);
+}
+.cash-health-card__chevron svg{
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+.cash-health-card__nav:hover .cash-health-card__chevron{
+  color: rgba(87, 83, 78, 0.72);
 }
 
 .cal-cell.cal-cell--cash-health-focus{
