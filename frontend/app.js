@@ -1749,6 +1749,13 @@ const calendarGrid = document.getElementById("calendarGrid");
 const calViewSimplified = document.getElementById("calViewSimplified");
 const calViewDetailed = document.getElementById("calViewDetailed");
 
+const CAL_STARTING_POINT_FLAG_SVG =
+  '<svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg>';
+const CAL_RECONCILED_CHECK_SVG =
+  '<svg class="cal-balance-reconciled-mark__icon" viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3.2 8.35 6.55 11.5 12.8 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CAL_RECONCILE_ACTION_SVG =
+  '<svg class="cal-day-reconcile-action__icon" viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M13.15 8.05A5.15 5.15 0 0 1 4.55 11.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13.15 8.05v2.45h-2.45" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.85 7.95A5.15 5.15 0 0 1 11.45 4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.85 7.95V5.5h2.45" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 // 5-year projection collapse
 const PROJECTION_COLLAPSED_KEY = "familyCashFlow_projectionCollapsed";
 function applyProjectionCollapsed(collapsed) {
@@ -4273,8 +4280,10 @@ if (calViewSimplified) calViewSimplified.addEventListener("click", () => setCale
 if (calViewDetailed) calViewDetailed.addEventListener("click", () => setCalendarDetailMode("detailed"));
 // Default month before first render so the grid is not cleared with an empty YYYY-MM.
 setDefaultMonth();
-// Apply initial toggle state
-setCalendarDetailMode(state.calendarDetailMode);
+// Apply initial toggle state. Keep script init going if the first paint throws.
+try {
+  setCalendarDetailMode(state.calendarDetailMode);
+} catch (_) {}
 
 // Calendar mode selector is intentionally hidden in the UI (defaults to "both"),
 // but keep the handler wired if it is re-enabled later.
@@ -7975,12 +7984,6 @@ async function openCalendarExpectedFromLine(expectedLine) {
   return true;
 }
 
-const CAL_STARTING_POINT_FLAG_SVG =
-  '<svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg>';
-
-const CAL_RECONCILED_CHECK_SVG =
-  '<svg class="cal-balance-reconciled-mark__icon" viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3.2 8.35 6.55 11.5 12.8 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
 function buildCalBalanceReconciledMark() {
   return `<span class="cal-balance-reconciled-mark" title="Reconciled" role="img" aria-label="Reconciled">${CAL_RECONCILED_CHECK_SVG}</span>`;
 }
@@ -8036,9 +8039,6 @@ function shouldOfferTodayReconcileAction(iso, opts = {}) {
   if (opts.isReconciled || isReconciledOnDate(iso)) return false;
   return true;
 }
-
-const CAL_RECONCILE_ACTION_SVG =
-  '<svg class="cal-day-reconcile-action__icon" viewBox="0 0 16 16" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M13.15 8.05A5.15 5.15 0 0 1 4.55 11.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13.15 8.05v2.45h-2.45" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.85 7.95A5.15 5.15 0 0 1 11.45 4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.85 7.95V5.5h2.45" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function mountTodayReconcileAction(cell, iso, opts) {
   const dayNumEl = cell?.querySelector(".cal-daynum");
