@@ -97,7 +97,10 @@ def _save_scope(page, choice: str) -> dict:
     page.locator("#txEditSave").click()
     scope = page.locator("#txEditApplyScopeModal.modal-overlay--open")
     expect(scope).to_be_visible()
-    scope.get_by_text(choice, exact=True).click()
+    if choice == "instance":
+        scope.locator("#txEditApplyScopeInstanceBtn").click()
+    else:
+        scope.locator("#txEditApplyScopeSeriesBtn").click()
     with page.expect_response(
         lambda response: response.request.method == "POST"
         and ("apply-from-occurrence" in response.url or "/instances/" in response.url)
@@ -109,11 +112,11 @@ def _save_scope(page, choice: str) -> dict:
 
 
 def _save_series(page) -> dict:
-    return _save_scope(page, "Update this and future transactions")
+    return _save_scope(page, "series")
 
 
 def _save_this_occurrence(page) -> dict:
-    return _save_scope(page, "Only update this occurrence")
+    return _save_scope(page, "instance")
 
 
 def _line(page, iso: str, text: str):

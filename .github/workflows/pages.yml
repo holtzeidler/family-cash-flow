@@ -30,6 +30,11 @@ jobs:
           node --check frontend/needs-review.js
           node frontend/needs-review.test.js
 
+      - name: Transaction edit scope
+        run: |
+          node --check frontend/tx-edit-scope.js
+          node frontend/tx-edit-scope.test.js
+
       - name: Prepare Pages artifact
         env:
           API_BASE: ${{ secrets.API_BASE }}
