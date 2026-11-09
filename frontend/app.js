@@ -4119,6 +4119,7 @@ familySelect.addEventListener("change", async () => {
   hydrateBalanceThresholdInputsFromStorage(true);
   await loadCategories();
   await loadAccounts();
+  closeCalAddTxMenu();
   closeFavoritesMenu();
   favoriteTransactions = [];
   favoriteTransactionsFamilyId = null;
@@ -5775,7 +5776,7 @@ function closeFavoritesMenu() {
 function positionFavoritesMenu(button) {
   const menu = document.getElementById("bwFavoritesMenu");
   if (!menu || !button) return;
-  const rect = button.getBoundingClientRect();
+  const rect = (button.closest && button.closest(".cal-add-split") || button).getBoundingClientRect();
   const width = Math.min(320, window.innerWidth - 24);
   let left = Math.min(rect.left, window.innerWidth - width - 12);
   left = Math.max(12, left);
@@ -6036,6 +6037,96 @@ function toggleFavoritesMenu(button) {
   void openFavoritesMenu(button);
 }
 
+function closeCalAddTxMenu() {
+  const menu = document.getElementById("calAddTxMenu");
+  const btn = document.getElementById("calAddTxMenuBtn");
+  if (menu) menu.hidden = true;
+  if (btn && (!favoritesMenuOwner || favoritesMenuOwner !== btn)) {
+    btn.setAttribute("aria-expanded", "false");
+  }
+}
+
+function positionCalAddTxMenu() {
+  const menu = document.getElementById("calAddTxMenu");
+  const btn = document.getElementById("calAddTxMenuBtn");
+  if (!menu || !btn) return;
+  const anchor = btn.closest(".cal-add-split") || btn;
+  const rect = anchor.getBoundingClientRect();
+  menu.style.minWidth = `${Math.max(Math.round(rect.width), 168)}px`;
+  let left = rect.left;
+  let top = rect.bottom + 6;
+  menu.hidden = false;
+  const width = menu.offsetWidth;
+  left = Math.min(left, window.innerWidth - width - 12);
+  left = Math.max(12, left);
+  if (top + menu.offsetHeight > window.innerHeight - 12) {
+    top = Math.max(12, rect.top - menu.offsetHeight - 6);
+  }
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+function ensureCalAddTxMenu() {
+  let menu = document.getElementById("calAddTxMenu");
+  if (menu) return menu;
+  menu = document.createElement("div");
+  menu.id = "calAddTxMenu";
+  menu.className = "cal-add-tx-menu";
+  menu.hidden = true;
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", "Add options");
+  const item = document.createElement("button");
+  item.type = "button";
+  item.id = "calAddTxFromFavorites";
+  item.className = "cal-add-tx-menu__item";
+  item.setAttribute("role", "menuitem");
+  item.textContent = "From favorites";
+  item.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeCalAddTxMenu();
+    const owner = document.getElementById("calAddTxMenuBtn");
+    if (owner) void openFavoritesMenu(owner);
+  });
+  menu.appendChild(item);
+  menu.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeCalAddTxMenu();
+      document.getElementById("calAddTxMenuBtn")?.focus();
+      return;
+    }
+    if (event.key === "Tab") {
+      closeCalAddTxMenu();
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      item.focus();
+    }
+  });
+  document.body.appendChild(menu);
+  return menu;
+}
+
+function toggleCalAddTxMenu() {
+  const menu = ensureCalAddTxMenu();
+  const btn = document.getElementById("calAddTxMenuBtn");
+  if (!menu || !btn) return;
+  const fav = document.getElementById("bwFavoritesMenu");
+  const favOpen = fav && !fav.hidden && favoritesMenuOwner === btn;
+  if (!menu.hidden || favOpen) {
+    closeCalAddTxMenu();
+    closeFavoritesMenu();
+    return;
+  }
+  closeFavoritesMenu();
+  btn.setAttribute("aria-expanded", "true");
+  positionCalAddTxMenu();
+  menu.querySelector('[role="menuitem"]')?.focus();
+}
+
 function ensureFavoriteLaunchers() {
   const actions = document.querySelector(".tm__headActions");
   if (actions && !document.getElementById("tmFavoritesBtn")) {
@@ -6050,62 +6141,56 @@ function ensureFavoriteLaunchers() {
     btn.addEventListener("click", () => toggleFavoritesMenu(btn));
     actions.appendChild(btn);
   }
-  const today = document.getElementById("calendarGoToday");
-  const nav = today ? today.closest(".calendar-nav-bar") : document.querySelector(".calendar-nav-bar");
-  if (nav && !document.getElementById("calFavoritesBtn")) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "calFavoritesBtn";
-    btn.className = "cal-fav-btn";
-    btn.dataset.favoritesToggle = "1";
-    btn.setAttribute("aria-haspopup", "dialog");
-    btn.setAttribute("aria-expanded", "false");
-    btn.innerHTML = '<span aria-hidden="true">☆</span> Favorites';
-    btn.addEventListener("click", () => toggleFavoritesMenu(btn));
-    let cluster = nav.querySelector(":scope > .cal-nav-leading");
-    if (!cluster && today && today.parentElement === nav) {
-      cluster = document.createElement("div");
-      cluster.className = "cal-nav-leading";
-      today.replaceWith(cluster);
-      cluster.appendChild(today);
-    }
-    (cluster || nav).appendChild(btn);
-  }
-  document.addEventListener("click", (e) => {
-    const menu = document.getElementById("bwFavoritesMenu");
-    if (!menu || menu.hidden) return;
-    const target = e.target;
-    // Rename replaces its button during the click, so the target is no longer in the menu.
-    if (!target || target.isConnected === false) return;
-    if (menu.contains(target)) return;
-    if (target.closest && target.closest("[data-favorites-toggle], #bwFavoritesMenu, #bwConfirmModal")) return;
-    closeFavoritesMenu();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
-    const menu = document.getElementById("bwFavoritesMenu");
-    if (!menu || menu.hidden) return;
-    if (document.getElementById("bwConfirmModal")?.classList.contains("modal-overlay--open")) return;
-    const namePanel = document.getElementById("txFavoriteNamePanel");
-    if (namePanel && !namePanel.hidden) return;
-    const openRowMenu = menu.querySelector("details.cats-cat__menu[open]");
-    if (openRowMenu) {
-      try { openRowMenu.open = false; } catch (_) {}
-      if (typeof resetCategoriesMenuPanelPosition === "function") {
-        resetCategoriesMenuPanelPosition(openRowMenu.querySelector(".cats-cat__menu-panel"));
+  document.getElementById("calFavoritesBtn")?.remove();
+  if (!ensureFavoriteLaunchers._bound) {
+    ensureFavoriteLaunchers._bound = true;
+    document.addEventListener("click", (e) => {
+      const target = e.target;
+      // Rename replaces its button during the click, so the target is no longer in the menu.
+      if (!target || target.isConnected === false) return;
+      const inAddMenu = target.closest && target.closest("#calAddTxMenu, #calAddTxMenuBtn");
+      if (!inAddMenu) closeCalAddTxMenu();
+      const menu = document.getElementById("bwFavoritesMenu");
+      if (!menu || menu.hidden) return;
+      if (menu.contains(target)) return;
+      if (target.closest && target.closest("[data-favorites-toggle], #bwFavoritesMenu, #bwConfirmModal, #calAddTxMenu")) return;
+      closeFavoritesMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const addMenu = document.getElementById("calAddTxMenu");
+      const menu = document.getElementById("bwFavoritesMenu");
+      const favOpen = menu && !menu.hidden;
+      const addOpen = addMenu && !addMenu.hidden;
+      if (!favOpen && !addOpen) return;
+      if (document.getElementById("bwConfirmModal")?.classList.contains("modal-overlay--open")) return;
+      const namePanel = document.getElementById("txFavoriteNamePanel");
+      if (namePanel && !namePanel.hidden) return;
+      if (favOpen) {
+        const openRowMenu = menu.querySelector("details.cats-cat__menu[open]");
+        if (openRowMenu) {
+          try { openRowMenu.open = false; } catch (_) {}
+          if (typeof resetCategoriesMenuPanelPosition === "function") {
+            resetCategoriesMenuPanelPosition(openRowMenu.querySelector(".cats-cat__menu-panel"));
+          }
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          return;
+        }
+        closeFavoritesMenu();
       }
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      return;
-    }
-    closeFavoritesMenu();
-    const modalOpen = document.getElementById("txAddModal")?.classList.contains("modal-overlay--open")
-      || document.getElementById("txEditModal")?.classList.contains("modal-overlay--open");
-    if (!modalOpen) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  });
+      if (addOpen) {
+        closeCalAddTxMenu();
+        document.getElementById("calAddTxMenuBtn")?.focus();
+      }
+      const modalOpen = document.getElementById("txAddModal")?.classList.contains("modal-overlay--open")
+        || document.getElementById("txEditModal")?.classList.contains("modal-overlay--open");
+      if (!modalOpen) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    });
+  }
   ensureFavoriteStar("add");
   ensureFavoriteStar("edit");
 }
@@ -6114,15 +6199,59 @@ ensureFavoriteLaunchers();
 
 function ensureCalendarAddTransactionButton() {
   const today = document.getElementById("calendarGoToday");
-  const cluster = today ? today.closest(".cal-nav-leading") : null;
-  if (!cluster || document.getElementById("calAddTxBtn")) return;
+  const nav = today ? today.closest(".calendar-nav-bar") : document.querySelector(".calendar-nav-bar");
+  if (!nav || !today) return;
+  let cluster = today.closest(".cal-nav-leading") || nav.querySelector(":scope > .cal-nav-leading");
+  if (!cluster) {
+    cluster = document.createElement("div");
+    cluster.className = "cal-nav-leading";
+    today.replaceWith(cluster);
+    cluster.appendChild(today);
+  }
+  document.getElementById("calFavoritesBtn")?.remove();
+  if (document.getElementById("calAddTxSplit")) return;
+  document.getElementById("calAddTxBtn")?.remove();
+  const split = document.createElement("div");
+  split.id = "calAddTxSplit";
+  split.className = "cal-add-split";
+  split.setAttribute("role", "group");
+  split.setAttribute("aria-label", "Add transaction");
   const btn = document.createElement("button");
   btn.type = "button";
   btn.id = "calAddTxBtn";
   btn.className = "cal-add-tx-btn";
   btn.innerHTML = '<span aria-hidden="true">+</span> Add transaction';
-  btn.addEventListener("click", (e) => openCalendarDayAddTransaction(toISODate(new Date()), e));
-  today.after(btn);
+  btn.addEventListener("click", (e) => {
+    closeCalAddTxMenu();
+    closeFavoritesMenu();
+    openCalendarDayAddTransaction(toISODate(new Date()), e);
+  });
+  const menuBtn = document.createElement("button");
+  menuBtn.type = "button";
+  menuBtn.id = "calAddTxMenuBtn";
+  menuBtn.className = "cal-add-tx-menu-btn";
+  menuBtn.dataset.favoritesToggle = "1";
+  menuBtn.setAttribute("aria-haspopup", "menu");
+  menuBtn.setAttribute("aria-expanded", "false");
+  menuBtn.setAttribute("aria-controls", "calAddTxMenu");
+  menuBtn.setAttribute("aria-label", "More add options");
+  menuBtn.innerHTML =
+    '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.25L6 8.25l3.5-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  menuBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleCalAddTxMenu();
+  });
+  menuBtn.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const menu = document.getElementById("calAddTxMenu");
+    if (!menu || menu.hidden) toggleCalAddTxMenu();
+    else menu.querySelector('[role="menuitem"]')?.focus();
+  });
+  split.append(btn, menuBtn);
+  today.after(split);
+  ensureCalAddTxMenu();
 }
 
 ensureCalendarAddTransactionButton();
