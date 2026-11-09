@@ -4565,10 +4565,12 @@ function ensureTxAddCategoryChipsUi() {
   txAddCategoryChipsBound = true;
   for (const r of document.querySelectorAll('input[name="txAddKind"]')) {
     r.addEventListener("change", () => {
-      setCategoryFieldValue("txAddCategoryId", null);
+      // Income/Expense only sets cash direction. Keep the category, typed
+      // name, amount, and other fields the user already entered.
       renderTxAddCategoryChips();
       const st = categoryComboboxRegistry.get("txAddCategoryId");
       if (st) hideCategoryComboboxList(st);
+      refreshTxCategoryColorPickers();
       updateTxAddFormValidity();
     });
   }
@@ -7272,7 +7274,7 @@ function applyForecastConfidenceUi(data) {
   let helper = "";
   let showLabel = false;
   let showCta = false;
-  const balanceCheckHelper = "Updating your current bank balance keeps future forecasts accurate.";
+  const balanceCheckHelper = "Confirming your checking balance keeps future forecasts accurate.";
 
   if (tier === "none") {
     showLabel = true;
@@ -7296,7 +7298,7 @@ function applyForecastConfidenceUi(data) {
   }
   if (forecastConfidenceVerifyBtn) {
     forecastConfidenceVerifyBtn.hidden = !showCta;
-    forecastConfidenceVerifyBtn.textContent = "Update Balance";
+    forecastConfidenceVerifyBtn.textContent = "Reconcile balance";
   }
 }
 
@@ -7981,7 +7983,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
   );
   metricsEl.removeAttribute("title");
   const label = fmtDateMDY(iso);
-  metricsEl.setAttribute("aria-label", label ? `Update balance for ${label}` : "Update balance");
+  metricsEl.setAttribute("aria-label", label ? `Reconcile balance for ${label}` : "Reconcile balance");
 
   if (dayBalVerified && dayBal) {
     const html = buildAdjustedBalanceTipHtml(dayBal, iso);
@@ -8003,7 +8005,7 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     return;
   }
 
-  metricsEl.title = "Update Balance";
+  metricsEl.title = "Reconcile balance";
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -19983,7 +19985,17 @@ function renderCalendar() {
           if (k === "income") amtSpan.classList.add("income");
           else if (k === "expense") amtSpan.classList.add("expense");
         }
-        amtSpan.textContent = `$${fmtMoney(row.amount)}`;
+        const money = `$${fmtMoney(row.amount)}`;
+        if (isExpected && row.variable) {
+          const est = document.createElement("span");
+          est.className = "cal-amt-est";
+          est.textContent = "Est. ";
+          amtSpan.appendChild(est);
+          amtSpan.appendChild(document.createTextNode(money));
+          amtSpan.setAttribute("aria-label", `Estimated ${money}`);
+        } else {
+          amtSpan.textContent = money;
+        }
 
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);

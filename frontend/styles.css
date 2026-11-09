@@ -22180,11 +22180,22 @@ body.plans-page--polished .plans-quote{
   pointer-events: none;
 }
 .cal-cell.cal-cell--bal-warn{
-  background: color-mix(in srgb, #fffbf7 5%, #fff);
-  border-color: rgba(17, 24, 39, 0.05);
+  background: color-mix(in srgb, #fffbeb 16%, #fff);
+  border-color: rgba(180, 83, 9, 0.14);
   box-shadow:
-    inset 2px 0 0 rgba(180, 130, 70, 0.07),
+    inset 2.5px 0 0 rgba(180, 83, 9, 0.34),
     0 1px 2px rgba(17, 24, 39, 0.02);
+}
+.cal-cell.cal-cell--bal-warn:not(.cal-cell--out):not(.cal-cell--before-start)::after{
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 0 0 9px 9px;
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.28), rgba(251, 191, 36, 0.12));
+  pointer-events: none;
 }
 .cal-cell.cal-cell--bal-risk{
   background: color-mix(in srgb, #fef2f2 10%, #fff);
@@ -22229,11 +22240,11 @@ body.plans-page--polished .plans-quote{
 }
 
 .cal-cell.cal-cell--bal-warn:not(.cal-cell--out):not(.cal-cell--before-start):hover{
-  border-color: rgba(17, 24, 39, 0.08);
-  background: color-mix(in srgb, #fffbf7 8%, #fff);
+  border-color: rgba(180, 83, 9, 0.2);
+  background: color-mix(in srgb, #fffbeb 22%, #fff);
   box-shadow:
-    inset 2px 0 0 rgba(180, 130, 70, 0.1),
-    0 4px 14px rgba(15, 23, 42, 0.04);
+    inset 2.5px 0 0 rgba(180, 83, 9, 0.42),
+    0 4px 14px rgba(146, 64, 14, 0.06);
 }
 
 .cal-cell.cal-cell--bal-risk:not(.cal-cell--out):not(.cal-cell--before-start):hover{
@@ -22474,6 +22485,12 @@ body.plans-page--polished .plans-quote{
   text-transform: uppercase;
   color: rgba(71, 85, 105, 0.92);
 }
+#reconcileBalanceBlock .balance-check-in__forecast-k{
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
 .balance-check-in__forecast-v{
   font-size: 1.25rem;
   font-weight: 750;
@@ -22486,6 +22503,13 @@ body.plans-page--polished .plans-quote{
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+.balance-check-in__prep-note{
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 450;
+  line-height: 1.4;
+  color: rgba(100, 116, 139, 0.92);
 }
 .balance-check-in__match-prompt{
   margin: 0;
@@ -23047,7 +23071,7 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   border-top-color: rgba(11, 61, 46, 0.16);
 }
 .calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update::before{
-  content: "Update balance";
+  content: "Reconcile balance";
   display: block;
   margin-bottom: 1px;
   font-size: 10.5px;
@@ -23219,12 +23243,20 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   white-space: nowrap;
 }
 .cal-day-tx-line .cal-amt{
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  min-width: max-content;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding-left: 2px;
+}
+.cal-amt-est{
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin-right: 0.18em;
 }
 .cal-day-tx-line .cal-amt.income{
   color: var(--cal-tx-in-color, var(--ok));
@@ -24613,11 +24645,11 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
   font-size: clamp(12.35px, 1.32vw, 13.85px);
-  font-weight: 540;
-  color: rgba(130, 92, 52, 0.76);
+  font-weight: 620;
+  color: rgba(146, 64, 14, 0.88);
   padding: 0 4px;
   border-radius: 4px;
-  background: rgba(255, 251, 246, 0.5);
+  background: rgba(254, 243, 199, 0.55);
   border: none;
   box-shadow: none;
 }
@@ -24684,8 +24716,8 @@ body[data-bw-view="transactions"] .tm__field label{
   justify-content: center;
   flex-shrink: 0;
   margin-right: 2px;
-  color: rgba(168, 118, 62, 0.42);
-  opacity: 0.85;
+  color: rgba(180, 83, 9, 0.72);
+  opacity: 0.92;
 }
 .cal-balance-warn-icon svg{
   display: block;
@@ -31172,7 +31204,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     gap: 5px;
   }
 
-  /* Mobile hierarchy: date → transactions (events) → update balance (result). */
+  /* Mobile hierarchy: date → transactions (events) → reconcile balance (result). */
   .calendar--mobile .cal-day-tx-line:not(.cal-day-tx-line--start-balance){
     --cal-tx-in-color: color-mix(in srgb, var(--ok) 88%, #003d34);
     --cal-tx-out-color: rgba(168, 62, 62, 0.82);
@@ -31283,7 +31315,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
-    content: "Update balance";
+    content: "Reconcile balance";
     font-weight: 500;
     color: rgba(100, 116, 139, 0.58);
   }
@@ -33953,7 +33985,10 @@ body.checkout-page .container > .grid{
 }
 
 /* Sidebar Cash Health and Forecast Snapshot: quieter type, even rows, no orphan wraps. */
-body[data-bw-view] #sidebarCashHealthCard,
+body[data-bw-view] #sidebarCashHealthCard{
+  padding: 11px 12px 10px;
+  border-radius: 12px;
+}
 body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
   padding: 13px 12px 12px;
   border-radius: 12px;
@@ -33989,6 +34024,11 @@ body[data-bw-view] .sidebar-balance-threshold-alerts{
   margin-bottom: 0;
   gap: 0;
 }
+body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
+body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
+  padding: 8px 10px;
+  border-radius: 10px;
+}
 body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar:has(.cash-health-card),
 body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-muted:has(.cash-health-card){
   padding: 0;
@@ -34000,11 +34040,6 @@ body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-mut
   box-shadow: none;
   color: inherit;
   font-weight: inherit;
-}
-body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
-body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
-  padding: 10px 11px 9px;
-  border-radius: 10px;
 }
 body[data-bw-view] #sidebarLowBalanceBanner .cash-outlook-card__row{
   align-items: flex-start;
