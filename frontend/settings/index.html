@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=906" />
+    <link rel="stylesheet" href="../styles.css?v=907" />
   </head>
   <body>
     <h1 class="sr-only">Settings</h1>
@@ -148,16 +148,7 @@
             <div id="txAddFormRoot" class="tx-add-form">
               <div id="txAddErr" class="error"></div>
               <div class="tx-add-form__body">
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label>Type</label></div>
-                <div class="form-row-h__field">
-                  <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
-                    <label class="kind-opt"><input type="radio" name="txAddKind" value="income" checked /> Income</label>
-                    <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" /> Expense</label>
-                  </div>
-                </div>
-              </div>
-              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+              <select id="txAddAccountId" hidden tabindex="-1" aria-hidden="true"></select>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddAmount">Amount</label></div>
                 <div class="form-row-h__field">
@@ -170,20 +161,21 @@
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
-                <div class="form-row-h__field tx-add-category-field">
-                  <p class="tx-add-category-hint">Common categories</p>
-                  <div id="txAddQuickChips" class="tx-quick-chips is-empty" role="group" aria-label="Suggested categories" aria-hidden="true"></div>
-                  <select id="txAddCategoryId"></select>
-                  <p id="txAddCategoryValidation" class="tx-add-field-validation" aria-live="polite"></p>
+                <div class="form-row-h__label"><label>Type</label></div>
+                <div class="form-row-h__field">
+                  <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                    <label class="kind-opt"><input type="radio" name="txAddKind" value="income" checked /> Income</label>
+                    <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" /> Expense</label>
+                  </div>
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
-                <div class="form-row-h__field">
-                  <select id="txAddAccountId"></select>
-                  <p id="txAddAccountValidation" class="tx-add-field-validation" aria-live="polite"></p>
+                <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
+                <div class="form-row-h__field tx-add-category-field">
+                  <div id="txAddQuickChips" class="tx-quick-chips is-empty" role="group" aria-label="Suggested categories" aria-hidden="true"></div>
+                  <select id="txAddCategoryId"></select>
+                  <p id="txAddCategoryValidation" class="tx-add-field-validation" aria-live="polite"></p>
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
@@ -194,7 +186,7 @@
                   <p id="txAddDateValidation" class="tx-add-field-validation" aria-live="polite"></p>
                 </div>
               </div>
-              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div id="txAddScheduleCompact" class="tx-add-schedule-compact" aria-label="Repeat and schedule">
                 <div class="form-row-h">
                   <div class="form-row-h__label"><label for="txAddRecurrence">Repeat</label></div>
@@ -238,7 +230,6 @@
                   </div>
                 </div>
               </div>
-              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div id="txAddRecurringBlock" style="display: none">
                 <div id="txAddTwiceMonthlyFields" class="form-row-h tx-add-second-monthly-row" style="display: none">
                   <div class="form-row-h__label"><label for="txAddSecondDayOfMonth">Second monthly date</label></div>
@@ -252,28 +243,39 @@
                   </div>
                 </div>
               </div>
-              <div class="form-row-h tx-add-notes-row">
-                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
-                <div class="form-row-h__field">
-                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                </div>
-              </div>
-              <div class="tx-add-variable-block">
-                <div class="form-row-h tx-add-variable-form-row">
-                  <div class="form-row-h__label">
-                    <label for="txAddVariable">Amount varies</label>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+              <div class="tx-add-advanced" id="txAddMoreOptions">
+                <button type="button" id="txAddMoreOptionsToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txAddMoreOptionsPanel">
+                  <span class="tx-add-advanced__expander-chev" aria-hidden="true">
+                    <svg viewBox="0 0 8 8" width="8" height="8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 1.5 6 4 2 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                  <span class="tx-add-advanced__expander-label">More options</span>
+                </button>
+                <div id="txAddMoreOptionsPanel" class="tx-add-advanced__panel" hidden>
+                  <div class="form-row-h tx-add-notes-row">
+                    <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
+                    <div class="form-row-h__field">
+                      <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+                    </div>
                   </div>
-                  <div class="form-row-h__field tx-add-variable-field-wrap">
-                    <input id="txAddVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
+                  <div class="tx-add-variable-block">
+                    <div class="form-row-h tx-add-variable-form-row">
+                      <div class="form-row-h__label">
+                        <label for="txAddVariable">Amount varies</label>
+                      </div>
+                      <div class="form-row-h__field tx-add-variable-field-wrap">
+                        <input id="txAddVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
+                      </div>
+                    </div>
+                    <p class="tx-add-variable-block__caption">Helpful for utilities, credit cards, and fluctuating bills.</p>
                   </div>
-                </div>
-                <p class="tx-add-variable-block__caption">Helpful for utilities, credit cards, and fluctuating bills.</p>
-              </div>
-              <div id="txAddCategoryColorRow" class="form-row-h tx-add-cat-color-row">
-                <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
-                <div class="form-row-h__field tx-add-cat-color-field tx-add-cat-color-panel">
-                  <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
-                  <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
+                  <div id="txAddCategoryColorRow" class="form-row-h tx-add-cat-color-row">
+                    <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
+                    <div class="form-row-h__field tx-add-cat-color-field tx-add-cat-color-panel">
+                      <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
+                      <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
+                    </div>
+                  </div>
                 </div>
               </div>
               </div>
@@ -1777,7 +1779,7 @@
     <script src="../cash-health-summary.js?v=6"></script>
     <script src="../needs-review.js?v=1"></script>
     <script src="../tx-edit-scope.js?v=2"></script>
-    <script src="../app.js?v=579"></script>
+    <script src="../app.js?v=580"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=25" defer></script>
   </body>

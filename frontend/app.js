@@ -2095,7 +2095,6 @@ const txAddSave = document.getElementById("txAddSave");
 const txAddCancel = document.getElementById("txAddCancel");
 const txAddAmountValidation = document.getElementById("txAddAmountValidation");
 const txAddCategoryValidation = document.getElementById("txAddCategoryValidation");
-const txAddAccountValidation = document.getElementById("txAddAccountValidation");
 const txAddDateValidation = document.getElementById("txAddDateValidation");
 let txAddValidationTouched = false;
 /** Category hint only after Add is clicked without a category (not when other fields are edited). */
@@ -2103,6 +2102,56 @@ let txAddCategoryValidationShown = false;
 let txAddValidationBound = false;
 let txAddSaveInFlight = false;
 const TX_ADD_SAVE_LABEL = "Add transaction";
+
+function defaultCheckingAccountId() {
+  const accounts = Array.isArray(state.accounts) ? state.accounts : [];
+  const checking = accounts.find((a) => String(a?.type || "").toLowerCase() === "checking");
+  const picked = checking || accounts[0];
+  return picked && picked.id != null ? String(picked.id) : "";
+}
+
+function syncTxAddHiddenAccount(preferredId) {
+  if (!txAddAccountId) return "";
+  renderAccountSelect(txAddAccountId, state.accounts || []);
+  const preferred = preferredId != null && String(preferredId).trim() ? String(preferredId) : "";
+  const validPreferred = preferred && (state.accounts || []).some((a) => String(a.id) === preferred);
+  const next = validPreferred ? preferred : defaultCheckingAccountId();
+  txAddAccountId.value = next;
+  return next;
+}
+
+function txAddMoreOptionsHasValues() {
+  const notes = String(txAddNotes?.value || "").trim();
+  const variable = !!(txAddVariable && txAddVariable.checked);
+  const color = !!(txAddColorTouched && txAddSelectedBgColor);
+  return !!(notes || variable || color);
+}
+
+function setTxAddMoreOptionsOpen(open) {
+  const btn = document.getElementById("txAddMoreOptionsToggle");
+  const panel = document.getElementById("txAddMoreOptionsPanel");
+  if (!btn || !panel) return;
+  const isOpen = !!open;
+  panel.hidden = !isOpen;
+  btn.classList.toggle("is-open", isOpen);
+  btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function syncTxAddMoreOptionsReveal() {
+  if (txAddMoreOptionsHasValues()) setTxAddMoreOptionsOpen(true);
+}
+
+function bindTxAddMoreOptions() {
+  const btn = document.getElementById("txAddMoreOptionsToggle");
+  if (!btn || btn.dataset.bound === "1") return;
+  btn.dataset.bound = "1";
+  btn.addEventListener("click", () => {
+    const panel = document.getElementById("txAddMoreOptionsPanel");
+    setTxAddMoreOptionsOpen(!!(panel && panel.hidden));
+  });
+  txAddNotes?.addEventListener("input", syncTxAddMoreOptionsReveal);
+  txAddVariable?.addEventListener("change", syncTxAddMoreOptionsReveal);
+}
 
 function setTxAddSaveBusy(busy) {
   txAddSaveInFlight = !!busy;
@@ -2126,7 +2175,7 @@ function txAddFormValidationState() {
   const amountOk = amountVal !== "" && Number(amountVal) > 0;
   const categoryId = categoryIdFromCategoryField("txAddCategoryId");
   const categoryOk = categoryId != null && Number.isFinite(Number(categoryId));
-  const accountOk = !!(txAddAccountId?.value);
+  const accountOk = !!(txAddAccountId?.value || defaultCheckingAccountId());
   const dateOk = !!(txAddDate?.value);
   return { amountOk, categoryOk, accountOk, dateOk, valid: amountOk && categoryOk && accountOk && dateOk };
 }
@@ -2141,7 +2190,6 @@ function resetTxAddFormValidation() {
   txAddCategoryValidationShown = false;
   setTxAddFieldValidation(txAddAmountValidation, "");
   setTxAddFieldValidation(txAddCategoryValidation, "");
-  setTxAddFieldValidation(txAddAccountValidation, "");
   setTxAddFieldValidation(txAddDateValidation, "");
 }
 
@@ -2152,11 +2200,9 @@ function updateTxAddFormValidity(opts = {}) {
   if (forceShow && !st.categoryOk) txAddCategoryValidationShown = true;
   if (showHints) {
     setTxAddFieldValidation(txAddAmountValidation, !st.amountOk ? "Enter an amount greater than zero." : "");
-    setTxAddFieldValidation(txAddAccountValidation, !st.accountOk ? "Choose an account." : "");
     setTxAddFieldValidation(txAddDateValidation, !st.dateOk ? "Choose a date." : "");
   } else {
     setTxAddFieldValidation(txAddAmountValidation, "");
-    setTxAddFieldValidation(txAddAccountValidation, "");
     setTxAddFieldValidation(txAddDateValidation, "");
   }
   setTxAddFieldValidation(
@@ -2178,7 +2224,7 @@ function bindTxAddFormValidation() {
     syncTxAddSecondMonthlyDateDefault();
     syncTxAddSecondYearlyDateDefault();
   });
-  txAddAccountId?.addEventListener("change", markTouched);
+  bindTxAddMoreOptions();
 }
 
 function txAddRepeatsActive() {
@@ -4843,7 +4889,7 @@ if (txAddSave) {
 
       if (repeats) {
         const recurrenceVal = txAddRecurrence?.value || "monthly";
-        const accountIdVal = txAddAccountId?.value || "";
+        const accountIdVal = syncTxAddHiddenAccount(txAddAccountId?.value) || defaultCheckingAccountId();
         if (!accountIdVal) throw new Error("Account is required");
 
         const endCountRaw = txAddEndCount?.value != null ? String(txAddEndCount.value).trim() : "";
@@ -5784,13 +5830,14 @@ function ensureFavoriteStar(mode) {
     btn = document.createElement("button");
     btn.type = "button";
     btn.id = id;
-    btn.className = "secondary tx-fav-action";
+    btn.className = mode === "edit" ? "secondary tx-fav-action" : "tx-fav-action tx-fav-action--quiet";
     btn.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       openFavoriteNamePrompt(mode);
     });
   }
+  btn.className = mode === "edit" ? "secondary tx-fav-action" : "tx-fav-action tx-fav-action--quiet";
   if (mode === "edit") {
     if (!document.querySelector("#txEditModal .tx-edit-foot-leading, #txEditModal .modal-actions--tx-edit-foot")) return;
     placeEditFavoriteButton(btn);
@@ -5851,7 +5898,7 @@ function readFavoriteForm(mode) {
     amount: (edit ? txEditAmount : txAddAmount)?.value || "",
     categoryId: category ? category.id : categoryId,
     categoryName: category ? String(category.name || "") : "",
-    accountId: (edit ? instanceAccountId : txAddAccountId)?.value || "",
+    accountId: (edit ? instanceAccountId?.value : syncTxAddHiddenAccount(txAddAccountId?.value)) || "",
     notes: (edit ? txEditNotes : txAddNotes)?.value || "",
     description: edit ? txEditDescriptionSnapshot : "",
   };
@@ -5981,10 +6028,7 @@ function applyFavoriteToOpenAddForm(favorite) {
   if (txAddEndDate) txAddEndDate.value = "";
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
   if (txAddVariable) txAddVariable.checked = false;
-  if (txAddAccountId) {
-    if (plan.accountId) txAddAccountId.value = String(plan.accountId);
-    else if (plan.clearAccount) txAddAccountId.value = "";
-  }
+  syncTxAddHiddenAccount(plan.accountId || undefined);
   try {
     updateTxAddRepeatingUi();
   } catch (_) {}
@@ -5997,6 +6041,7 @@ function applyFavoriteToOpenAddForm(favorite) {
   syncFavoriteStar("add");
   show(txAddErr, plan.notices.join(" "));
   updateTxAddFormValidity();
+  syncTxAddMoreOptionsReveal();
 }
 
 async function loadFavoriteTransactions() {
@@ -6546,10 +6591,9 @@ async function openTxAddModalAsync(opts = {}) {
   if (txAddEndDate) txAddEndDate.value = "";
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
   if (txAddVariable) txAddVariable.checked = false;
-  if (txAddAccountId) {
-    renderAccountSelect(txAddAccountId, state.accounts || []);
-    if (state.accounts && state.accounts.length > 0) txAddAccountId.value = String(state.accounts[0].id);
-  }
+  syncTxAddHiddenAccount();
+  bindTxAddMoreOptions();
+  setTxAddMoreOptionsOpen(false);
   updateTxAddRepeatingUi();
   refreshTxCategoryColorPickers();
   resetTxAddFormValidation();
@@ -6572,6 +6616,7 @@ async function openTxAddModalAsync(opts = {}) {
     txAddLinkedFavoriteId = null;
     txAddLinkedFavorite = null;
     syncFavoriteStar("add");
+    setTxAddMoreOptionsOpen(false);
   }
   if (token !== txAddOpenToken) return;
   updateTxAddFormValidity();
@@ -14342,6 +14387,7 @@ const txAddCategoryColorPicker = renderCategoryColorPicker({
   setBg: (v) => {
     txAddColorTouched = true;
     txAddSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
+    syncTxAddMoreOptionsReveal();
   },
 });
 const txEditCategoryColorPicker = renderCategoryColorPicker({
@@ -16366,7 +16412,7 @@ async function loadAccounts() {
   const expectedAccountIdEl = document.getElementById("expectedAccountId");
   if (expectedAccountIdEl) renderAccountSelect(expectedAccountIdEl, state.accounts);
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
-  if (txAddAccountId) renderAccountSelect(txAddAccountId, state.accounts);
+  if (txAddAccountId) syncTxAddHiddenAccount(txAddAccountId.value);
   if (instanceAccountId) renderAccountSelect(instanceAccountId, state.accounts);
   renderAccountDetailsPanel();
   if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {

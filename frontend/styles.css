@@ -25315,6 +25315,9 @@ body[data-bw-view="transactions"] .tm__field label{
 .tx-add-form{
   max-width: 100%;
 }
+.tx-add-form #txAddAccountId[hidden]{
+  display: none !important;
+}
 .tx-add-form #txAddErr{
   margin-top: 10px;
   margin-bottom: 4px;
@@ -25335,7 +25338,7 @@ body[data-bw-view="transactions"] .tm__field label{
   padding: 14px;
   --tx-add-label-inset: 2.1ch;
   --tx-add-row-gap-x: 9.8px;
-  --tx-add-row-gap-y: 6px;
+  --tx-add-row-gap-y: 4px;
   /* Unified neutral field chrome (standard inputs only; toggles/chips stay separate). */
   --tx-field-bg: #ffffff;
   --tx-field-border: rgba(17, 24, 39, 0.12);
@@ -25351,7 +25354,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add > h3{
   box-sizing: border-box;
   width: calc(100% + 28px);
-  margin: -14px -14px 8px -14px;
+  margin: -14px -14px 6px -14px;
   padding: 6px 14px 7px calc(14px + var(--tx-add-label-inset, 3ch));
   text-align: left;
   font-size: 0.9rem;
@@ -25639,8 +25642,8 @@ body[data-bw-view="transactions"] .tm__field label{
 
 .modal--tx-add .tx-add-form .modal-actions.modal-actions--tx-add-foot{
   flex-shrink: 0;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
   border-top-color: rgba(17, 24, 39, 0.07);
   position: sticky;
   bottom: 0;
@@ -25863,19 +25866,19 @@ body[data-bw-view="transactions"] .tm__field label{
   opacity: 0.75;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--xs{
-  height: 6px;
-}
-.modal--tx-add .tx-add-form .tx-add-vspace--sm{
-  height: 8px;
-}
-.modal--tx-add .tx-add-form .tx-add-vspace--2xs{
   height: 4px;
 }
+.modal--tx-add .tx-add-form .tx-add-vspace--sm{
+  height: 6px;
+}
+.modal--tx-add .tx-add-form .tx-add-vspace--2xs{
+  height: 3px;
+}
 .modal--tx-add .tx-add-form .tx-add-vspace{
-  height: 8px;
+  height: 6px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--lg{
-  height: 12px;
+  height: 8px;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-vspace--2xs{
   display: none;
@@ -26146,7 +26149,10 @@ body[data-bw-view="transactions"] .tm__field label{
   cursor: pointer;
 }
 .modal--tx-add .tx-add-advanced{
-  margin-top: 5px;
+  margin-top: 2px;
+}
+.modal--tx-add .tx-add-advanced__panel[hidden]{
+  display: none !important;
 }
 .modal--tx-add .tx-add-advanced__expander{
   display: inline-flex;
@@ -26172,7 +26178,10 @@ body[data-bw-view="transactions"] .tm__field label{
   display: none !important;
 }
 .modal--tx-add .tx-add-advanced__panel{
-  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
   padding-left: 0;
   border-left: none;
   width: 100%;
@@ -27018,17 +27027,14 @@ body.account-setup-page
   min-width: 0;
 }
 .tx-add-form .tx-add-category-hint{
-  margin: 0 0 6px;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  color: rgba(71, 85, 105, 0.82);
+  display: none;
 }
 .tx-add-form .tx-quick-chips{
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 5px;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
 }
 .tx-add-form .tx-quick-chip{
   appearance: none;
@@ -34447,6 +34453,39 @@ button.secondary.tx-fav-action{
   white-space: nowrap;
   touch-action: manipulation;
 }
+.modal--tx-add .tx-fav-action--quiet{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: auto;
+  flex: 0 1 auto;
+  min-height: 36px;
+  margin: 0;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: rgba(100, 116, 139, 0.86);
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.modal--tx-add .tx-fav-action--quiet:hover,
+.modal--tx-add .tx-fav-action--quiet:focus-visible{
+  color: rgba(17, 24, 39, 0.86);
+  background: transparent;
+  box-shadow: none;
+}
+.modal--tx-add .tx-fav-action--quiet[aria-pressed="true"]{
+  color: rgba(11, 61, 46, 0.78);
+}
 .tx-fav-dialog[hidden]{
   display: none !important;
 }
@@ -34946,6 +34985,10 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   }
   button.secondary.tx-fav-action{
     min-height: 40px;
+  }
+  .modal--tx-add .tx-fav-action--quiet{
+    min-height: 40px;
+    padding: 6px 4px;
   }
   .modal--tx-add .tx-add-actions-row .tx-add-btn-primary,
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave,
