@@ -25,6 +25,11 @@ jobs:
           node --check frontend/cash-health-summary.js
           node frontend/cash-health-summary.test.js
 
+      - name: Needs Review
+        run: |
+          node --check frontend/needs-review.js
+          node frontend/needs-review.test.js
+
       - name: Prepare Pages artifact
         env:
           API_BASE: ${{ secrets.API_BASE }}

@@ -6445,7 +6445,16 @@ button.secondary[aria-disabled="true"]{
   border-color: rgba(180, 83, 9, 0.11);
   background: rgba(253, 230, 138, 0.04);
 }
-.pending-attn-item.is-critical .pending-attn-name{
+.pending-attn-item.is-overdue{
+  border-color: rgba(180, 83, 9, 0.12);
+  background: rgba(253, 230, 138, 0.06);
+}
+.pending-attn-item.is-due-today{
+  border-color: rgba(15, 23, 42, 0.07);
+  background: rgba(255, 255, 255, 0.62);
+}
+.pending-attn-item.is-critical .pending-attn-name,
+.pending-attn-item.is-overdue .pending-attn-name{
   font-weight: 680;
 }
 .pending-attn-item:hover{
@@ -6541,6 +6550,17 @@ button.secondary[aria-disabled="true"]{
   margin-top: -2px;
   border-radius: 50%;
   background: rgba(220, 38, 38, 0.4);
+}
+.pending-attn-item.is-overdue .pending-attn-indicator::before{
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: rgba(180, 83, 9, 0.42);
 }
 button.pending-attn-item{
   font: inherit;
@@ -28116,6 +28136,13 @@ body.account-setup-page
   color: rgba(100, 116, 139, 0.72);
   letter-spacing: 0;
   line-height: 1.25;
+}
+.tx-edit-confirm-hint{
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: rgba(71, 85, 105, 0.78);
 }
 
 /* Ends dropdown: matches other selects, narrower so it doesn't dominate. */

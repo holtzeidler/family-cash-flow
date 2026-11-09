@@ -648,6 +648,8 @@ let state = {
   monthExpectedItems: [],
   calendarExtraActualItems: [],
   calendarExtraExpectedItems: [],
+  needsReviewExpectedByKey: new Map(),
+  needsReviewActualByKey: new Map(),
   reconciledDates: new Set(),
   verifiedBalances: new Map(),
   forecastConfidence: null,
@@ -1864,6 +1866,14 @@ const instanceEndCount = document.getElementById("instanceEndCount");
 const instanceAccountId = document.getElementById("instanceAccountId");
 const seriesVariable = document.getElementById("seriesVariable");
 const txEditRecurringUpdateBtn = document.getElementById("txEditRecurringUpdateBtn");
+let txEditConfirmOccurrence = false;
+
+function setTxEditConfirmOccurrenceMode(on) {
+  txEditConfirmOccurrence = !!on;
+  const hint = document.getElementById("txEditConfirmHint");
+  if (hint) hint.hidden = !txEditConfirmOccurrence;
+  if (txEditSave) txEditSave.textContent = txEditConfirmOccurrence ? "Confirm this amount" : "Save";
+}
 
 function updateInstanceTwiceMonthlyVisibility() {
   if (!instanceTwiceMonthlyFields || !instanceRecurrence) return;
@@ -4930,6 +4940,7 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (saveRow) saveRow.style.display = "";
     const txEditDel = document.getElementById("txEditDelete");
     if (txEditDel) txEditDel.style.display = "";
+    setTxEditConfirmOccurrenceMode(false);
     return;
   }
 
@@ -5283,6 +5294,7 @@ function closeTxEditModal() {
   txEditSelectedBgColor = null;
   txEditColorTouched = false;
   applyTransactionEditMode("actual", { resetting: true });
+  setTxEditConfirmOccurrenceMode(false);
   syncTransactionHistoryLink();
 }
 
@@ -7095,6 +7107,20 @@ async function refreshForecastConfidence() {
 
 if (txEditSave) {
   txEditSave.addEventListener("click", async () => {
+    if (txEditConfirmOccurrence) {
+      show(txEditErr, "");
+      const pre = validateTxEditBeforeRecurringApply();
+      if (pre) {
+        show(txEditErr, pre);
+        return;
+      }
+      try {
+        await saveExpectedInstanceOverride({ confirmOccurrence: true });
+      } catch (e) {
+        show(txEditErr, e.message || "Could not confirm this amount.");
+      }
+      return;
+    }
     if (transactionEditMode === "recurring") {
       show(txEditErr, "");
       const pre = validateTxEditBeforeRecurringApply();
@@ -12943,11 +12969,12 @@ async function navigateCalendarToIsoMonthIfNeeded(iso) {
   await refreshForecastAfterTransactionEdit(iso);
 }
 
-async function saveExpectedInstanceOverride() {
+async function saveExpectedInstanceOverride(opts = {}) {
   show(txEditErr, "");
   if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   if (!selectedExpectedInstance) throw new Error("Select an expected occurrence from the calendar");
 
+  const confirmOccurrence = !!opts.confirmOccurrence;
   const amountVal = txEditAmount.value;
   const amount = amountVal ? Number(amountVal) : null;
   if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be > 0");
@@ -12959,9 +12986,10 @@ async function saveExpectedInstanceOverride() {
 
   const occ = normalizeIsoDate(selectedExpectedInstance.occurrence_date);
   if (!occ) throw new Error("Invalid occurrence date");
-  // If the user moves the occurrence back onto its original occurrence_date,
-  // clear moved_to_date so it shows only once on that day.
-  let movedTo = normalizeIsoDate(selectedExpectedMovedToDate || txEditEditedOccurrenceIso() || "") || null;
+  // Confirm this occurrence only: never move the date or rewrite other copies.
+  let movedTo = confirmOccurrence
+    ? normalizeIsoDate(selectedExpectedMovedToDate || "") || null
+    : normalizeIsoDate(selectedExpectedMovedToDate || txEditEditedOccurrenceIso() || "") || null;
   if (movedTo && movedTo === occ) movedTo = null;
   if (movedTo && isDateBeforeEarliestStartingBalance(movedTo)) {
     throw new Error("That date is before your starting balance.");
@@ -12976,7 +13004,7 @@ async function saveExpectedInstanceOverride() {
     category_id: categoryId,
     ...txColorFieldsForSave(txEditSelectedBgColor),
     moved_to_date: movedTo,
-    variable: !!(seriesVariable && seriesVariable.checked),
+    variable: confirmOccurrence ? false : !!(seriesVariable && seriesVariable.checked),
   };
   await api(
     `/api/families/${state.activeFamilyId}/expected-transactions/${selectedExpectedInstance.expected_transaction_id}/instances/${occ}`,
@@ -13465,7 +13493,11 @@ async function loadFamilies() {
       renderUpcomingTransactionsFiltered();
     } catch (_) {}
   }
-  if (familyChanged) invalidateBillingStatusCache();
+  if (familyChanged) {
+    invalidateBillingStatusCache();
+    state.needsReviewExpectedByKey = new Map();
+    state.needsReviewActualByKey = new Map();
+  }
   syncActiveFamilyFlags();
   void refreshBillingWriteLock();
   if (settingsViewPanel && !settingsViewPanel.hidden) {
@@ -16266,6 +16298,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
   txEditModal.setAttribute("aria-hidden", "false");
   applyTransactionEditMode("recurring");
   applyMinDateToTxEditDateInput();
+  setTxEditConfirmOccurrenceMode(!!opts.confirmOccurrence && !!(calendarItem && calendarItem.variable));
   syncTransactionHistoryLink();
 }
 
@@ -17980,11 +18013,36 @@ function monthStartEndIso(ym) {
   return { start, end };
 }
 
+function syncNeedsReviewLoadedSources() {
+  const viewed = calendarMonth?.value || monthInput?.value || "";
+  const loadedMonths = viewed
+    ? [viewed, shiftMonthStr(viewed, -1), shiftMonthStr(viewed, 1)].filter(Boolean)
+    : [];
+  const expected = [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])];
+  const actuals = [
+    ...(state.monthActualItems || []),
+    ...(state.calendarExtraActualItems || []),
+    ...(state.upcomingActualItems || []),
+  ];
+  state.needsReviewExpectedByKey = syncNeedsReviewItemCache(
+    state.needsReviewExpectedByKey,
+    expected,
+    loadedMonths,
+    needsReviewOccurrenceKey,
+    needsReviewItemMonth
+  );
+  state.needsReviewActualByKey = syncNeedsReviewItemCache(
+    state.needsReviewActualByKey,
+    actuals,
+    loadedMonths,
+    needsReviewActualKey,
+    needsReviewItemMonth
+  );
+}
+
 function renderSidebarPendingTransactionsForMonth() {
   if (!sidebarPendingTxList) return;
   releaseForecastIntroIfSetupIsComplete();
-  const month = calendarMonth?.value || monthInput?.value;
-  const range = monthStartEndIso(month);
   sidebarPendingTxList.innerHTML = "";
   if (sidebarPendingTxCard) {
     sidebarPendingTxCard.classList.remove("sidebar-pending--empty", "sidebar-pending--success");
@@ -17993,7 +18051,6 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.textContent = "";
     sidebarPendingStatus.hidden = true;
   }
-  const checked = loadPendingAttentionChecked();
   const setTitle = () => {
     if (!sidebarPendingTitle) return;
     sidebarPendingTitle.textContent = "Needs Review";
@@ -18003,41 +18060,16 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.textContent = text || "";
     sidebarPendingStatus.hidden = !text;
   };
-  if (!range) {
-    setTitle();
-    if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-    setPendingStatus("");
-    return;
-  }
 
+  syncNeedsReviewLoadedSources();
   const todayIso = toISODate(new Date());
-  // Include past-dated variable items until the user updates them (still italic on calendar).
-  const startIso = range.start;
-  const endIso = range.end;
-
-  /** @type {{sortIso:string, type:"actual"|"expected", tx:any}[]} */
-  const rows = [];
-  for (const it of state.monthExpectedItems || []) {
-    // Sidebar "pending" is specifically for Variable (estimate) items only.
-    if (!it?.variable) continue;
-    const iso = normalizeIsoDate(it?.date) || String(it?.date || "");
-    if (!iso || iso < startIso || iso > endIso) continue;
-    rows.push({ sortIso: iso, type: "expected", tx: it });
-  }
-
-  // Sort by urgency (soonest first), then by magnitude (larger impact first).
-  rows.sort((a, b) => {
-    const dc = String(a.sortIso).localeCompare(String(b.sortIso));
-    if (dc !== 0) return dc;
-    const aa = Math.abs(toNum(a?.tx?.amount));
-    const bb = Math.abs(toNum(b?.tx?.amount));
-    if (bb !== aa) return bb - aa;
-    const an = effectiveTransactionCategoryName(a?.tx || {}) || "";
-    const bn = effectiveTransactionCategoryName(b?.tx || {}) || "";
-    return an.localeCompare(bn);
+  const reviewRows = collectNeedsReviewRows({
+    expectedItems: [...(state.needsReviewExpectedByKey || new Map()).values()],
+    actualItems: [...(state.needsReviewActualByKey || new Map()).values()],
+    todayIso,
   });
 
-  if (!rows.length) {
+  if (!reviewRows.length) {
     if (forecastIntroApplies()) {
       if (sidebarPendingTxCard) {
         sidebarPendingTxCard.hidden = true;
@@ -18048,39 +18080,28 @@ function renderSidebarPendingTransactionsForMonth() {
     }
     if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty", "sidebar-pending--success");
-    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "✓ Nothing to review";
+    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "Nothing to review";
     setPendingStatus("");
     return;
   }
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
 
   setTitle();
-  setPendingStatus(`(${rows.length})`);
-  for (let idx = 0; idx < rows.length; idx++) {
-    const r = rows[idx];
-    const it = r.tx;
+  setPendingStatus(`(${reviewRows.length})`);
+  for (let idx = 0; idx < reviewRows.length; idx++) {
+    const r = reviewRows[idx];
+    const it = r.item;
     const open = () => {
-      if (document.body?.dataset?.bwView === "transactions") {
-        tmFocusExpectedReviewItem(it);
-        return;
-      }
       const meta = getExpectedSeriesMeta(it?.expected_transaction_id);
-      if (meta) openExpectedEditModal(meta, { calendarItem: it });
+      if (meta) openExpectedEditModal(meta, { calendarItem: it, confirmOccurrence: true });
     };
-
-    const kind = String(it?.kind || "expense");
 
     const el = document.createElement("button");
     el.type = "button";
     el.className = "pending-attn-item";
-    let daysUntil = 999;
-    try {
-      const t0 = new Date(`${todayIso}T12:00:00`).getTime();
-      const t1 = new Date(`${r.sortIso}T12:00:00`).getTime();
-      if (Number.isFinite(t0) && Number.isFinite(t1)) daysUntil = Math.round((t1 - t0) / 86400000);
-    } catch (_) {}
-    if (daysUntil >= 0 && daysUntil <= 3) el.classList.add("is-critical");
-    else if (daysUntil >= 0 && daysUntil <= 10) el.classList.add("is-soon");
+    const daysUntil = Number.isFinite(r.daysUntil) ? r.daysUntil : 0;
+    if (daysUntil < 0) el.classList.add("is-overdue");
+    else if (daysUntil === 0) el.classList.add("is-due-today");
     el.addEventListener("click", () => open());
     el.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" || ev.key === " ") {
@@ -18103,16 +18124,11 @@ function renderSidebarPendingTransactionsForMonth() {
     name.textContent = primaryLabel;
     name.title = hintParts.length ? `${primaryLabel} — ${hintParts.join(" · ")}` : primaryLabel;
 
-    const amt = Math.abs(toNum(it?.amount));
-    const sign = String(kind) === "income" ? "+" : "–";
-    const dateStr = it?.date ? fmtMonthDay(it.date) : "—";
-    if (amt >= 7500) el.classList.add("is-major");
-    else if (amt >= 1200) el.classList.add("is-notable");
-
+    const metaLine = formatNeedsReviewMeta(it?.amount, daysUntil, r.iso);
     const meta = document.createElement("div");
     meta.className = "pending-attn-meta";
-    meta.textContent = `${sign}$${fmtMoney0(amt)} • ${dateStr}`;
-    meta.title = `${catLabel} · ${sign}$${fmtMoney0(amt)} · ${dateStr}`;
+    meta.textContent = metaLine;
+    meta.title = `${catLabel} · ${metaLine}`;
 
     const textCol = document.createElement("div");
     textCol.className = "pending-attn-text";
@@ -18125,10 +18141,7 @@ function renderSidebarPendingTransactionsForMonth() {
     indicator.innerHTML =
       '<svg class="pending-attn-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
 
-    el.setAttribute(
-      "aria-label",
-      `${primaryLabel}, ${sign}$${fmtMoney0(amt)}, ${it?.date ? fmtMonthDay(it.date) : "date unknown"}`
-    );
+    el.setAttribute("aria-label", `${primaryLabel}, ${metaLine}`);
     el.title = name.title;
     el.appendChild(textCol);
     el.appendChild(indicator);
