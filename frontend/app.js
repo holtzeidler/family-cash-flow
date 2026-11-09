@@ -2558,16 +2558,15 @@ function cashHealthCardHtml(copy) {
   if (amount) figureBits.push(`<span class="cash-health-card__amount">${amount}</span>`);
   if (when) figureBits.push(`<span class="cash-health-card__when">${when}</span>`);
   if (descriptor) figureBits.push(`<span class="cash-health-card__desc">${descriptor}</span>`);
-  const view = String(copy.viewAction || "").trim();
-  if (view) {
-    figureBits.push(
-      `<span class="cash-health-card__view">${escapeHtml(view)} <span aria-hidden="true">›</span></span>`
-    );
-  }
   const figure = figureBits.length ? `<span class="cash-health-card__figure">${figureBits.join("")}</span>` : "";
+  const view = String(copy.viewAction || "").trim();
+  const viewHtml = view
+    ? `<span class="cash-health-card__view">${escapeHtml(view)} <span aria-hidden="true">›</span></span>`
+    : "";
   const inner = `<span class="cash-health-card__body">
       <span class="cash-health-card__kicker">${cashHealthStatusIconHtml(copy.tone)}${kicker}</span>
       ${figure}
+      ${viewHtml}
     </span>`;
   if (copy.tone === "healthy") {
     return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">${inner}</div>`;

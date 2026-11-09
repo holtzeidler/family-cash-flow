@@ -33838,8 +33838,21 @@ body[data-bw-view] .sidebar .card[data-sidebar-key="month"]{
   border-radius: 12px;
 }
 body[data-bw-view] #sidebarCashHealthCard .sidebar-cash-health__head{
+  display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 8px;
   margin-bottom: 10px;
+}
+body[data-bw-view] #sidebarCashHealthCard .sidebar-cash-health__head h2{
+  flex: 0 1 auto;
+}
+body[data-bw-view] #sidebarCashHealthCard .sidebar-balance-threshold-hint-inline{
+  flex: 1 0 100%;
+}
+body[data-bw-view] #sidebarCashHealthCard .sidebar-balance-threshold-hint-inline[hidden]{
+  display: none;
 }
 body[data-bw-view] #cashOutlookTitle,
 body[data-bw-view] .sidebar-forecast-head h2{
@@ -34871,7 +34884,7 @@ button.cash-health-card:focus-visible{
 }
 .sidebar-cash-health__horizon{
   flex: 0 0 auto;
-  margin: 0;
+  margin: 0 0 0 auto;
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0;
@@ -34956,8 +34969,11 @@ button.cash-health-card:focus-visible{
   white-space: nowrap;
 }
 .cash-health-card__view{
+  display: block;
+  align-self: flex-end;
   flex: 0 0 auto;
-  margin-left: auto;
+  margin-top: 8px;
+  max-width: 100%;
   font-size: 13px;
   font-weight: 400;
   white-space: nowrap;
