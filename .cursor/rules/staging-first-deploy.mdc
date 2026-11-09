@@ -9,14 +9,22 @@ Unless the user explicitly says otherwise (e.g. "deploy to production", "merge t
 
 ## Commits and branches
 
-- Commit and push to the **`staging`** branch (not `main`).
-- If work started on another branch, merge or PR into **`staging`** before deploy.
+- Default target is the **`staging`** branch (not `main`).
+- Feature work may use a local branch. When it is ready, **merge directly into `staging` and push**. Do **not** open a GitHub PR for staging unless there is a specific reason (conflicting history, requested review, or the user asks for a PR).
 - Do **not** merge to `main` or push production deploys without explicit user approval.
 
 ## Deploy target
 
 - **Staging**: `staging.balancewhiz.com` via Render (`family-cash-flow-api-staging`, `family-cash-flow-web-staging`).
 - Pushing **`staging`** triggers staging API + static site deploy and GitHub **Staging — build and verify frontend** CI.
+
+## Streamlined staging ship
+
+1. Run relevant unit tests and build checks.
+2. Commit the work.
+3. Merge into `staging` and `git push origin staging`.
+4. Confirm GitHub staging CI / Render deploy, and report https://staging.balancewhiz.com for visual QA.
+5. Run local e2e/smoke when the change is user-facing (`scripts/run-balancewhiz-smoke.sh` or the focused e2e file). Local smoke uses disposable SQLite — do not point it at staging or production.
 
 ## When helping with git/deploy
 
@@ -30,3 +38,4 @@ Unless the user explicitly says otherwise (e.g. "deploy to production", "merge t
 - Urgent production hotfix directly to `main`
 - Documentation-only changes user wants on `main` only
 - Any task where user names a different branch or environment
+- A staging PR when review, conflict resolution, or CI-on-PR is actually needed
