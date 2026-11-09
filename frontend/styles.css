@@ -23107,8 +23107,6 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   margin-bottom: 1px;
 }
 .cal-cell--no-tx .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone):not(.cal-balance--risk){
-  font-size: clamp(11.75px, 1.28vw, 12.75px);
-  font-weight: 560;
   color: rgba(71, 85, 105, 0.88);
 }
 
@@ -24531,7 +24529,6 @@ body[data-bw-view="transactions"] .tm__field label{
   background: transparent;
 }
 .cal-balance-strip--has-status .cal-stat.cal-balance{
-  font-weight: 650;
   color: rgba(15, 23, 42, 0.9);
 }
 /* Strip container stays visually quiet — risk/watch cues live on the balance
@@ -24613,26 +24610,21 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.income{ color: var(--text); }
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
-  /* End-of-day balance: readable anchor, secondary to transaction rows. */
-  font-size: clamp(12.25px, 1.32vw, 13.75px);
+  /* One type scale for every end-of-day balance, regardless of date or status. */
+  font-size: 13px;
   line-height: 1.24;
   font-weight: 500;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+  max-width: 100%;
   color: rgba(30, 41, 59, 0.82);
 }
-.cal-cell--density-sparse .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone){
-  font-size: clamp(12.75px, 1.38vw, 14.25px);
-}
-.cal-cell--density-dense .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor){
-  font-size: clamp(12px, 1.32vw, 13.5px);
-}
 .cal-stat.cal-balance.cal-balance--quiet{
-  font-weight: 560;
   color: rgba(51, 65, 85, 0.9);
 }
 .cal-stat.cal-balance.cal-balance--past-day{
-  font-weight: 520;
   color: rgba(100, 116, 139, 0.92);
   padding: 0;
   background: none;
@@ -24648,8 +24640,6 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.cal-balance.cal-balance--past-day.cal-balance--recovery-milestone,
 .cal-stat.cal-balance.cal-balance--past-day.cal-balance--stabilizing,
 .cal-stat.cal-balance.cal-balance--past-day.cal-balance--strong-inflow{
-  font-weight: 520;
-  font-size: clamp(12.25px, 1.32vw, 13.75px);
   color: rgba(100, 116, 139, 0.92);
   padding: 0;
   background: none;
@@ -24658,7 +24648,6 @@ body[data-bw-view="transactions"] .tm__field label{
   text-decoration: none;
 }
 .cal-stat.cal-balance.cal-balance--watch-zone{
-  font-weight: 520;
   color: rgba(120, 98, 62, 0.72);
   padding: 0 4px;
   border-radius: 4px;
@@ -24667,8 +24656,6 @@ body[data-bw-view="transactions"] .tm__field label{
   box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
-  font-size: clamp(12.35px, 1.32vw, 13.85px);
-  font-weight: 620;
   color: rgba(146, 64, 14, 0.88);
   padding: 0 4px;
   border-radius: 4px;
@@ -24677,18 +24664,14 @@ body[data-bw-view="transactions"] .tm__field label{
   box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--repeated:not(.cal-balance--risk):not(.is-negative){
-  font-weight: 540;
   color: rgba(120, 88, 52, 0.68);
 }
 .cal-stat.cal-balance.cal-balance--month-low-mark{
-  font-weight: 620;
   color: rgba(71, 85, 105, 0.72);
   text-decoration: none;
 }
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
-  font-weight: 560;
-  font-size: clamp(12.5px, 1.34vw, 14px);
   color: rgba(127, 45, 45, 0.82);
   padding: 0 5px;
   border-radius: 4px;
@@ -24698,25 +24681,19 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .cal-stat.cal-balance.cal-balance--risk.cal-balance--repeated,
 .cal-stat.cal-balance.is-negative.cal-balance--repeated{
-  font-weight: 690;
   color: rgba(127, 29, 29, 0.78);
 }
 .cal-stat.cal-balance.cal-balance--recovery-milestone{
-  font-weight: 560;
   color: rgba(22, 101, 52, 0.68);
-  letter-spacing: -0.01em;
 }
 .cal-stat.cal-balance.cal-balance--stabilizing{
-  font-weight: 560;
   color: rgba(22, 101, 52, 0.64);
 }
 .cal-stat.cal-balance.cal-balance--strong-inflow{
-  font-weight: 560;
   color: rgba(4, 100, 78, 0.66);
 }
 .cal-stat.cal-balance.is-muted{
   color: rgba(100, 116, 139, 0.46);
-  font-weight: 520;
 }
 .cal-stat.cal-balance.is-past{
   color: rgba(55, 65, 81, 0.7);
@@ -31418,29 +31395,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-stat.cal-balance{
-    font-size: 12.75px;
-    font-weight: 550;
+    font-size: 13px;
+    line-height: 1.24;
+    font-weight: 500;
   }
   .calendar--mobile .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--risk):not(.cal-balance--below-floor):not(.cal-balance--watch-zone){
     color: rgba(71, 85, 105, 0.92);
   }
-  .calendar--mobile .cal-cell--density-sparse .cal-stat.cal-balance{
-    font-size: 13px;
-  }
-  .calendar--mobile .cal-cell--no-tx .cal-stat.cal-balance{
-    font-size: 12.5px;
-    font-weight: 540;
-  }
   .calendar--mobile .cal-cell--no-tx .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone):not(.cal-balance--risk){
     color: rgba(71, 85, 105, 0.88);
-  }
-
-  /* Keep status / risk treatments readable above the quieter default balance. */
-  .calendar--mobile .cal-balance-strip--has-status .cal-stat.cal-balance,
-  .calendar--mobile .cal-stat.cal-balance.cal-balance--watch-zone,
-  .calendar--mobile .cal-stat.cal-balance.cal-balance--risk,
-  .calendar--mobile .cal-stat.cal-balance.is-negative{
-    font-weight: 650;
   }
   .calendar--mobile .cal-daynum:has(.cal-day-reconcile-action){
     justify-content: space-between;
@@ -31458,8 +31421,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     color: rgba(100, 116, 139, 0.62);
   }
   .calendar--mobile .cal-stat.cal-balance.cal-balance--below-floor{
-    font-size: 13px;
-    font-weight: 600;
+    color: rgba(146, 64, 14, 0.88);
   }
 
   body[data-bw-view="transactions"] .tm{
