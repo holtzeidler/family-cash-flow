@@ -6952,6 +6952,70 @@ button.nav-link:hover{
   white-space: normal;
 }
 
+.sidebar-reconcile{
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+.sidebar-reconcile__top{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sidebar-reconcile__label{
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.76);
+}
+.sidebar-reconcile__action{
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: rgba(71, 85, 105, 0.72);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sidebar-reconcile__action:hover,
+.sidebar-reconcile__action:focus-visible{
+  color: rgba(11, 61, 46, 0.92);
+}
+.sidebar-reconcile__action:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.sidebar-reconcile__detail{
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.011em;
+  color: rgba(71, 85, 105, 0.86);
+}
+.sidebar-reconcile__date{
+  white-space: nowrap;
+}
+.sidebar-reconcile__sep{
+  margin: 0 0.2em;
+  color: rgba(148, 163, 184, 0.9);
+}
+.sidebar-reconcile__elapsed{
+  color: rgba(100, 116, 139, 0.72);
+  font-weight: 500;
+}
+.sidebar-reconcile__elapsed.is-stale{
+  color: rgba(146, 64, 14, 0.84);
+}
+
 .sidebar-balance-threshold-alerts{
   display: flex;
   flex-direction: column;
@@ -22451,6 +22515,30 @@ body.plans-page--polished .plans-quote{
   color: rgba(71, 85, 105, 0.88);
   font-weight: 500;
 }
+.balance-check-in__date-field{
+  display: block;
+  margin: 6px 0 0;
+}
+.balance-check-in__date-input{
+  display: block;
+  width: 100%;
+  max-width: 11.5rem;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  color: rgba(51, 65, 85, 0.92);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.balance-check-in__date-input:focus{
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 1px;
+  border-color: color-mix(in srgb, var(--accent) 28%, rgba(17, 24, 39, 0.12));
+}
 .balance-check-in__forecast-card{
   margin: 0 0 16px;
   padding: 12px 14px;
@@ -29539,11 +29627,16 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--calendar-add .cal-daynum
 body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head{
   background: color-mix(in srgb, var(--accent) 6%, #ffffff) !important;
 }
-body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head .cal-day-reconcile-action,
 body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head .cal-ledger-metrics.cal-day-balance-hit{
   background: color-mix(in srgb, var(--accent) 10%, #ffffff);
   border-radius: 8px;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+body[data-bw-view="calendar"] #sidebarReconcileRow.bw-tour-target--sidebar-reconcile{
+  background: color-mix(in srgb, var(--accent) 6%, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+  padding: 6px 8px 7px;
 }
 
 body[data-bw-view="calendar"] #sidebarCashHealthCard.bw-tour-support-highlight--sidebar-soft,
@@ -32951,6 +33044,13 @@ body[data-bw-view="reports"] .cash-health-status--review{
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+body[data-bw-view="calendar"] .sidebar-reconcile,
+body[data-bw-view="transactions"] .sidebar-reconcile,
+body[data-bw-view="settings"] .sidebar-reconcile,
+body[data-bw-view="reports"] .sidebar-reconcile{
+  margin-top: 12px;
+  padding-top: 10px;
 }
 body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__row,
 body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__row,

@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=913" />
+    <link rel="stylesheet" href="../styles.css?v=914" />
   </head>
   <body>
     <h1 class="sr-only">Reports</h1>
@@ -117,6 +117,14 @@
                     <span id="sidebarPendingStatus" class="cash-health-status__value" hidden></span>
                   </div>
                   <div class="cash-health-status__detail list" id="sidebarPendingTxList"></div>
+                </div>
+
+                <div id="sidebarReconcileRow" class="sidebar-reconcile" hidden>
+                  <div class="sidebar-reconcile__top">
+                    <span class="sidebar-reconcile__label">Last reconciled</span>
+                    <button type="button" id="sidebarReconcileBtn" class="sidebar-reconcile__action">Reconcile</button>
+                  </div>
+                  <p id="sidebarReconcileDetail" class="sidebar-reconcile__detail">Not reconciled yet.</p>
                 </div>
               </div>
             </section>
@@ -1641,7 +1649,11 @@
       <div class="modal modal--reconcile modal--balance-check-in" role="dialog" aria-labelledby="reconcileTitle" aria-modal="true" data-balance-check-in-mode="confirm">
         <div class="balance-check-in__header">
           <h3 id="reconcileTitle" class="balance-check-in__title">Check your balance</h3>
-          <p id="reconcileDateDisplay" class="balance-check-in__date"></p>
+          <label class="balance-check-in__date-field">
+            <span class="sr-only">Reconciliation date</span>
+            <input type="date" id="reconcileDateInput" class="balance-check-in__date-input" />
+          </label>
+          <p id="reconcileDateDisplay" class="balance-check-in__date" hidden></p>
         </div>
         <div id="reconcileBalanceBlock" class="balance-check-in__forecast-card">
           <span class="balance-check-in__forecast-k">Projected end-of-day balance</span>
@@ -1816,9 +1828,10 @@
     <script src="../favorite-transactions.js?v=2"></script>
     <script src="../cash-health-summary.js?v=6"></script>
     <script src="../needs-review.js?v=1"></script>
+    <script src="../sidebar-reconcile.js?v=1"></script>
     <script src="../tx-edit-scope.js?v=3"></script>
-    <script src="../app.js?v=585"></script>
+    <script src="../app.js?v=586"></script>
     <script src="../feedback.js?v=6" defer></script>
-    <script src="../tour.js?v=26" defer></script>
+    <script src="../tour.js?v=27" defer></script>
   </body>
 </html>
