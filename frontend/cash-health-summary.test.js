@@ -88,9 +88,10 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   assert.strictEqual(summary.recovery.date, "2026-11-27");
   assert.strictEqual(expl.kind, "named");
   assert.strictEqual(copy.kicker, "Below your minimum balance");
-  assert.strictEqual(copy.headline, "Nov 19 · $750");
+  assert.strictEqual(copy.headline, "$750 on Nov 19");
   assert.strictEqual(copy.lines[0], "Lowest $650 on Nov 20, $350 below your $1,000 minimum balance");
-  assert.strictEqual(copy.lines[1], "Largest payment on Nov 19: Car Repair −$1,250");
+  assert.deepStrictEqual(copy.payments.map((p) => p.label), ["Car Repair"]);
+  assert.strictEqual(copy.paymentsHeading, "Significant upcoming payments");
   assert.strictEqual(copy.footer, "Next 90 days · View Nov 19");
   assert.strictEqual(copy.actionIso, "2026-11-19");
 }
@@ -116,15 +117,15 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   assert.strictEqual(summary.recovery.date, "2026-12-18");
   assert.strictEqual(range.startIso, "2026-11-28");
   assert.strictEqual(expl.kind, "named");
-  assert.deepStrictEqual(expl.payments.map((p) => p.label), ["Property Tax", "Mortgage"]);
-  assert.strictEqual(copy.kicker, "Projected to go below $0");
-  assert.strictEqual(copy.headline, "Dec 1 · −$1,555");
-  assert.strictEqual(copy.lines[0], "Lowest −$3,955 on Dec 9 · back above $0 on Dec 18");
-  assert.strictEqual(copy.lines[1], "Largest payments Nov 28–Dec 1: Property Tax −$3,850 (Nov 30), Mortgage −$2,450 (Dec 1)");
+  assert.deepStrictEqual(expl.payments.map((p) => p.label), ["Mortgage", "Property Tax"]);
+  assert.strictEqual(copy.kicker, "Projected negative balance");
+  assert.strictEqual(copy.headline, "−$1,555 on Dec 1");
+  assert.strictEqual(copy.lines[0], "Back above $0 on Dec 18");
+  assert.deepStrictEqual(copy.payments.map((p) => [p.label, p.date]), [["Mortgage", "2026-12-01"], ["Property Tax", "2026-11-30"]]);
   assert.strictEqual(copy.actionIso, "2026-12-01");
-  assert.strictEqual(copy.chip, "Projected to go below $0 Dec 1 · −$1,555");
-  assert.deepStrictEqual(cashHealthHighlightRefs(expl), ["tx:Property Tax", "tx:Mortgage"]);
-  assert.ok(!/caus/i.test(copy.lines.join(" ")), "never claims a cause");
+  assert.strictEqual(copy.chip, "Projected negative balance Dec 1 · −$1,555");
+  assert.deepStrictEqual(cashHealthHighlightRefs(expl), ["tx:Mortgage", "tx:Property Tax"]);
+  assert.ok(!/caus/i.test([copy.kicker, ...copy.lines, copy.paymentsNote].join(" ")), "never claims a cause");
 }
 
 // Negative that never recovers inside the window: no recovery text, lowest still shown.
@@ -133,6 +134,7 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   const { summary, copy } = fullCopy(rows, itemsByDay, null);
   assert.strictEqual(summary.recovery, null);
   assert.strictEqual(copy.lines[0], "Lowest −$700 on Nov 20");
+  assert.deepStrictEqual(copy.payments.map((p) => p.label), ["Rent"]);
 }
 
 // Many smaller payments together: aggregate wording, no single payment named as the reason.
@@ -148,16 +150,18 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   assert.strictEqual(lateCopy.summary.anchor.date, "2026-11-24");
   assert.strictEqual(lateCopy.expl.kind, "several");
   assert.strictEqual(lateCopy.summary.state, "below");
-  assert.strictEqual(lateCopy.copy.lines[1], "7 payments Nov 18–24 total $680 · largest Insurance −$120 (Nov 18)");
-  assert.deepStrictEqual(cashHealthHighlightRefs(lateCopy.expl), ["tx:Insurance"]);
-  assert.ok(!/largest payments?:/i.test(lateCopy.copy.lines[1]), "no single payment is singled out as the reason");
+  assert.deepStrictEqual(lateCopy.copy.payments, []);
+  assert.strictEqual(lateCopy.copy.paymentsNote, "7 payments Nov 18–24 total $680");
+  assert.deepStrictEqual(cashHealthHighlightRefs(lateCopy.expl), ["tx:Student Loan", "tx:Gym"]);
+  assert.ok(!/largest/i.test(lateCopy.copy.paymentsNote), "no single payment is singled out as the reason");
 }
 
 // Variable amounts are labeled as estimates.
 {
   const { rows, itemsByDay } = buildRows(1200, { "2026-11-15": [out("Credit Card Payment", 600, { variable: true })] });
   const { copy } = fullCopy(rows, itemsByDay, 1000);
-  assert.strictEqual(copy.lines[1], "Largest payment on Nov 15: Credit Card Payment (est.) −$600");
+  assert.strictEqual(copy.payments[0].label, "Credit Card Payment");
+  assert.strictEqual(copy.payments[0].variable, true);
 }
 
 // No minimum: only $0 matters; healthy wording names $0.
@@ -171,9 +175,9 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   const neg = buildRows(400, { "2026-11-20": [out("Bill", 500)], "2026-11-27": [inc("Paycheck", 900)] });
   const negCopy = fullCopy(neg.rows, neg.itemsByDay, null);
   assert.strictEqual(negCopy.summary.state, "negative");
-  assert.strictEqual(negCopy.copy.headline, "Nov 20 · −$100");
+  assert.strictEqual(negCopy.copy.headline, "−$100 on Nov 20");
   assert.strictEqual(negCopy.copy.lines[0], "Back above $0 on Nov 27");
-  assert.strictEqual(negCopy.copy.lines[1], "Largest payment on Nov 20: Bill −$500");
+  assert.deepStrictEqual(negCopy.copy.payments.map((p) => p.label), ["Bill"]);
 }
 
 // Already negative or below the minimum today: anchor is today, no run-up list.
@@ -184,14 +188,14 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   assert.strictEqual(summary.startsToday, true);
   assert.strictEqual(range, null);
   assert.strictEqual(copy.kicker, "Balance is below $0");
-  assert.strictEqual(copy.headline, "Today · −$120");
-  assert.strictEqual(copy.lines[0], "Lowest −$400 on Nov 12 · back above $0 on Nov 13");
+  assert.strictEqual(copy.headline, "−$120 today");
+  assert.strictEqual(copy.lines[0], "Back above $0 on Nov 13");
   assert.strictEqual(copy.lines.length, 1);
   assert.strictEqual(copy.footer, "Next 90 days · View today");
   assert.strictEqual(copy.chip, "Below $0 today · −$120");
   const low = buildRows(640, { "2026-11-13": [inc("Paycheck", 2100)] });
   const lowCopy = fullCopy(low.rows, low.itemsByDay, 1000).copy;
-  assert.strictEqual(lowCopy.headline, "Today · $640");
+  assert.strictEqual(lowCopy.headline, "$640 today");
   assert.strictEqual(lowCopy.lines[0], "$360 below your $1,000 minimum balance");
 }
 
@@ -203,7 +207,7 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   });
   const { range, copy } = fullCopy(rows, itemsByDay, null);
   assert.strictEqual(range.startIso, "2026-11-30");
-  assert.deepStrictEqual(copy.lines, ["Largest payments Nov 30–Dec 1: Mortgage −$950 (Dec 1), Property Tax −$900 (Nov 30)"]);
+  assert.deepStrictEqual(copy.payments.map((p) => p.label), ["Mortgage", "Property Tax"]);
   const far = buildRows(1800, { [cashHealthAddDays(TODAY, 90)]: [out("Tax", 5000)] });
   assert.strictEqual(summarizeCashHealth(far.rows, { todayIso: TODAY, minimum: 1000 }).state, "healthy");
   const edge = buildRows(1800, { [cashHealthAddDays(TODAY, 89)]: [out("Tax", 5000)] });
@@ -225,8 +229,70 @@ assert.strictEqual(cashHealthAddDays("2028-02-28", 1), "2028-02-29");
   itemsByDay.set("2026-11-20", []);
   const { expl, copy } = fullCopy(rows, itemsByDay, 1000);
   assert.strictEqual(expl.kind, "aggregate");
-  assert.strictEqual(copy.lines[1], "Balance falls $800 on Nov 20");
+  assert.strictEqual(copy.paymentsNote, "Balance falls $800 on Nov 20");
+  assert.deepStrictEqual(copy.payments, []);
   assert.deepStrictEqual(cashHealthHighlightRefs(expl), []);
+}
+
+// Crossing-day payment plus a larger earlier bill: name the day that goes negative first.
+{
+  const { rows, itemsByDay } = buildRows(5865, {
+    "2026-11-10": [out("Insurance", 3000)],
+    "2026-11-18": [out("Utilities", 1800)],
+    "2026-11-23": [out("Utilities", 1200)],
+    "2026-11-27": [inc("Paycheck", 2500)],
+  });
+  const { summary, expl, copy } = fullCopy(rows, itemsByDay, null);
+  assert.strictEqual(summary.state, "negative");
+  assert.strictEqual(summary.anchor.date, "2026-11-23");
+  assert.strictEqual(Math.round(summary.anchor.amount), -135);
+  assert.strictEqual(summary.recovery.date, "2026-11-27");
+  assert.strictEqual(expl.kind, "named");
+  assert.deepStrictEqual(expl.payments.map((p) => [p.label, p.date, p.amount]), [
+    ["Utilities", "2026-11-23", 1200],
+    ["Insurance", "2026-11-10", 3000],
+  ]);
+  assert.ok(!expl.payments.some((p) => p.date === "2026-11-18"), "the mid-size earlier bill is not listed once the shortfall is explained");
+  assert.strictEqual(copy.kicker, "Projected negative balance");
+  assert.strictEqual(copy.headline, "−$135 on Nov 23");
+  assert.strictEqual(copy.lines[0], "Back above $0 on Nov 27");
+  assert.strictEqual(copy.paymentsHeading, "Significant upcoming payments");
+}
+
+// One payment on the crossing day is enough when it dominates.
+{
+  const { expl, copy } = fullCopy(...Object.values(buildRows(1500, { "2026-11-20": [out("Rent", 2000)] })), null);
+  assert.deepStrictEqual(expl.payments.map((p) => p.label), ["Rent"]);
+  assert.strictEqual(copy.headline, "−$500 on Nov 20");
+}
+
+// Two payments on the crossing day: list both when the second is a real share of that day.
+{
+  const { expl } = fullCopy(
+    ...Object.values(
+      buildRows(3000, {
+        "2026-11-22": [out("Insurance", 2500)],
+        "2026-11-23": [out("Utilities", 800), out("Phone", 400)],
+      })
+    ),
+    null
+  );
+  assert.strictEqual(expl.kind, "named");
+  assert.deepStrictEqual(expl.payments.map((p) => p.label), ["Utilities", "Phone", "Insurance"]);
+}
+
+// Identical amounts: stable order by date, then name; crossing day still comes first.
+{
+  const { expl } = fullCopy(
+    ...Object.values(
+      buildRows(1500, {
+        "2026-11-20": [out("Alpha", 800)],
+        "2026-11-21": [out("Beta", 800)],
+      })
+    ),
+    null
+  );
+  assert.deepStrictEqual(expl.payments.map((p) => p.label), ["Beta", "Alpha"]);
 }
 
 // Duplicate occurrences: reuse the calendar's own dedupe so the listed payments match the day cell and the balance.

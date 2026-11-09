@@ -8,8 +8,11 @@ const CASH_HEALTH_WINDOW_DAYS = 90;
 const CASH_HEALTH_RUN_UP_MAX_DAYS = 14;
 /** Named payments must cover at least this share of run-up outflows; otherwise describe them together. */
 const CASH_HEALTH_NAMED_SHARE = 0.6;
-/** A second payment is named only when it is a meaningful part of the run-up on its own. */
+/** A second payment is named only when it is a meaningful part of the run-up (or of that day's outflows). */
 const CASH_HEALTH_SECOND_PAYMENT_SHARE = 0.25;
+/** Named rows on the card, crossing-day first, then earlier. */
+const CASH_HEALTH_MAX_PAYMENTS = 3;
+const CASH_HEALTH_MAX_CROSSING = 2;
 
 const CASH_HEALTH_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -176,23 +179,55 @@ function explainCashHealthRunUp(range, itemsByDay, rows) {
     }
   }
   if (!outflows.length) return null;
-  outflows.sort((a, b) => b.amount - a.amount || String(a.date).localeCompare(String(b.date)));
   const total = outflows.reduce((s, it) => s + it.amount, 0);
-  const named = [outflows[0]];
-  if (outflows[1] && outflows[1].amount >= total * CASH_HEALTH_SECOND_PAYMENT_SHARE) named.push(outflows[1]);
-  const namedTotal = named.reduce((s, it) => s + it.amount, 0);
-  if (namedTotal >= total * CASH_HEALTH_NAMED_SHARE) {
-    return { kind: "named", startIso: range.startIso, endIso: range.endIso, payments: named, total, count: outflows.length };
+  const picked = pickCashHealthPayments(outflows, range.endIso, total);
+  const namedTotal = picked.reduce((s, it) => s + it.amount, 0);
+  if (picked.length && namedTotal >= total * CASH_HEALTH_NAMED_SHARE) {
+    return { kind: "named", startIso: range.startIso, endIso: range.endIso, payments: picked, total, count: outflows.length };
   }
+  const crossing = picked.filter((p) => p.date === range.endIso);
   return {
     kind: "several",
     startIso: range.startIso,
     endIso: range.endIso,
     count: outflows.length,
     total,
-    largest: outflows[0],
-    payments: [outflows[0]],
+    payments: crossing.length ? crossing : [],
   };
+}
+
+function cashHealthPaymentSort(a, b) {
+  return b.amount - a.amount || String(a.date).localeCompare(String(b.date)) || String(a.label || "").localeCompare(String(b.label || ""));
+}
+
+/**
+ * Crossing-day outflows first (what takes the balance through the threshold), then earlier
+ * payments that still explain a meaningful share of the run-up. Never hide the crossing day
+ * just because an earlier bill is larger.
+ */
+function pickCashHealthPayments(outflows, crossingIso, total) {
+  const crossing = outflows.filter((p) => p.date === crossingIso).sort(cashHealthPaymentSort);
+  const earlier = outflows.filter((p) => p.date !== crossingIso).sort(cashHealthPaymentSort);
+  const crossingTotal = crossing.reduce((s, it) => s + it.amount, 0);
+  const picked = [];
+  if (crossing[0]) {
+    picked.push(crossing[0]);
+    if (
+      crossing[1] &&
+      picked.length < CASH_HEALTH_MAX_CROSSING &&
+      crossing[1].amount >= crossingTotal * CASH_HEALTH_SECOND_PAYMENT_SHARE
+    ) {
+      picked.push(crossing[1]);
+    }
+  }
+  const pickedSum = () => picked.reduce((s, p) => s + p.amount, 0);
+  for (const p of earlier) {
+    if (picked.length >= CASH_HEALTH_MAX_PAYMENTS) break;
+    if (total > 0 && pickedSum() >= total * CASH_HEALTH_NAMED_SHARE) break;
+    const significant = total > 0 && p.amount >= total * CASH_HEALTH_SECOND_PAYMENT_SHARE;
+    if (significant || p === earlier[0]) picked.push(p);
+  }
+  return picked;
 }
 
 function cashHealthDayDiff(startIso, endIso) {
@@ -232,17 +267,12 @@ function cashHealthPaymentsLine(expl) {
   if (expl.kind === "aggregate") {
     return `Balance falls ${cashHealthMoney(expl.drop)} ${cashHealthRangeLabel(expl.startIso, expl.endIso)}`;
   }
-  const oneDay = expl.startIso === expl.endIso;
   if (expl.kind === "named") {
-    const plural = expl.payments.length > 1;
-    const head = oneDay
-      ? `Largest payment${plural ? "s" : ""} on ${cashHealthMonthDay(expl.endIso)}`
-      : `Largest payment${plural ? "s" : ""} ${cashHealthRangeLabel(expl.startIso, expl.endIso)}`;
-    return `${head}: ${expl.payments.map((p) => cashHealthPaymentText(p, !oneDay)).join(", ")}`;
+    return expl.payments.map((p) => cashHealthPaymentText(p, true)).join("; ");
   }
   return `${expl.count} payments ${cashHealthRangeLabel(expl.startIso, expl.endIso)} total $${Math.round(expl.total).toLocaleString(
     "en-US"
-  )} · largest ${cashHealthPaymentText(expl.largest, !oneDay)}`;
+  )}`;
 }
 
 /** References for the calendar lines to highlight (tx:ID or exp:SERIES|YYYY-MM-DD). */
@@ -253,7 +283,8 @@ function cashHealthHighlightRefs(expl) {
 
 /**
  * Card wording. Plain strings only; the caller escapes them.
- * @returns {{tone:"healthy"|"below"|"negative", kicker:string, headline:string, lines:string[], footer:string,
+ * @returns {{tone:"healthy"|"below"|"negative", kicker:string, headline:string, lines:string[],
+ *   payments:Array, paymentsHeading:string, paymentsNote:string, footer:string,
  *   actionIso:string|null, chip:string, ariaLabel:string}|null}
  */
 function buildCashHealthCopy(summary, expl) {
@@ -262,6 +293,7 @@ function buildCashHealthCopy(summary, expl) {
   const minText = summary.hasMinimum ? cashHealthMoney(summary.minimum) : "";
   const lowest = summary.lowest;
   const windowText = `Next ${summary.windowDays} days`;
+  const emptyPayments = { payments: [], paymentsHeading: "", paymentsNote: "" };
 
   if (summary.state === "healthy") {
     const headline = summary.hasMinimum
@@ -274,6 +306,7 @@ function buildCashHealthCopy(summary, expl) {
       kicker: "",
       headline,
       lines,
+      ...emptyPayments,
       footer: windowText,
       actionIso: null,
       chip: "",
@@ -283,25 +316,20 @@ function buildCashHealthCopy(summary, expl) {
 
   const anchor = summary.anchor;
   const when = cashHealthMonthDay(anchor.date, today);
-  const whenCap = when === "today" ? "Today" : when;
-  const headline = `${whenCap} · ${cashHealthMoney(anchor.amount)}`;
+  const headline = when === "today" ? `${cashHealthMoney(anchor.amount)} today` : `${cashHealthMoney(anchor.amount)} on ${when}`;
   const lines = [];
   let kicker;
   let chip;
   if (summary.state === "negative") {
-    kicker = summary.startsToday ? "Balance is below $0" : "Projected to go below $0";
+    kicker = summary.startsToday ? "Balance is below $0" : "Projected negative balance";
     chip = summary.startsToday
       ? `Below $0 today · ${cashHealthMoney(anchor.amount)}`
-      : `Projected to go below $0 ${when} · ${cashHealthMoney(anchor.amount)}`;
-    const parts = [];
-    if (lowest && lowest.date !== anchor.date) {
-      parts.push(`Lowest ${cashHealthMoney(lowest.amount)} on ${cashHealthMonthDay(lowest.date)}`);
+      : `Projected negative balance ${when} · ${cashHealthMoney(anchor.amount)}`;
+    if (summary.recovery && lowest && cashHealthDayDiff(lowest.date, summary.recovery.date) <= 14) {
+      lines.push(`Back above $0 on ${cashHealthMonthDay(summary.recovery.date)}`);
+    } else if (lowest && lowest.date !== anchor.date) {
+      lines.push(`Lowest ${cashHealthMoney(lowest.amount)} on ${cashHealthMonthDay(lowest.date)}`);
     }
-    if (summary.recovery && cashHealthDayDiff(lowest.date, summary.recovery.date) <= 14) {
-      const back = `back above $0 on ${cashHealthMonthDay(summary.recovery.date)}`;
-      parts.push(parts.length ? back : back.charAt(0).toUpperCase() + back.slice(1));
-    }
-    if (parts.length) lines.push(parts.join(" · "));
   } else {
     kicker = "Below your minimum balance";
     chip = summary.startsToday
@@ -314,18 +342,28 @@ function buildCashHealthCopy(summary, expl) {
         : `Lowest ${cashHealthMoney(lowest.amount)} on ${cashHealthMonthDay(lowest.date)}, ${shortBy}`
     );
   }
-  const paymentsLine = cashHealthPaymentsLine(expl);
-  if (paymentsLine) lines.push(paymentsLine);
+  const named = expl && expl.kind === "named" && expl.payments && expl.payments.length;
+  const payments = named ? expl.payments : [];
+  const paymentsHeading = payments.length ? "Significant upcoming payments" : "";
+  const paymentsNote = !payments.length && expl ? cashHealthPaymentsLine(expl) : "";
   const viewText = when === "today" ? "View today" : `View ${when}`;
+  const payAria = payments.length
+    ? payments.map((p) => cashHealthPaymentText(p, true)).join(". ")
+    : paymentsNote;
   return {
     tone: summary.state,
     kicker,
     headline,
     lines,
+    payments,
+    paymentsHeading,
+    paymentsNote,
     footer: `${windowText} · ${viewText}`,
     actionIso: anchor.date,
     chip,
-    ariaLabel: `${kicker}: ${headline}. ${lines.join(". ")}. ${windowText}. Opens ${when === "today" ? "today" : when} on the calendar.`,
+    ariaLabel: [kicker, headline, ...lines, payAria, windowText, `Opens ${when === "today" ? "today" : when} on the calendar.`]
+      .filter(Boolean)
+      .join(". "),
   };
 }
 
@@ -395,6 +433,7 @@ if (typeof module !== "undefined" && module.exports) {
     summarizeCashHealth,
     cashHealthRunUpRange,
     explainCashHealthRunUp,
+    pickCashHealthPayments,
     cashHealthPaymentsLine,
     cashHealthHighlightRefs,
     buildCashHealthCopy,
