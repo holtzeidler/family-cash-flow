@@ -5,6 +5,8 @@ const {
   isNeedsReviewDateEligible,
   formatNeedsReviewDueLabel,
   formatNeedsReviewMeta,
+  parseNeedsReviewAmount,
+  buildNeedsReviewConfirmPayload,
   collectNeedsReviewRows,
   syncNeedsReviewItemCache,
   needsReviewOccurrenceKey,
@@ -139,6 +141,26 @@ function exp(extra) {
     needsReviewItemMonth
   );
   assert.strictEqual(keepOverdue.size, 2);
+}
+
+{
+  assert.strictEqual(parseNeedsReviewAmount("95"), 95);
+  assert.strictEqual(parseNeedsReviewAmount("108.50"), 108.5);
+  assert.strictEqual(parseNeedsReviewAmount("1,080"), 1080);
+  assert.strictEqual(parseNeedsReviewAmount("0"), null);
+  assert.strictEqual(parseNeedsReviewAmount(""), null);
+  const payload = buildNeedsReviewConfirmPayload(
+    exp({ account_id: 3, amount: 95, bg_color: "#9EC4A8" }),
+    108,
+    { account_id: 9, kind: "expense", description: "Utilities", category_id: 4 }
+  );
+  assert.strictEqual(payload.action, "update");
+  assert.strictEqual(payload.account_id, 3);
+  assert.strictEqual(payload.amount, 108);
+  assert.strictEqual(payload.variable, false);
+  assert.strictEqual(payload.moved_to_date, null);
+  assert.strictEqual(payload.kind, "expense");
+  assert.strictEqual(payload.description, "Utilities");
 }
 
 console.log("needs-review.test.js: ok");

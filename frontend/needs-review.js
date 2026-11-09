@@ -106,6 +106,28 @@ function formatNeedsReviewMeta(amount, daysUntil, iso) {
   return `Est. $${formatNeedsReviewMoney(amount)} · ${formatNeedsReviewDueLabel(daysUntil, iso)}`;
 }
 
+function parseNeedsReviewAmount(raw) {
+  const n = Number(String(raw ?? "").replace(/,/g, "").trim());
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+function buildNeedsReviewConfirmPayload(item, amount, series) {
+  const accountId = item?.account_id ?? series?.account_id;
+  const categoryRaw = item?.category_id ?? series?.category_id;
+  const categoryId = categoryRaw == null || categoryRaw === "" ? null : Number(categoryRaw);
+  return {
+    action: "update",
+    account_id: Number(accountId),
+    kind: item?.kind || series?.kind || "expense",
+    amount,
+    description: String(item?.description || series?.description || "").trim().slice(0, 500),
+    category_id: Number.isFinite(categoryId) && categoryId > 0 ? categoryId : null,
+    moved_to_date: null,
+    variable: false,
+  };
+}
+
 function compareNeedsReviewRows(a, b) {
   const aOver = a.daysUntil < 0;
   const bOver = b.daysUntil < 0;
@@ -174,6 +196,8 @@ if (typeof module !== "undefined" && module.exports) {
     syncNeedsReviewItemCache,
     formatNeedsReviewDueLabel,
     formatNeedsReviewMeta,
+    parseNeedsReviewAmount,
+    buildNeedsReviewConfirmPayload,
     collectNeedsReviewRows,
   };
 }

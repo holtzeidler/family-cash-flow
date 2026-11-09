@@ -3511,6 +3511,17 @@ const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
 const sidebarPendingTitle = document.getElementById("sidebarPendingTitle");
 const sidebarPendingStatus = document.getElementById("sidebarPendingStatus");
+const reviewAmountModal = document.getElementById("reviewAmountModal");
+const reviewAmountName = document.getElementById("reviewAmountName");
+const reviewAmountDate = document.getElementById("reviewAmountDate");
+const reviewAmountEstimate = document.getElementById("reviewAmountEstimate");
+const reviewAmountInput = document.getElementById("reviewAmountInput");
+const reviewAmountErr = document.getElementById("reviewAmountErr");
+const reviewAmountCancelBtn = document.getElementById("reviewAmountCancelBtn");
+const reviewAmountConfirmBtn = document.getElementById("reviewAmountConfirmBtn");
+const reviewAmountEditBtn = document.getElementById("reviewAmountEditBtn");
+let reviewAmountContext = null;
+let reviewAmountSaving = false;
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
 
@@ -5514,7 +5525,8 @@ function syncBwTxEditVisualViewport() {
   const open =
     txEditModal?.classList.contains("modal-overlay--open") ||
     document.getElementById("txEditApplyScopeModal")?.classList.contains("modal-overlay--open") ||
-    document.getElementById("txEditDeleteScopeModal")?.classList.contains("modal-overlay--open");
+    document.getElementById("txEditDeleteScopeModal")?.classList.contains("modal-overlay--open") ||
+    reviewAmountModal?.classList.contains("modal-overlay--open");
   const root = document.documentElement;
   if (!root) return;
   if (!open || !window.visualViewport) {
@@ -7773,6 +7785,10 @@ document.addEventListener("keydown", (e) => {
     closeTxEditApplyScopeModal();
     return;
   }
+  if (reviewAmountModal?.classList.contains("modal-overlay--open")) {
+    closeReviewAmountModal();
+    return;
+  }
   if (txEditModal?.classList.contains("modal-overlay--open")) closeTxEditModal();
 });
 
@@ -9920,6 +9936,8 @@ const BILLING_WRITE_LOCK_SELECTOR = [
   "#txEditSave",
   "#txEditDelete",
   "#txEditRecurringUpdateBtn",
+  "#reviewAmountConfirmBtn",
+  "#reviewAmountEditBtn",
   ".reimb-edit-btn",
   ".reimb-quick-btn",
   ".cats-pane__action",
@@ -18556,6 +18574,173 @@ function syncNeedsReviewLoadedSources() {
   );
 }
 
+function closeReviewAmountModal() {
+  if (!reviewAmountModal) return;
+  reviewAmountModal.classList.remove("modal-overlay--open");
+  reviewAmountModal.setAttribute("aria-hidden", "true");
+  try {
+    reviewAmountModal.style.display = "none";
+  } catch (_) {}
+  if (!reviewAmountSaving) reviewAmountContext = null;
+  show(reviewAmountErr, "");
+  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = false;
+  syncBwTxEditVisualViewport();
+}
+
+function openReviewAmountModal(item, series) {
+  if (!reviewAmountModal || !item) return;
+  reviewAmountContext = { item, series: series || null };
+  const iso = normalizeIsoDate(item.date) || normalizeIsoDate(item.occurrence_date) || "";
+  const name = forecastTransactionPrimaryLabel(item);
+  if (reviewAmountName) reviewAmountName.textContent = name;
+  if (reviewAmountDate) {
+    reviewAmountDate.textContent =
+      typeof needsReviewMonthDay === "function" ? needsReviewMonthDay(iso) || iso : iso;
+  }
+  const amt = Number(item.amount);
+  if (reviewAmountEstimate) {
+    reviewAmountEstimate.textContent = Number.isFinite(amt) ? `$${fmtMoney(amt)}` : "—";
+  }
+  if (reviewAmountInput) {
+    reviewAmountInput.value = Number.isFinite(amt) && amt > 0 ? String(amt) : "";
+  }
+  show(reviewAmountErr, "");
+  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = false;
+  try {
+    reviewAmountModal.style.display = "";
+  } catch (_) {}
+  reviewAmountModal.classList.add("modal-overlay--open");
+  reviewAmountModal.setAttribute("aria-hidden", "false");
+  syncBwTxEditVisualViewport();
+  requestAnimationFrame(() => {
+    try {
+      reviewAmountInput?.focus();
+      reviewAmountInput?.select();
+    } catch (_) {}
+  });
+}
+
+async function openNeedsReviewAmount(item) {
+  if (await guardBillingWriteAsync()) return;
+  if (!item) return;
+  const eid = item.expected_transaction_id;
+  const series = (await resolveExpectedSeriesMeta(eid, item)) || getExpectedSeriesMeta(eid) || null;
+  openReviewAmountModal(item, series);
+}
+
+function reviewAmountTypedOrOriginal() {
+  const typed =
+    typeof parseNeedsReviewAmount === "function" ? parseNeedsReviewAmount(reviewAmountInput?.value) : Number(reviewAmountInput?.value);
+  if (Number.isFinite(typed) && typed > 0) return typed;
+  const orig = Number(reviewAmountContext?.item?.amount);
+  return Number.isFinite(orig) && orig > 0 ? orig : null;
+}
+
+async function confirmReviewAmount() {
+  if (reviewAmountSaving) return;
+  const item = reviewAmountContext?.item;
+  if (!item) return;
+  show(reviewAmountErr, "");
+  const amount =
+    typeof parseNeedsReviewAmount === "function"
+      ? parseNeedsReviewAmount(reviewAmountInput?.value)
+      : Number(reviewAmountInput?.value);
+  if (!amount) {
+    show(reviewAmountErr, "Amount must be > 0");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    show(reviewAmountErr, "Your account isn't ready yet");
+    return;
+  }
+  const series = reviewAmountContext?.series || getExpectedSeriesMeta(item.expected_transaction_id);
+  const payload =
+    typeof buildNeedsReviewConfirmPayload === "function"
+      ? buildNeedsReviewConfirmPayload(item, amount, series)
+      : {
+          action: "update",
+          account_id: Number(item.account_id ?? series?.account_id),
+          kind: item.kind || series?.kind || "expense",
+          amount,
+          description: String(item.description || series?.description || "").trim().slice(0, 500),
+          category_id: item.category_id ?? series?.category_id ?? null,
+          moved_to_date: null,
+          variable: false,
+        };
+  if (!Number.isFinite(payload.account_id) || payload.account_id <= 0) {
+    show(reviewAmountErr, "Account is required");
+    return;
+  }
+  Object.assign(payload, txColorFieldsForSave(item.bg_color || series?.bg_color));
+  const occ = normalizeIsoDate(item.occurrence_date || item.date);
+  if (!occ) {
+    show(reviewAmountErr, "Invalid occurrence date");
+    return;
+  }
+  reviewAmountSaving = true;
+  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = true;
+  try {
+    await api(
+      `/api/families/${state.activeFamilyId}/expected-transactions/${item.expected_transaction_id}/instances/${occ}`,
+      "POST",
+      payload
+    );
+    closeReviewAmountModal();
+    reviewAmountContext = null;
+    await navigateCalendarToIsoMonthIfNeeded(normalizeIsoDate(item.date) || occ);
+  } catch (e) {
+    show(reviewAmountErr, e.message || "Could not confirm this amount.");
+  } finally {
+    reviewAmountSaving = false;
+    if (reviewAmountConfirmBtn && reviewAmountModal?.classList.contains("modal-overlay--open")) {
+      reviewAmountConfirmBtn.disabled = false;
+    }
+  }
+}
+
+async function openReviewAmountFullEditor() {
+  const item = reviewAmountContext?.item;
+  if (!item) return;
+  if (await guardBillingWriteAsync()) return;
+  let series = reviewAmountContext?.series || getExpectedSeriesMeta(item.expected_transaction_id);
+  if (!series) series = await resolveExpectedSeriesMeta(item.expected_transaction_id, item);
+  const typed = reviewAmountTypedOrOriginal();
+  const calendarItem = typed != null ? { ...item, amount: typed } : item;
+  closeReviewAmountModal();
+  if (!series) {
+    window.alert("Could not open this recurring item. Try refreshing the page.");
+    return;
+  }
+  openExpectedEditModal(series, { calendarItem });
+}
+
+if (reviewAmountCancelBtn) {
+  reviewAmountCancelBtn.addEventListener("click", () => closeReviewAmountModal());
+}
+if (reviewAmountConfirmBtn) {
+  reviewAmountConfirmBtn.addEventListener("click", () => {
+    void confirmReviewAmount();
+  });
+}
+if (reviewAmountEditBtn) {
+  reviewAmountEditBtn.addEventListener("click", () => {
+    void openReviewAmountFullEditor();
+  });
+}
+if (reviewAmountModal) {
+  reviewAmountModal.addEventListener("click", (e) => {
+    if (e.target === reviewAmountModal) closeReviewAmountModal();
+  });
+}
+if (reviewAmountInput) {
+  reviewAmountInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void confirmReviewAmount();
+    }
+  });
+}
+
 function renderSidebarPendingTransactionsForMonth() {
   if (!sidebarPendingTxList) return;
   releaseForecastIntroIfSetupIsComplete();
@@ -18608,8 +18793,7 @@ function renderSidebarPendingTransactionsForMonth() {
     const r = reviewRows[idx];
     const it = r.item;
     const open = () => {
-      const meta = getExpectedSeriesMeta(it?.expected_transaction_id);
-      if (meta) openExpectedEditModal(meta, { calendarItem: it, confirmOccurrence: true });
+      void openNeedsReviewAmount(it);
     };
 
     const el = document.createElement("button");

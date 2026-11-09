@@ -25054,6 +25054,130 @@ body[data-bw-view="transactions"] .tm__field label{
   border-top: 1px solid rgba(0,0,0,0.08);
 }
 
+.modal.modal--review-amount{
+  max-width: 380px;
+  padding: 16px;
+}
+.review-amount__name{
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  line-height: 1.3;
+  color: rgba(30, 41, 59, 0.92);
+}
+.review-amount__date{
+  margin: 2px 0 12px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: rgba(100, 116, 139, 0.72);
+}
+.review-amount__estimate{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+}
+.review-amount__estimate-k{
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.78);
+}
+.review-amount__estimate-v{
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgba(30, 41, 59, 0.9);
+}
+.review-amount__actual{
+  display: block;
+  margin: 0 0 8px;
+}
+.review-amount__actual-label{
+  display: block;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(51, 65, 85, 0.88);
+}
+.modal.modal--review-amount .money-input{
+  width: 100%;
+}
+.modal.modal--review-amount .money-input input{
+  width: 100%;
+}
+.modal.modal--review-amount #reviewAmountErr{
+  min-height: 0;
+  margin: 0 0 4px;
+}
+.review-amount__actions{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 12px;
+}
+.review-amount__actions #reviewAmountCancelBtn,
+.review-amount__actions #reviewAmountConfirmBtn{
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+.review-amount__actions #reviewAmountConfirmBtn{
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  box-shadow: 0 1px 3px rgba(11, 61, 46, 0.12);
+}
+.review-amount__actions #reviewAmountConfirmBtn:hover{
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+  filter: none;
+}
+.review-amount__actions #reviewAmountConfirmBtn:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+.review-amount__actions #reviewAmountConfirmBtn:disabled{
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+button.review-amount__edit-link{
+  display: block;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(71, 85, 105, 0.72);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+button.review-amount__edit-link:hover,
+button.review-amount__edit-link:focus-visible{
+  color: rgba(11, 61, 46, 0.92);
+  filter: none;
+}
+button.review-amount__edit-link:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .modal--choice{
   max-width: 380px;
 }
@@ -32369,6 +32493,16 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__cancel,
   .modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__save,
   .modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__delete{
+    min-height: 44px;
+  }
+
+  .modal.modal--review-amount{
+    width: min(100%, 380px);
+    max-width: calc(100vw - 16px);
+  }
+  .review-amount__actions #reviewAmountCancelBtn,
+  .review-amount__actions #reviewAmountConfirmBtn,
+  button.review-amount__edit-link{
     min-height: 44px;
   }
 
