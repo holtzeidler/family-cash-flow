@@ -84,6 +84,23 @@ body.login-page:not(.signup-page):not(.invite-page) .top-nav__actions {
   color: #fff;
   font-weight: 650;
 }
+@media (min-width: 861px){
+  .public-nav__panel #homeForecastLink{
+    position: relative;
+    margin-left: 10px;
+  }
+  .public-nav__panel #homeForecastLink::before{
+    content: "";
+    position: absolute;
+    left: -6px;
+    top: 50%;
+    width: 1px;
+    height: 16px;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.22);
+    pointer-events: none;
+  }
+}
 @media (max-width: 860px){
   .public-nav__toggle{
     display: inline-flex;
