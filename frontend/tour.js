@@ -105,9 +105,21 @@
     {
       id: "reconcile",
       findTarget: findExpectedCalendarConfirmAnchor,
-      title: "Keep your forecast accurate",
-      body:
-        "Keep your forecast useful by checking it against your actual bank balance.\n\nEverything matches? Mark your balance as reconciled.\n\nSomething changed? Update your balance to start fresh.\n\nYou don't need to fix every missed transaction.",
+      title: "Keep your forecast on track",
+      body: "Check your forecast against your actual bank balance occasionally.",
+      actionRows: [
+        {
+          icon: "check",
+          label: "Balance matches?",
+          text: "Mark it as reconciled to confirm it's accurate.",
+        },
+        {
+          icon: "adjust",
+          label: "Balance different?",
+          text: "Update it to match your bank and keep forecasting from there.",
+        },
+      ],
+      note: "No need to track down every missed transaction.",
       reconcilePreview: readTourReconcilePreview,
       ctaLabel: "Finish Tour",
       placement: ["right", "left", "above", "below"],
@@ -416,6 +428,7 @@
       <h3 class="bw-tour-tooltip__title" id="bwTourTitle" data-bw-tour-title></h3>
       <p class="bw-tour-tooltip__context" data-bw-tour-context hidden></p>
       <p class="bw-tour-tooltip__body" data-bw-tour-body></p>
+      <ul class="bw-tour-tooltip__rows" data-bw-tour-rows hidden></ul>
       <p class="bw-tour-tooltip__instruction" data-bw-tour-instruction hidden></p>
       <p class="bw-tour-tooltip__helper" data-bw-tour-helper hidden></p>
       <p class="bw-tour-tooltip__note" data-bw-tour-note hidden></p>
@@ -699,16 +712,41 @@
       .forEach((part) => {
         const para = document.createElement("span");
         para.className = "bw-tour-tooltip__para";
-        const lead = part.match(/^(Everything matches\?|Something changed\?)\s+([\s\S]*)$/);
-        if (lead) {
-          const strong = document.createElement("strong");
-          strong.textContent = lead[1];
-          para.append(strong, document.createTextNode(" " + lead[2]));
-        } else {
-          para.textContent = part;
-        }
+        para.textContent = part;
         el.append(para);
       });
+  }
+
+  const TOUR_ROW_ICON_PATHS = {
+    check: "M3.5 8.5l3 3 6-7",
+    adjust: "M13 8a5 5 0 1 1-1.46-3.54M13 2.5v3h-3",
+  };
+
+  function renderTourActionRows(list, rows) {
+    list.replaceChildren();
+    for (const row of rows) {
+      const li = document.createElement("li");
+      li.className = "bw-tour-tooltip__row";
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("class", `bw-tour-tooltip__row-icon bw-tour-tooltip__row-icon--${row.icon || "check"}`);
+      icon.setAttribute("viewBox", "0 0 16 16");
+      icon.setAttribute("aria-hidden", "true");
+      icon.setAttribute("focusable", "false");
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", TOUR_ROW_ICON_PATHS[row.icon] || TOUR_ROW_ICON_PATHS.check);
+      icon.appendChild(path);
+      const copy = document.createElement("span");
+      copy.className = "bw-tour-tooltip__row-copy";
+      const label = document.createElement("span");
+      label.className = "bw-tour-tooltip__row-label";
+      label.textContent = String(row.label || "");
+      const text = document.createElement("span");
+      text.className = "bw-tour-tooltip__row-text";
+      text.textContent = String(row.text || "");
+      copy.append(label, text);
+      li.append(icon, copy);
+      list.appendChild(li);
+    }
   }
 
   function renderStep(stepIdx, direction) {
@@ -753,8 +791,16 @@
     tooltipEl.classList.add("bw-tour-tooltip--open");
 
     tooltipEl.querySelector("[data-bw-tour-counter]").textContent = `${stepIdx + 1} of ${STEPS.length}`;
+    tooltipEl.dataset.bwTourStep = step.id;
     tooltipEl.querySelector("[data-bw-tour-title]").textContent = step.title;
     fillTourBody(tooltipEl.querySelector("[data-bw-tour-body]"), step.body);
+    const rowsEl = tooltipEl.querySelector("[data-bw-tour-rows]");
+    if (rowsEl) {
+      const rows = Array.isArray(step.actionRows) ? step.actionRows : [];
+      if (rows.length) renderTourActionRows(rowsEl, rows);
+      else rowsEl.replaceChildren();
+      rowsEl.hidden = !rows.length;
+    }
     const contextEl = tooltipEl.querySelector("[data-bw-tour-context]");
     if (contextEl) {
       if (step.context) {
