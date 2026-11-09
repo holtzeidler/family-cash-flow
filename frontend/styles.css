@@ -33307,7 +33307,7 @@ body[data-bw-view="settings"] #sidebarBodyMonth .total--net,
 body[data-bw-view="reports"] #sidebarBodyMonth .total--net{
   margin-top: 1px;
   margin-bottom: 0;
-  padding: 5px 4px;
+  padding: 5px 2px;
   background: rgba(236, 253, 245, 0.42);
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger),
@@ -33398,13 +33398,13 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense{
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:not(:has(.v.danger)){
   margin-top: 8px;
-  padding: 8px 8px;
+  padding: 8px 2px;
   border-radius: 8px;
   background: #e7f6ee;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger){
   margin-top: 8px;
-  padding: 8px 8px;
+  padding: 8px 2px;
 }
 
 
