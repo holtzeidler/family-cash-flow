@@ -1019,6 +1019,11 @@ let balanceThresholdSaveInFlight = false;
 /** Used to ignore a pending silent persist that was scheduled before an explicit Save (race on blur/click ordering). */
 let lastExplicitBalanceThresholdSaveMs = 0;
 let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
+/** calendar-month-daily responses, shared by the calendar and Cash Health so both read the same rows. */
+const calendarMonthDailyCache = new Map();
+const calendarMonthDailyInflight = new Map();
+let cashHealthItemsCache = new Map();
+let cashHealthGen = 0;
 
 /**
  * Parse threshold field text (min/max). Empty string disables that side.
@@ -1226,9 +1231,15 @@ async function migrateLegacyDeviceBalanceThresholdsToAccount() {
   } catch (_) {}
 }
 
-function invalidateLowBalanceAlertCache() {
+/** Re-run Cash Health on the next refresh, reusing cached forecast rows (threshold or preference changes). */
+function requestCashHealthRecompute() {
   lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
-  invalidateCashOutlookProjectionCache();
+}
+
+/** The forecast itself may have changed, so cached balances and payment details are dropped as well. */
+function invalidateLowBalanceAlertCache() {
+  requestCashHealthRecompute();
+  clearCashHealthData();
 }
 
 function cashOutlookShortfallHtml(text) {
@@ -2397,37 +2408,107 @@ function cashOutlookLowDataMessage(suggestionMeta = {}) {
   return "We'll start generating cash outlook insights once more recurring expenses are added.";
 }
 
-let lastOutlookProjectionCache = { familyId: null, fetchedAt: 0, daily: [] };
-
-function invalidateCashOutlookProjectionCache() {
-  lastOutlookProjectionCache = { familyId: null, fetchedAt: 0, daily: [] };
+function calendarMonthDailyKey(fid, mode, ym) {
+  return `${Number(fid)}|${mode}|${ym}`;
 }
 
-async function getProjectionDailyForCashOutlook() {
-  if (lastProjectionDailyForReports?.length > 1) return lastProjectionDailyForReports;
-  const fid = state.activeFamilyId;
-  if (!fid) return [];
-  const now = Date.now();
-  if (
-    Number(lastOutlookProjectionCache.familyId) === Number(fid) &&
-    now - lastOutlookProjectionCache.fetchedAt < 90_000 &&
-    Array.isArray(lastOutlookProjectionCache.daily) &&
-    lastOutlookProjectionCache.daily.length > 1
-  ) {
-    return lastOutlookProjectionCache.daily;
+function clearCashHealthData() {
+  calendarMonthDailyCache.clear();
+  calendarMonthDailyInflight.clear();
+  cashHealthItemsCache = new Map();
+  cashHealthGen += 1;
+}
+
+function rememberCalendarMonthDaily(fid, mode, ym, days) {
+  if (!Array.isArray(days) || !days.length) return;
+  const key = calendarMonthDailyKey(fid, mode, ym);
+  const sig = days.map((d) => `${d.date}:${d.end}:${d.tx_net}`).join(",");
+  const prev = calendarMonthDailyCache.get(key);
+  if (prev && prev.sig !== sig) {
+    // The forecast changed without an explicit invalidation, so every other cached month is suspect too.
+    calendarMonthDailyCache.clear();
+    cashHealthItemsCache = new Map();
+    requestCashHealthRecompute();
   }
-  const startIso = toISODate(new Date());
-  try {
-    const summary = await api(
-      `/api/families/${fid}/projection?start=${encodeURIComponent(startIso)}&days=150&include_accounts=false`,
-      "GET"
-    );
-    const daily = summary?.daily || [];
-    lastOutlookProjectionCache = { familyId: Number(fid), fetchedAt: now, daily };
-    return daily;
-  } catch (_) {
-    return [];
+  calendarMonthDailyCache.set(key, { days, sig });
+}
+
+/** One request per month at a time; Cash Health and the calendar share it while it is in flight. */
+function requestCalendarMonthDaily(fid, mode, ym) {
+  const key = calendarMonthDailyKey(fid, mode, ym);
+  const pending = calendarMonthDailyInflight.get(key);
+  if (pending) return pending;
+  const req = api(
+    `/api/families/${fid}/calendar-month-daily?month=${encodeURIComponent(ym)}&mode=${encodeURIComponent(mode)}`,
+    "GET"
+  )
+    .then((data) => {
+      if (calendarMonthDailyInflight.get(key) === req) rememberCalendarMonthDaily(fid, mode, ym, data?.days);
+      return data;
+    })
+    .finally(() => {
+      if (calendarMonthDailyInflight.get(key) === req) calendarMonthDailyInflight.delete(key);
+    });
+  calendarMonthDailyInflight.set(key, req);
+  return req;
+}
+
+async function loadCashHealthWindowRows(fid, mode, startIso, endIso) {
+  const months = cashHealthMonthsInRange(startIso, endIso);
+  const monthDays = await Promise.all(
+    months.map(async (ym) => {
+      const cached = calendarMonthDailyCache.get(calendarMonthDailyKey(fid, mode, ym));
+      if (cached) return cached.days;
+      const data = await requestCalendarMonthDaily(fid, mode, ym);
+      return data?.days || [];
+    })
+  );
+  const rows = new Map();
+  for (const days of monthDays) {
+    for (const row of days || []) {
+      const iso = normalizeIsoDate(row?.date);
+      if (!iso || row.end == null) continue;
+      rows.set(iso, { start: Number(row.start), txNet: Number(row.tx_net), end: Number(row.end) });
+    }
   }
+  return rows;
+}
+
+/** The label the calendar line shows, so a named payment can be found on the day. */
+function cashHealthLineLabel(row, isExpected) {
+  if (isExpected) return forecastTransactionPrimaryLabel(row);
+  return effectiveTransactionCategoryName(row) || String(row?.description || "Uncategorized").trim();
+}
+
+async function loadCashHealthRunUpItems(fid, mode, startIso, endIso) {
+  const key = `${Number(fid)}|${mode}|${startIso}|${endIso}`;
+  if (cashHealthItemsCache.has(key)) return cashHealthItemsCache.get(key);
+  const includeActual = mode === "both" || mode === "actual";
+  const includeExpected = mode === "both" || mode === "expected";
+  const [txRes, ...expectedRes] = await Promise.all([
+    includeActual
+      ? api(
+          `/api/families/${fid}/transactions?start_date=${encodeURIComponent(startIso)}&end_date=${encodeURIComponent(endIso)}`,
+          "GET"
+        )
+      : null,
+    ...(includeExpected
+      ? monthsOverlappingIsoRange(startIso, endIso).map((ym) =>
+          api(`/api/families/${fid}/expected-calendar?month=${encodeURIComponent(ym)}`, "GET")
+        )
+      : []),
+  ]);
+  const items = groupCashHealthDayItems({
+    actuals: txRes?.items || [],
+    expected: expectedRes.flatMap((r) => r?.items || []),
+    mode,
+    startIso,
+    endIso,
+    dedupe: dedupeCalendarDayTransactions,
+    labelFor: cashHealthLineLabel,
+  });
+  cashHealthItemsCache.set(key, items);
+  return items;
 }
 
 function syncSidebarCashHealthCardVisibility() {
@@ -2437,276 +2518,158 @@ function syncSidebarCashHealthCardVisibility() {
   sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
 }
 
-async function refreshCashOutlookGuidance() {
-  const activeFid = activeFamilyIdForBalanceThresholds();
-  syncSidebarCashHealthCardVisibility();
-  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
-  setSidebarLowBalanceBanner("", "off");
-  setSidebarHighBalanceBanner("", "off");
-  setLowBalanceResult("", true);
+function cashHealthCardHtml(copy) {
+  const line = (text, cls) => `<span class="cash-outlook-card__line ${cls}">${escapeHtml(text)}</span>`;
+  const lines = copy.lines.map((t, i) => line(t, i === 0 ? "cash-outlook-card__line--secondary" : "cash-outlook-card__line--tertiary"));
+  if (copy.tone === "healthy") {
+    return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">
+      <span class="cash-outlook-card__headline">${escapeHtml(copy.headline)}</span>
+      ${lines.join("")}
+      <span class="cash-health-card__footer">${escapeHtml(copy.footer)}</span>
+    </div>`;
+  }
+  const [windowText, viewText] = copy.footer.split(" · ");
+  return `<button type="button" class="cash-outlook-card cash-health-card cash-health-card--${copy.tone}" data-cash-health-open="1" aria-label="${escapeHtml(copy.ariaLabel)}">
+      <span class="cash-outlook-card__row">
+        ${cashOutlookWarnIconHtml()}
+        <span class="cash-outlook-card__body">
+          <span class="cash-outlook-card__kicker">${escapeHtml(copy.kicker)}</span>
+          <span class="cash-outlook-card__date">${escapeHtml(copy.headline)}</span>
+        </span>
+      </span>
+      ${lines.join("")}
+      <span class="cash-health-card__footer"><span>${escapeHtml(windowText)}</span><span class="cash-health-card__view">${escapeHtml(viewText)} <span aria-hidden="true">›</span></span></span>
+    </button>`;
+}
 
-  const suggestion = computeSuggestedMinBalanceThreshold();
-  if (!suggestion.ok) {
-    const msg = cashOutlookLowDataMessage(suggestion);
-    setSidebarBalanceThresholdHint("Cash outlook");
-    setSidebarLowBalanceBanner(`Getting started\nSECONDARY:${msg}`, "muted");
-    if (sidebarLowBalanceBanner) sidebarLowBalanceBanner.classList.add("is-suggestion");
-    lowBalanceLastQuery = {
-      familyId: activeFid,
-      min: null,
-      max: null,
-      mode: calendarMode?.value || "both",
-    };
+function setSidebarCashHealthCard(copy) {
+  if (!sidebarLowBalanceBanner) return;
+  const warn = copy.tone !== "healthy";
+  sidebarLowBalanceBanner.innerHTML = cashHealthCardHtml(copy);
+  sidebarLowBalanceBanner.style.display = "flex";
+  sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted", "is-intro", "is-suggestion");
+  sidebarLowBalanceBanner.classList.add(warn ? "is-danger" : "is-muted");
+  if (sidebarLowBalanceBanner.dataset.cashHealthBound !== "1") {
+    sidebarLowBalanceBanner.dataset.cashHealthBound = "1";
+    sidebarLowBalanceBanner.addEventListener("click", (e) => {
+      if (!e.target.closest("[data-cash-health-open]")) return;
+      e.preventDefault();
+      void openCashHealthDate();
+    });
+  }
+}
+
+function renderCashHealthThresholdDetail(summary) {
+  if (!summary || !summary.hasMinimum || summary.state === "unavailable") {
+    setLowBalanceResult("", true);
     return;
   }
+  const min = `$${fmtMoney0(summary.minimum)}`;
+  const block = (k, hit) =>
+    `<div class="balance-threshold-result-block"><div class="k">${escapeHtml(k)}</div>${
+      hit
+        ? `<div class="v danger">${fmtDateMDY(hit.date)} — $${fmtMoney(hit.amount)}</div>`
+        : `<div class="v">None in the next ${summary.windowDays} days.</div>`
+    }</div>`;
+  const parts = [block(`First date below ${min}`, summary.firstBelow)];
+  if (summary.firstNegative) parts.push(block("First date below $0", summary.firstNegative));
+  setLowBalanceResult(parts.join(""), !summary.firstBelow);
+}
 
-  const floor = suggestion.value;
-  setSidebarBalanceThresholdHint("From your forecast · change in Settings");
-
-  const daily = await getProjectionDailyForCashOutlook();
-  const todayIso = toISODate(new Date());
-  let bannerText = `Your target buffer: $${fmtMoney0(floor)}\nSECONDARY:Based on ${suggestion.basis}`;
-  let bannerStyle = "muted";
-
-  if (daily.length > 1) {
-    const rows = getProjectedBalancesByDate(daily);
-    const rangeEnd = rows[rows.length - 1]?.date || todayIso;
-    const nextLow = getNextBelowFloorDate(rows, floor, todayIso);
-    const series = computeSafeToTransferSeries(daily, floor);
-    const todayIdx = rows.findIndex((row) => row.date >= todayIso);
-    const safeToday = todayIdx >= 0 ? Number(series[todayIdx] || 0) : 0;
-
-    if (nextLow) {
-      const bal = Number(nextLow.amount);
-      const urgent = bal <= 0 || bal < floor * 0.85;
-      bannerStyle = urgent ? "danger" : "muted";
-      if (urgent) {
-        bannerText = `Consider adding cash before ${fmtMonthDay(nextLow.date)}\nSECONDARY:Projected balance ${fmtMoney0SignedDollar(
-          bal
-        )} — target buffer $${fmtMoney0(floor)}`;
-      } else {
-        bannerText = `Balance may be tight on ${fmtMonthDay(nextLow.date)}\nSECONDARY:Could dip near your $${fmtMoney0(
-          floor
-        )} target buffer`;
-      }
-    } else if (safeToday >= 75) {
-      bannerText = `You could move up to $${fmtMoney0(safeToday)} today\nSECONDARY:With your $${fmtMoney0(
-        floor
-      )} target buffer held aside`;
-    } else {
-      const low = getLowestBalanceInRange(rows, todayIso, rangeEnd);
-      if (low && low.amount >= floor) {
-        bannerText = `Steady through the month\nSECONDARY:Lowest balance ${fmtMoney0SignedDollar(
-          low.amount
-        )} on ${fmtMonthDay(low.date)} — above your $${fmtMoney0(floor)} target buffer`;
-      }
-    }
-
-    const transfer = compareSafeToTransferTodayVsFuture(rows, floor, {
-      startIso: todayIso,
-      endIso: rangeEnd,
-      fromIso: todayIso,
-    });
-    if (transfer && !nextLow) {
-      bannerText = `You'll have extra cash available after ${fmtMonthDay(transfer.date)}\nSECONDARY:About $${fmtMoney0(
-        transfer.gain
-      )} available beyond your target buffer`;
-    }
+/** Paint Cash Health from the last summary. Cheap, so preference changes apply without refetching. */
+function renderCashHealth() {
+  setSidebarHighBalanceBanner("", "off");
+  const ch = state.cashHealth;
+  const copy = ch?.copy;
+  if (!copy) {
+    setSidebarLowBalanceBanner("", "off");
+    setLowBalanceResult("", true);
+    syncCashHealthCalendarChip();
+    return;
   }
-
-  setSidebarLowBalanceBanner(bannerText, bannerStyle);
-  if (sidebarLowBalanceBanner) {
-    sidebarLowBalanceBanner.classList.toggle("is-suggestion", bannerStyle !== "danger");
+  const { summary } = ch;
+  const warn = copy.tone !== "healthy";
+  const alertsOn = readPrefAlertLowBalanceEnabled();
+  renderCashHealthThresholdDetail(summary);
+  setSidebarBalanceThresholdHint(summary.hasMinimum ? "" : "Set a minimum balance");
+  if (!warn && forecastIntroApplies()) {
+    showForecastGettingStartedBanner();
+  } else if (!alertsOn && (warn || summary.hasMinimum)) {
+    setSidebarLowBalanceBanner("", "off");
+  } else if (!warn && !summary.hasMinimum && !computeSuggestedMinBalanceThreshold().ok) {
+    setSidebarLowBalanceBanner(`Getting started\nSECONDARY:${cashOutlookLowDataMessage(computeSuggestedMinBalanceThreshold())}`, "muted");
+    if (sidebarLowBalanceBanner) sidebarLowBalanceBanner.classList.add("is-suggestion");
+  } else {
+    setSidebarCashHealthCard(copy);
   }
-  lowBalanceLastQuery = {
-    familyId: activeFid,
-    min: floor,
-    max: null,
-    mode: `suggested:${calendarMode?.value || "both"}`,
-  };
+  syncCashHealthCalendarChip();
 }
 
 async function refreshLowBalanceAlert() {
-  const { min: btMinEl, max: btMaxEl, err: btErr } = balanceThresholdFieldEls();
+  const { err: btErr } = balanceThresholdFieldEls();
   try {
     show(btErr, "");
     const activeFid = activeFamilyIdForBalanceThresholds();
     if (!activeFid) {
+      state.cashHealth = null;
       setSidebarLowBalanceBanner("", "off");
       setSidebarHighBalanceBanner("", "off");
       setSidebarBalanceThresholdHint("");
       setLowBalanceResult("", true);
       syncSidebarCashHealthCardVisibility();
+      syncCashHealthCalendarChip();
       return;
     }
-
-    const minP = parseBalanceThresholdFieldRaw(btMinEl?.value ?? "");
-    const maxP = parseBalanceThresholdMaxFieldRaw(btMaxEl?.value ?? "");
-    const minVal = minP.ok && !minP.empty ? minP.num : null;
-    const maxVal = maxP.ok && !maxP.empty ? maxP.num : null;
-    const minOk = minVal != null && Number.isFinite(minVal);
-    const maxOk = maxVal != null && Number.isFinite(maxVal);
-    const SHOW_PEAK_BALANCE = false;
-
-    if (!minOk && !maxOk) {
-      await refreshCashOutlookGuidance();
-      return;
-    }
+    syncSidebarCashHealthCardVisibility();
     if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
-    if (sidebarLowBalanceBanner) sidebarLowBalanceBanner.classList.remove("is-suggestion");
 
-    const startIso = toISODate(new Date());
-    const lowDays = 1825;
-    const highDays = 180;
+    const minVal = readUserConfiguredMinBalanceThreshold(activeFid);
     const mode = calendarMode?.value || "both";
+    const todayIso = toISODate(new Date());
+    const queryMode = `${mode}|${todayIso}`;
     if (
       lowBalanceLastQuery.familyId === activeFid &&
       lowBalanceLastQuery.min === minVal &&
-      lowBalanceLastQuery.max === maxVal &&
-      lowBalanceLastQuery.mode === mode
+      lowBalanceLastQuery.mode === queryMode
     ) {
+      renderCashHealth();
       return;
     }
-    lowBalanceLastQuery = { familyId: activeFid, min: minVal, max: maxVal, mode };
+    lowBalanceLastQuery = { familyId: activeFid, min: minVal, max: null, mode: queryMode };
+    const gen = ++cashHealthGen;
 
-    setLowBalanceResult('<div class="k">Balance thresholds</div><div class="v">Checking…</div>', true);
-
-    let lowHit = null;
-    if (minOk) {
-      const data = await api(
-        `/api/families/${activeFid}/low-balance-first?threshold=${encodeURIComponent(String(minVal))}&start=${encodeURIComponent(
-          startIso
-        )}&days=${lowDays}&mode=${encodeURIComponent(mode)}`,
-        "GET"
-      );
-      lowHit = data?.hit_date ? { date: data.hit_date, balance: toNum(data.hit_balance) } : null;
-      if (lowHit) {
-        const lowIso = normalizeIsoDate(lowHit.date);
-        let calEnd = null;
-        const cached = lowIso && state.monthDailyBalances ? state.monthDailyBalances.get(lowIso) : null;
-        if (cached != null && Number.isFinite(Number(cached.end))) calEnd = Number(cached.end);
-        else if (lowIso && state.activeFamilyId) {
-          try {
-            const calData = await api(
-              `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(
-                lowIso.slice(0, 7)
-              )}&mode=${encodeURIComponent(mode)}`,
-              "GET"
-            );
-            const row = (calData?.days || []).find((d) => normalizeIsoDate(d?.date) === lowIso);
-            if (row?.end != null) calEnd = Number(row.end);
-          } catch (_) {
-            /* keep API hit balance */
-          }
-        }
-        if (calEnd != null && Number.isFinite(calEnd)) {
-          lowHit = { date: lowHit.date, balance: calEnd };
-        }
-      }
-    }
-
-    // Peak balance is intentionally hidden for now (can re-enable later).
-    let highHit = null;
-    let highFetchErr = null;
-    if (!SHOW_PEAK_BALANCE) {
-      setSidebarHighBalanceBanner("", "off");
-    } else if (maxOk) {
+    const { startIso, endIso } = cashHealthWindow(todayIso);
+    const rows = await loadCashHealthWindowRows(activeFid, mode, startIso, endIso);
+    if (gen !== cashHealthGen) return;
+    const summary = summarizeCashHealth(rows, { todayIso, minimum: minVal });
+    const range = cashHealthRunUpRange(summary, rows);
+    let expl = null;
+    if (range) {
+      let items = new Map();
       try {
-        const dataHi = await api(
-          `/api/families/${activeFid}/high-balance-first?ceiling=${encodeURIComponent(String(maxVal))}&start=${encodeURIComponent(
-            startIso
-          )}&days=${highDays}&mode=${encodeURIComponent(mode)}`,
-          "GET"
-        );
-        highHit = dataHi?.hit_date ? { date: dataHi.hit_date, balance: toNum(dataHi.hit_balance) } : null;
-      } catch (err) {
-        highFetchErr = err;
+        items = await loadCashHealthRunUpItems(activeFid, mode, range.startIso, range.endIso);
+      } catch (_) {
+        /* without item details the explanation falls back to the balance change */
       }
+      if (gen !== cashHealthGen) return;
+      expl = explainCashHealthRunUp(range, items, rows);
     }
-
-    const todayIso = toISODate(new Date());
-    if (lowHit) {
-      const lowIso = normalizeIsoDate(lowHit.date);
-      if (lowIso && lowIso < todayIso) lowHit = null;
-    }
-    if (highHit) {
-      const highIso = normalizeIsoDate(highHit.date);
-      if (highIso && highIso < todayIso) highHit = null;
-    }
-
-    const lowBalanceAlertsEnabled = readPrefAlertLowBalanceEnabled();
-    const parts = [];
-    if (minOk) {
-      if (!lowHit) {
-        parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(btMinEl?.value || "", minVal)}</div><div class="v">None in the next ${lowDays} days.</div></div>`
-        );
-        if (forecastIntroApplies()) {
-          showForecastGettingStartedBanner();
-        } else if (lowBalanceAlertsEnabled) {
-          setSidebarLowBalanceBanner("✓ Within your target range", "muted");
-        } else {
-          setSidebarLowBalanceBanner("", "off");
-        }
-      } else {
-        parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≤ $${fmtMoneyThreshold(btMinEl?.value || "", minVal)}</div><div class="v danger">${fmtDateMDY(lowHit.date)} — $${fmtMoney(lowHit.balance)}</div></div>`
-        );
-        const bal = Number(lowHit.balance);
-        const target = Number(minVal);
-        if (!lowBalanceAlertsEnabled) {
-          // User opted out of the sidebar warning; the in-pane outlook still
-          // surfaces the underlying date/amount above.
-          setSidebarLowBalanceBanner("", "off");
-        } else if (Number.isFinite(bal) && bal <= 0) {
-          setSidebarLowBalanceBanner(
-            `⚠ Transfer cash before ${fmtMonthDay(lowHit.date)}\nSECONDARY:Projected balance: ${fmtMoney0SignedDollar(bal)}`,
-            "danger"
-          );
-        } else {
-          const shortfall = Math.max(0, target - bal);
-          setSidebarLowBalanceBanner(
-            `⚠ Below target ${fmtMonthDay(lowHit.date)}\nINSIGHT:\n$${fmtMoney0(shortfall)} short of your $${fmtMoney0(target)} target`,
-            "danger"
-          );
-        }
-      }
-    }
-    if (SHOW_PEAK_BALANCE && maxOk) {
-      if (highFetchErr) {
-        const msg = String(highFetchErr.message || "Request failed")
-          .slice(0, 160)
-          .replace(/</g, "");
-        parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">Maximum threshold</div><div class="v danger">Could not check: ${msg}</div></div>`
-        );
-        setSidebarHighBalanceBanner("✓ Peak balance\nCould not check", "muted");
-      } else if (!highHit) {
-        parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(btMaxEl?.value || "", maxVal)}</div><div class="v">No dates found in the next ${highDays} days.</div></div>`
-        );
-        setSidebarHighBalanceBanner("✓ Peak balance\nNone", "muted");
-      } else {
-        parts.push(
-          `<div class="balance-threshold-result-block"><div class="k">First date ≥ $${fmtMoneyThreshold(btMaxEl?.value || "", maxVal)}</div><div class="v">${fmtDateMDY(highHit.date)} — $${fmtMoney(highHit.balance)}</div></div>`
-        );
-        setSidebarHighBalanceBanner(
-          `✓ Peak balance on ${fmtMonthDay(highHit.date)}\nSECONDARY:${fmtMoney0SignedDollar(highHit.balance)}`,
-          "high"
-        );
-      }
-    }
-    // Ensure the sidebar never shows peak balance while hidden.
-    if (!SHOW_PEAK_BALANCE) setSidebarHighBalanceBanner("", "off");
-
-    const hasAlert = (minOk && lowHit) || (SHOW_PEAK_BALANCE && maxOk && highHit && !highFetchErr);
-    setLowBalanceResult(parts.join(""), !hasAlert);
+    state.cashHealth = {
+      familyId: activeFid,
+      summary,
+      expl,
+      copy: buildCashHealthCopy(summary, expl),
+      refs: cashHealthHighlightRefs(expl),
+    };
+    renderCashHealth();
   } catch (e) {
     show(btErr, e.message || "Failed to compute balance threshold alerts");
+    state.cashHealth = null;
     setLowBalanceResult("", true);
     setSidebarLowBalanceBanner("", "off");
     setSidebarHighBalanceBanner("", "off");
     setSidebarBalanceThresholdHint("");
+    syncCashHealthCalendarChip();
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
   }
 }
@@ -2755,7 +2718,7 @@ function hydrateBalanceThresholdInputsFromStorage(force = false) {
       maxEl.value = "";
     }
   } catch (_) {}
-  invalidateLowBalanceAlertCache();
+  requestCashHealthRecompute();
 }
 
 function finishBalanceThresholdSave({
@@ -2801,7 +2764,7 @@ function finishBalanceThresholdSave({
   lastExplicitBalanceThresholdSaveMs = Date.now();
   balanceThresholdFieldsDirty = false;
   show(errEl, "");
-  invalidateLowBalanceAlertCache();
+  requestCashHealthRecompute();
   if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
   lowBalanceDebounceTimer = null;
   void refreshLowBalanceAlert();
@@ -2919,7 +2882,7 @@ async function saveBalanceThresholds(opts = {}) {
       balanceThresholdFieldsDirty = false;
       showBalanceThresholdNoOpFeedback({ errEl, saveBtn, savedMsg, minVal: currentMin });
     }
-    invalidateLowBalanceAlertCache();
+    requestCashHealthRecompute();
     if (lowBalanceDebounceTimer) clearTimeout(lowBalanceDebounceTimer);
     lowBalanceDebounceTimer = null;
     void refreshLowBalanceAlert();
@@ -4077,6 +4040,7 @@ let profileNameBaseline = { first: "", last: "" };
 // Declared before the first view switch. That switch loads these lists, and a
 // later `let` would still be uninitialized.
 let expectedTxLoadGen = 0;
+let expectedTxLoadedSig = null;
 let upcomingLoadGen = 0;
 // Empty arrays are the initial value AND a real zero-result response.
 // These flags are the only way to tell "still loading" from "loaded, nothing matched."
@@ -17200,7 +17164,10 @@ async function loadExpectedTransactions() {
     if (gen !== expectedTxLoadGen) return;
     tmExpectedListSettled = true;
     renderUpcomingTransactionsFiltered();
-    invalidateLowBalanceAlertCache();
+    const sig = `${state.activeFamilyId}:${JSON.stringify(state.expectedTransactions)}`;
+    if (expectedTxLoadedSig !== null && expectedTxLoadedSig !== sig) invalidateLowBalanceAlertCache();
+    else requestCashHealthRecompute();
+    expectedTxLoadedSig = sig;
     void refreshLowBalanceAlert();
   } catch (e) {
     if (gen !== expectedTxLoadGen) return;
@@ -18083,18 +18050,9 @@ async function loadCalendarMonthDaily(gen) {
   // api() has per-attempt timeouts; fire-and-forget left gray cells stuck on stale seeds.
   try {
     const results = await Promise.allSettled([
-      api(
-        `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(month)}&mode=${encodeURIComponent(mode)}`,
-        "GET",
-      ),
-      api(
-        `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(prev)}&mode=${encodeURIComponent(mode)}`,
-        "GET",
-      ),
-      api(
-        `/api/families/${state.activeFamilyId}/calendar-month-daily?month=${encodeURIComponent(next)}&mode=${encodeURIComponent(mode)}`,
-        "GET",
-      ),
+      requestCalendarMonthDaily(state.activeFamilyId, mode, month),
+      requestCalendarMonthDaily(state.activeFamilyId, mode, prev),
+      requestCalendarMonthDaily(state.activeFamilyId, mode, next),
     ]);
     if (!stillCurrent()) return;
     const primary = results[0].status === "fulfilled" ? results[0].value : null;
@@ -18143,6 +18101,7 @@ function maybeScrollMobileCalendarToToday() {
   const todayIso = toISODate(new Date());
   if (!isMobile || navType === "back_forward" || getCalendarViewYm() !== todayIso.slice(0, 7)) return stop();
   if (document.querySelector(".bw-tour-tooltip--open, .modal-overlay--open:not(#bwForecastReadyModal)")) return stop();
+  if (state.cashHealthFocus || peekPendingCashHealthFocus()) return stop();
   if (calendarMobileTodayScroll === "pending" && window.scrollY > 0) return stop();
   const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
   if (!cell) return;
@@ -18174,9 +18133,147 @@ function fixedHeaderBottom() {
   return bottom;
 }
 
-/** Scroll position that puts a day just below the fixed header. */
+/** Scroll position that puts a day just below the fixed header, with the Cash Health chip above today. */
 function mobileCalendarScrollTopFor(cell) {
-  return Math.max(0, cell.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 12);
+  const prev = cell.previousElementSibling;
+  const anchor = prev && prev.classList.contains("cal-cash-health-chip") ? prev : cell;
+  return Math.max(0, anchor.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 12);
+}
+
+const CASH_HEALTH_FOCUS_KEY = "BW_CASH_HEALTH_FOCUS";
+
+function peekPendingCashHealthFocus() {
+  try {
+    return sessionStorage.getItem(CASH_HEALTH_FOCUS_KEY) ? true : false;
+  } catch (_) {
+    return false;
+  }
+}
+
+function takePendingCashHealthFocus() {
+  try {
+    const raw = sessionStorage.getItem(CASH_HEALTH_FOCUS_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(CASH_HEALTH_FOCUS_KEY);
+    const parsed = JSON.parse(raw);
+    const iso = normalizeIsoDate(parsed?.iso);
+    return iso ? { iso, refs: Array.isArray(parsed.refs) ? parsed.refs.map(String) : [] } : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Open the Cash Health date on the calendar. Other views hand off to the calendar page. */
+async function openCashHealthDate() {
+  const ch = state.cashHealth;
+  const iso = ch?.copy?.actionIso;
+  if (!iso) return;
+  const refs = ch.refs || [];
+  if (document.body?.dataset?.bwView !== "calendar" || !calendarGrid) {
+    try {
+      sessionStorage.setItem(CASH_HEALTH_FOCUS_KEY, JSON.stringify({ iso, refs }));
+    } catch (_) {}
+    window.location.href = "/calendar/";
+    return;
+  }
+  await focusCalendarDate(iso, refs);
+}
+
+/** Show a day and its listed payments; the highlight stays until the user works in the calendar. */
+async function focusCalendarDate(iso, refs = []) {
+  calendarMobileTodayScroll = "off";
+  const focus = { iso, refs: new Set(refs) };
+  state.cashHealthFocus = focus;
+  const ym = iso.slice(0, 7);
+  if (getCalendarViewYm() !== ym) {
+    applyCalendarMonthToPickers(ym);
+    if (monthInput) monthInput.value = ym;
+    await loadMonthAndCalendar();
+  } else {
+    renderCalendar();
+  }
+  // A newer calendar load can finish the month change after ours returns, so wait briefly for the day.
+  // Timers rather than rAF, which can stall in throttled tabs; reading the rect forces layout anyway.
+  let cell = null;
+  for (let i = 0; i < 30 && !cell; i++) {
+    await new Promise((resolve) => window.setTimeout(resolve, i ? 100 : 30));
+    if (state.cashHealthFocus !== focus) return;
+    cell = calendarGrid?.querySelector(`.cal-cell[data-iso="${iso}"]:not(.cal-cell--out)`);
+  }
+  if (!cell) return;
+  // Scroll to an earlier listed payment only when that day and the concerning date both fit.
+  const firstPay = calendarGrid.querySelector(".cal-cell--cash-health-payment");
+  let scrollCell = cell;
+  if (firstPay && firstPay !== cell) {
+    const payTop = firstPay.getBoundingClientRect().top;
+    const cellBottom = cell.getBoundingClientRect().bottom;
+    const avail = window.innerHeight - fixedHeaderBottom() - 16;
+    if (payTop < cell.getBoundingClientRect().top && cellBottom - payTop <= avail) {
+      scrollCell = firstPay;
+    }
+  }
+  const rect = scrollCell.getBoundingClientRect();
+  const top = fixedHeaderBottom();
+  const bottom = cell.getBoundingClientRect().bottom;
+  if (rect.top < top || bottom > window.innerHeight || (scrollCell === cell && rect.bottom > window.innerHeight)) {
+    const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: mobileCalendarScrollTopFor(scrollCell), behavior: reduce ? "auto" : "smooth" });
+  }
+  cell.setAttribute("tabindex", "-1");
+  try {
+    cell.focus({ preventScroll: true });
+  } catch (_) {}
+}
+
+function clearCashHealthFocus() {
+  if (!state.cashHealthFocus) return;
+  state.cashHealthFocus = null;
+  if (!calendarGrid) return;
+  for (const el of calendarGrid.querySelectorAll(".cal-cell--cash-health-focus")) el.classList.remove("cal-cell--cash-health-focus");
+  for (const el of calendarGrid.querySelectorAll(".cal-day-tx-line--cash-health")) el.classList.remove("cal-day-tx-line--cash-health");
+}
+
+(function bindCashHealthFocusClearing() {
+  const panel = document.getElementById("calendarPanel");
+  if (!panel) return;
+  const clearUnlessChip = (e) => {
+    if (e.target?.closest?.(".cal-cash-health-chip")) return;
+    clearCashHealthFocus();
+  };
+  panel.addEventListener("click", clearUnlessChip, true);
+  panel.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Enter" || e.key === " ") clearUnlessChip(e);
+    },
+    true
+  );
+})();
+
+/** Phones: a one-line Cash Health warning just above today's card, from the same summary as the sidebar. */
+function syncCashHealthCalendarChip() {
+  if (!calendarGrid) return;
+  for (const el of calendarGrid.querySelectorAll(".cal-cash-health-chip")) el.remove();
+  const wrap = calendarGrid.querySelector(".calendar--mobile");
+  const copy = state.cashHealth?.copy;
+  if (!wrap || !copy || copy.tone === "healthy" || !copy.actionIso) return;
+  if (!readPrefAlertLowBalanceEnabled()) return;
+  const todayIso = toISODate(new Date());
+  const todayCell = wrap.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
+  if (!todayCell) return;
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = `cal-cash-health-chip cal-cash-health-chip--${copy.tone}`;
+  chip.setAttribute("aria-label", copy.ariaLabel);
+  chip.innerHTML = `${cashOutlookWarnIconHtml()}<span class="cal-cash-health-chip__text">${escapeHtml(
+    copy.chip
+  )}</span><span class="cal-cash-health-chip__go" aria-hidden="true">View ›</span>`;
+  chip.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void openCashHealthDate();
+  });
+  wrap.insertBefore(chip, todayCell);
 }
 
 // The tour scrolls to each highlighted control; on phones, bring today back unless it is already in view.
@@ -18296,6 +18393,8 @@ async function loadMonthAndCalendar() {
     await runStep("forecast-confidence", () => refreshForecastConfidence());
     if (!stillCurrent()) return;
     maybeScrollMobileCalendarToToday();
+    const pendingFocus = document.body?.dataset?.bwView === "calendar" ? takePendingCashHealthFocus() : null;
+    if (pendingFocus) void focusCalendarDate(pendingFocus.iso, pendingFocus.refs);
     if (loadErrors.length && (!state.monthDailyBalances || state.monthDailyBalances.size === 0)) {
       const last = loadErrors[loadErrors.length - 1];
       show(calendarErr, (last && last.message) || "Failed to load calendar");
@@ -19338,6 +19437,11 @@ function renderCalendar() {
   const MIN_CELL_H = isMobileCalendarLayout ? 0 : 162;
   const MAX_VISIBLE_TXNS = 3;
   const minBalFloor = readUserConfiguredMinBalanceThreshold();
+  const cashHealthFocus = state.cashHealthFocus || null;
+  const cashHealthRowRef = (row, dayIso) =>
+    row._type === "expected"
+      ? `exp:${Number(row.expected_transaction_id)}|${normalizeIsoDate(row.occurrence_date || row.date) || dayIso}`
+      : `tx:${Number(row.id)}`;
   /** @type {HTMLElement[]} */
   const cells = [];
   for (let i = 0; i < totalCells; i++) {
@@ -19433,6 +19537,17 @@ function renderCalendar() {
       const labelMaxLen = visibleItemCount <= 1 ? 68 : visibleItemCount >= 4 ? 50 : 58;
       if (startBalEl) startBalEl.hidden = true;
 
+      const focusRefs = cashHealthFocus && cashHealthFocus.refs.size ? cashHealthFocus.refs : null;
+      const focusedIdx = focusRefs ? combined.findIndex((row) => focusRefs.has(cashHealthRowRef(row, iso))) : -1;
+      if (focusedIdx >= 0) {
+        cell.classList.add("cal-cell--cash-health-payment");
+        // A listed payment must be visible, not folded behind "+N more".
+        const lastFocused = combined.reduce((last, row, idx) => (focusRefs.has(cashHealthRowRef(row, iso)) ? idx : last), -1);
+        if (lastFocused >= MAX_VISIBLE_TXNS) {
+          if (!state.calendarExpandedDays) state.calendarExpandedDays = new Set();
+          state.calendarExpandedDays.add(iso);
+        }
+      }
       const isExpanded = !!(state.calendarExpandedDays && state.calendarExpandedDays.has(iso));
       const visibleRows = isExpanded ? combined : combined.slice(0, MAX_VISIBLE_TXNS);
       const hiddenCount = Math.max(0, combined.length - visibleRows.length);
@@ -19457,6 +19572,7 @@ function renderCalendar() {
         for (const p of calendarDayTxLineToneParts(row)) line.classList.add(p);
         for (const p of calendarDayTxSemanticParts(row)) line.classList.add(p);
         if (isExpected && row.variable) line.classList.add("cal-expected-variable");
+        if (focusRefs && focusRefs.has(cashHealthRowRef(row, iso))) line.classList.add("cal-day-tx-line--cash-health");
         if (!isExpected) {
           const txId = Number(row.id);
           if (Number.isFinite(txId) && txId > 0) line.dataset.txId = String(txId);
@@ -19552,6 +19668,7 @@ function renderCalendar() {
     }
 
     if (isToday && !isOutOfMonth && !isBeforeStart) cell.classList.add("cal-cell--today");
+    if (cashHealthFocus && iso === cashHealthFocus.iso && !isOutOfMonth) cell.classList.add("cal-cell--cash-health-focus");
     if (!isBeforeStart && !isOutOfMonth && dayHasPaycheckLikeIncome(combined)) {
       cell.classList.add("cal-cell--payday");
     }
@@ -19761,6 +19878,7 @@ function renderCalendar() {
   finalizeAllCalendarDayLabelColumnWidths();
   ensureCalendarBalanceStripFitOnResize();
   scheduleFitCalendarBalanceStripFonts();
+  syncCashHealthCalendarChip();
 }
 
 function readStoredMinBalanceThresholdForReports() {

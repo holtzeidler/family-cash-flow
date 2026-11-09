@@ -218,7 +218,7 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text(
         "Add your upcoming bills and income to see where your balance is headed."
     )
-    expect(page.get_by_text("Within your target range")).to_have_count(0)
+    expect(page.get_by_text("Stays above your")).to_have_count(0)
     expect(page.get_by_text("Nothing to review")).to_have_count(0)
     expect(page.locator(".cal-day-tx-line", has_text="Mortgage")).to_have_count(0)
     assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')")
@@ -228,7 +228,7 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     expect(page.locator("#trialStatusNotice")).to_contain_text(re.compile(r"1[34] days left in your free trial"))
 
     _add_planned_item(page, today, "40", kind="expense")
-    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Within your target range")
+    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Stays above your")
     expect(page.locator("#sidebarLowBalanceBanner")).not_to_contain_text("Your forecast is getting started")
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Nothing to review")
 
@@ -286,11 +286,11 @@ def test_sparse_forecast_keeps_a_real_shortfall(page, guard):
     page.wait_for_url(re.compile(r"/calendar"), timeout=30_000)
     page.locator("#bwForecastReadySkipBtn").click()
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
-    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Below target")
+    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Below your minimum balance")
     expect(page.locator("#sidebarLowBalanceBanner")).not_to_contain_text("Your forecast is getting started")
     page.reload()
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
-    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Below target")
+    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Below your minimum balance")
     guard.assert_clean()
 
 
@@ -308,7 +308,7 @@ def test_expense_recalculates_forecast_and_survives_reload(page, guard):
     page.reload()
     show_month(page, start[:7], expense_day)
     expect(cell).to_have_text(money("500.00"))
-    expect(page.locator("#sidebarBalanceThresholdAlerts")).to_contain_text("Below target")
+    expect(page.locator("#sidebarBalanceThresholdAlerts")).to_contain_text("Below your minimum balance")
     guard.assert_clean()
 
 
