@@ -4518,10 +4518,12 @@ function ensureTxAddCategoryChipsUi() {
   txAddCategoryChipsBound = true;
   for (const r of document.querySelectorAll('input[name="txAddKind"]')) {
     r.addEventListener("change", () => {
-      setCategoryFieldValue("txAddCategoryId", null);
+      // Income/Expense only sets cash direction. Keep the category, typed
+      // name, amount, and other fields the user already entered.
       renderTxAddCategoryChips();
       const st = categoryComboboxRegistry.get("txAddCategoryId");
       if (st) hideCategoryComboboxList(st);
+      refreshTxCategoryColorPickers();
       updateTxAddFormValidity();
     });
   }
