@@ -33853,14 +33853,15 @@ body[data-bw-view] .sidebar-balance-threshold-alerts{
 }
 body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger,
 body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-outlook-card){
-  padding: 10px 11px 9px;
+  padding: 8px 10px;
   border-radius: 10px;
 }
 body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar:has(.cash-health-card){
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 10px;
   white-space: normal;
   overflow: hidden;
+  box-shadow: none;
 }
 body[data-bw-view] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-muted:has(.cash-health-card--healthy){
   border: 1px solid rgba(11, 61, 46, 0.1);
@@ -34784,17 +34785,27 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   }
 }
 
-/* Cash Health: the warning card opens its date; the calendar highlights that day and the payments it lists. */
+/* Cash Health: compact snapshot. The warning card opens its date on the calendar. */
 .calendar-low-balance--sidebar:has(.cash-health-card){
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 10px;
   white-space: normal;
   overflow: hidden;
   text-align: left;
+  box-shadow: none;
 }
 .calendar-low-balance--sidebar.is-muted:has(.cash-health-card--healthy){
   border: 1px solid rgba(11, 61, 46, 0.1);
   background: #f4f7f5;
+}
+body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-health-card),
+body[data-bw-view="transactions"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-health-card),
+body[data-bw-view="settings"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-health-card),
+body[data-bw-view="reports"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-health-card),
+body[data-bw-view="reimbursements"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar.is-danger:has(.cash-health-card){
+  padding: 8px 10px;
+  background: #faf7f2;
+  box-shadow: none;
 }
 .cash-health-card{
   display: flex;
@@ -34813,26 +34824,27 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   gap: 0;
   appearance: none;
   -webkit-appearance: none;
-  overflow: hidden;
 }
 button.cash-health-card{
   cursor: pointer;
 }
 button.cash-health-card:focus-visible{
   outline: 2px solid var(--accent);
-  outline-offset: 5px;
+  outline-offset: 3px;
 }
 .cash-health-card__status{
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  width: 100%;
   min-width: 0;
-  gap: 2px;
+  gap: 1px;
 }
 .cash-health-card__kicker-row{
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
 }
@@ -34840,29 +34852,37 @@ button.cash-health-card:focus-visible{
 .cash-health-card__kicker-row .cash-outlook-icon svg,
 body[data-bw-view] #sidebarLowBalanceBanner .cash-health-card__kicker-row .cash-outlook-icon,
 body[data-bw-view] #sidebarLowBalanceBanner .cash-health-card__kicker-row .cash-outlook-icon svg{
-  width: 13px;
-  height: 13px;
-  max-width: 13px;
-  max-height: 13px;
+  width: 12px;
+  height: 12px;
+  max-width: 12px;
+  max-height: 12px;
   flex: 0 0 auto;
-  margin: 2px 0 0;
+  margin: 0;
 }
 .cash-health-card__kicker{
-  font-size: 11px;
+  min-width: 0;
+  font-size: 10.5px;
   font-weight: 500;
-  letter-spacing: 0.01em;
-  line-height: 1.25;
+  letter-spacing: 0;
+  line-height: 1.2;
   color: rgba(87, 83, 78, 0.72);
 }
+.cash-health-card__figure{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+  row-gap: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
 .cash-health-card__amount{
-  display: block;
-  margin: 4px 0 0;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.03em;
-  line-height: 1.08;
+  line-height: 1.12;
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
 }
 .cash-health-card--negative .cash-health-card__amount{
   color: rgba(153, 27, 27, 0.92);
@@ -34871,15 +34891,15 @@ body[data-bw-view] #sidebarLowBalanceBanner .cash-health-card__kicker-row .cash-
   color: rgba(120, 53, 15, 0.9);
 }
 .cash-health-card__when{
-  display: block;
   font-size: 12px;
   font-weight: 400;
-  line-height: 1.25;
-  color: rgba(87, 83, 78, 0.7);
+  line-height: 1.2;
+  color: rgba(87, 83, 78, 0.68);
+  white-space: nowrap;
 }
 .cash-health-card__headline{
   display: block;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.01em;
@@ -34887,96 +34907,110 @@ body[data-bw-view] #sidebarLowBalanceBanner .cash-health-card__kicker-row .cash-
 }
 .cash-health-card__note{
   display: block;
-  margin-top: 8px;
-  font-size: 11.5px;
+  margin-top: 3px;
+  font-size: 11px;
   font-weight: 400;
-  line-height: 1.35;
-  color: rgba(87, 83, 78, 0.82);
+  line-height: 1.3;
+  color: rgba(87, 83, 78, 0.78);
 }
 .cash-health-card__note--muted{
-  color: rgba(120, 113, 108, 0.88);
+  color: rgba(120, 113, 108, 0.86);
 }
 .cash-health-card__payments{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 12px;
-  row-gap: 8px;
-  align-items: start;
-  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
   min-width: 0;
 }
 .cash-health-card__payments-label{
-  grid-column: 1 / -1;
   display: block;
-  font-size: 10.5px;
+  width: 100%;
+  margin-bottom: 1px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  line-height: 1.3;
-  color: rgba(87, 83, 78, 0.68);
+  line-height: 1.25;
+  color: rgba(87, 83, 78, 0.62);
 }
 .cash-health-card__pay{
-  display: contents;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: baseline;
+  min-width: 0;
 }
 .cash-health-card__pay-main{
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: baseline;
+  gap: 0.35em;
   min-width: 0;
 }
 .cash-health-card__pay-name{
-  font-size: 12.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 1.28;
-  color: rgba(41, 37, 36, 0.92);
-  overflow-wrap: anywhere;
+  line-height: 1.3;
+  color: rgba(41, 37, 36, 0.9);
 }
 .cash-health-card__pay-date,
 .cash-health-card__pay-est{
+  flex: 0 0 auto;
   font-size: 11px;
   font-weight: 400;
-  line-height: 1.25;
-  color: rgba(87, 83, 78, 0.68);
+  line-height: 1.3;
+  color: rgba(87, 83, 78, 0.64);
   white-space: nowrap;
 }
+.cash-health-card__pay-date::before{
+  content: "·";
+  margin-right: 0.35em;
+  color: rgba(87, 83, 78, 0.4);
+}
 .cash-health-card__pay-amt{
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-  line-height: 1.28;
+  line-height: 1.3;
   white-space: nowrap;
   text-align: right;
-  color: rgba(41, 37, 36, 0.9);
+  color: rgba(41, 37, 36, 0.88);
 }
 .cash-health-card--healthy .cash-health-card__note{
-  margin-top: 4px;
+  margin-top: 2px;
 }
 .cash-health-card__footer{
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 6px;
   min-width: 0;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 .cash-health-card__horizon{
   min-width: 0;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 400;
-  color: rgba(120, 113, 108, 0.72);
+  color: rgba(120, 113, 108, 0.62);
 }
 .cash-health-card--healthy .cash-health-card__footer{
-  margin-top: 8px;
+  margin-top: 5px;
 }
 .cash-health-card__view{
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
   color: var(--accent);
+  opacity: 0.86;
 }
 button.cash-health-card:hover .cash-health-card__view{
+  opacity: 1;
   text-decoration: underline;
   text-underline-offset: 2px;
 }

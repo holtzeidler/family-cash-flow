@@ -2530,12 +2530,13 @@ function syncSidebarCashHealthCardVisibility() {
 
 function cashHealthPaymentRowHtml(p) {
   const name = escapeHtml(String(p.label || "Payment").trim());
-  const est = p.variable ? ` <span class="cash-health-card__pay-est">(est.)</span>` : "";
+  const est = p.variable ? `<span class="cash-health-card__pay-est">(est.)</span>` : "";
   const date = escapeHtml(cashHealthMonthDay(p.date));
   const amt = cashHealthMoney(-(Math.abs(Number(p.amount) || 0)));
   return `<span class="cash-health-card__pay">
       <span class="cash-health-card__pay-main">
-        <span class="cash-health-card__pay-name">${name}${est}</span>
+        <span class="cash-health-card__pay-name">${name}</span>
+        ${est}
         <span class="cash-health-card__pay-date">${date}</span>
       </span>
       <span class="cash-health-card__pay-amt">${escapeHtml(amt)}</span>
@@ -2576,8 +2577,10 @@ function cashHealthCardHtml(copy) {
           ${cashOutlookWarnIconHtml()}
           <span class="cash-health-card__kicker">${escapeHtml(copy.kicker)}</span>
         </span>
-        <span class="cash-health-card__amount">${amount}</span>
-        ${when ? `<span class="cash-health-card__when">${when}</span>` : ""}
+        <span class="cash-health-card__figure">
+          <span class="cash-health-card__amount">${amount}</span>
+          ${when ? `<span class="cash-health-card__when">${when}</span>` : ""}
+        </span>
       </span>
       ${notes}
       ${payBlock}

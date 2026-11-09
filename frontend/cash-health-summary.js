@@ -330,7 +330,7 @@ function buildCashHealthCopy(summary, expl) {
       ? `Below $0 today · ${cashHealthMoney(anchor.amount)}`
       : `Projected negative balance ${when} · ${cashHealthMoney(anchor.amount)}`;
     if (summary.recovery && lowest && cashHealthDayDiff(lowest.date, summary.recovery.date) <= 14) {
-      lines.push(`Back above $0 on ${cashHealthMonthDay(summary.recovery.date)}`);
+      lines.push(`Recovers ${cashHealthMonthDay(summary.recovery.date)}`);
     } else if (lowest && lowest.date !== anchor.date) {
       lines.push(`Lowest ${cashHealthMoney(lowest.amount)} on ${cashHealthMonthDay(lowest.date)}`);
     }
