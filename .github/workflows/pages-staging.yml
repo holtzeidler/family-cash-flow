@@ -21,6 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cash Health summary
+        run: |
+          node --check frontend/cash-health-summary.js
+          node frontend/cash-health-summary.test.js
+
       - name: Build staging frontend
         env:
           API_BASE: ${{ secrets.API_BASE_STAGING }}
