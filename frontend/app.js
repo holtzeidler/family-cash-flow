@@ -19780,7 +19780,17 @@ function renderCalendar() {
           if (k === "income") amtSpan.classList.add("income");
           else if (k === "expense") amtSpan.classList.add("expense");
         }
-        amtSpan.textContent = `$${fmtMoney(row.amount)}`;
+        const money = `$${fmtMoney(row.amount)}`;
+        if (isExpected && row.variable) {
+          const est = document.createElement("span");
+          est.className = "cal-amt-est";
+          est.textContent = "Est. ";
+          amtSpan.appendChild(est);
+          amtSpan.appendChild(document.createTextNode(money));
+          amtSpan.setAttribute("aria-label", `Estimated ${money}`);
+        } else {
+          amtSpan.textContent = money;
+        }
 
         line.appendChild(labelWrap);
         line.appendChild(amtSpan);
