@@ -15,6 +15,20 @@ function accountSetupCategoryValidationMessage(category, matchesKind) {
 }
 
 /**
+ * Index of the first saved setup item that still needs a category, or -1.
+ * Drafts saved before categories were required can hold "" or "Uncategorized".
+ */
+function accountSetupDraftCategoryFixIndex(transactions) {
+  var list = Array.isArray(transactions) ? transactions : [];
+  for (var i = 0; i < list.length; i++) {
+    var tx = list[i];
+    if (!tx || !(Number(tx.amount) > 0)) continue;
+    if (accountSetupCategoryValidationMessage(tx.category)) return i;
+  }
+  return -1;
+}
+
+/**
  * Group for a category created during onboarding, matching the Add Transaction form,
  * so a new bill category is not filed under Income. groupNames maps group id to name.
  */

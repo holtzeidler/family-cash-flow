@@ -15767,8 +15767,9 @@ function finalizeAllCalendarDayLabelColumnWidths() {
 }
 
 /**
- * Shrink end-of-day balance font when a status pill (e.g. Starting Point) would
- * otherwise overflow the day cell. Pill stays full size; amount scales down.
+ * Shrink end-of-day balance font slightly when a status pill (e.g. Starting Point) would
+ * otherwise need its own line. Pill stays full size; if the amount would get too small,
+ * keep the normal size and let the pill wrap above it.
  */
 function fitCalendarBalanceStripFonts(root = document) {
   const rows = root.querySelectorAll(".cal-balance-strip--has-status .cal-balance-strip__row");
@@ -15803,7 +15804,7 @@ function fitCalendarBalanceStripFonts(root = document) {
         hi = mid;
       }
     }
-    bal.style.fontSize = `${Math.max(minPx, best)}px`;
+    bal.style.fontSize = best >= base * 0.88 ? `${Math.max(minPx, best)}px` : "";
   }
 }
 
@@ -17088,7 +17089,7 @@ async function categoryIdForOnboardingDraftLabel(label, kind) {
   if (existing) return existing;
   const raw = String(label || "").trim();
   const key = onboardingCategoryLookupKey(raw);
-  if (!key || key === "uncategorized" || key === "transaction" || !state.activeFamilyId) return null;
+  if (!key || key === "uncategorized" || !state.activeFamilyId) return null;
   const groupId = categoryGroupIdForNewCategory(kind);
   try {
     const created = await api(
@@ -18129,7 +18130,7 @@ for (const evt of ["touchstart", "wheel", "keydown", "mousedown"]) {
   );
 }
 
-function maybeScrollMobileCalendarToToday({ final = false } = {}) {
+function maybeScrollMobileCalendarToToday() {
   if (calendarMobileTodayScroll === "off") return;
   const stop = () => {
     calendarMobileTodayScroll = "off";
@@ -18144,20 +18145,51 @@ function maybeScrollMobileCalendarToToday({ final = false } = {}) {
   if (document.querySelector(".bw-tour-tooltip--open, .modal-overlay--open:not(#bwForecastReadyModal)")) return stop();
   if (calendarMobileTodayScroll === "pending" && window.scrollY > 0) return stop();
   const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
-  if (!cell) {
-    if (final) stop();
-    return;
-  }
-  let headerBottom = 0;
-  for (const el of document.elementsFromPoint(window.innerWidth / 2, 1)) {
-    const pos = getComputedStyle(el).position;
-    if (pos === "fixed" || pos === "sticky") headerBottom = Math.max(headerBottom, el.getBoundingClientRect().bottom);
-  }
-  const top = Math.max(0, cell.getBoundingClientRect().top + window.scrollY - headerBottom - 12);
+  if (!cell) return;
+  const top = mobileCalendarScrollTopFor(cell);
   if (calendarMobileTodayScroll === "pending" && top < window.innerHeight * 0.4) return stop();
   if (Math.abs(window.scrollY - top) > 1) window.scrollTo({ top, behavior: "auto" });
-  calendarMobileTodayScroll = final ? "off" : "scrolled";
+  if (calendarMobileTodayScroll === "pending") {
+    calendarMobileTodayScroll = "scrolled";
+    keepMobileTodayInPlace();
+  }
 }
+
+/** Later renders can change the height of the days above today, so follow them briefly. */
+function keepMobileTodayInPlace() {
+  const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => maybeScrollMobileCalendarToToday()) : null;
+  if (ro) ro.observe(document.body);
+  window.setTimeout(() => {
+    if (ro) ro.disconnect();
+    if (calendarMobileTodayScroll === "scrolled") calendarMobileTodayScroll = "off";
+  }, 6000);
+}
+
+function fixedHeaderBottom() {
+  let bottom = 0;
+  for (const el of document.elementsFromPoint(window.innerWidth / 2, 1)) {
+    const pos = getComputedStyle(el).position;
+    if (pos === "fixed" || pos === "sticky") bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+  }
+  return bottom;
+}
+
+/** Scroll position that puts a day just below the fixed header. */
+function mobileCalendarScrollTopFor(cell) {
+  return Math.max(0, cell.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 12);
+}
+
+// The tour scrolls to each highlighted control; on phones, bring today back unless it is already in view.
+window.addEventListener("bw-tour-ended", () => {
+  const isMobile = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 768px)").matches;
+  const todayIso = toISODate(new Date());
+  if (!isMobile || getCalendarViewYm() !== todayIso.slice(0, 7)) return;
+  const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
+  if (!cell) return;
+  const cellTop = cell.getBoundingClientRect().top;
+  if (cellTop >= fixedHeaderBottom() && cellTop < window.innerHeight * 0.6) return;
+  window.scrollTo({ top: mobileCalendarScrollTopFor(cell), behavior: "auto" });
+});
 
 let calendarLoadingGuardTimer = null;
 
@@ -18263,7 +18295,7 @@ async function loadMonthAndCalendar() {
     await runStep("low-balance", () => refreshLowBalanceAlert());
     await runStep("forecast-confidence", () => refreshForecastConfidence());
     if (!stillCurrent()) return;
-    maybeScrollMobileCalendarToToday({ final: true });
+    maybeScrollMobileCalendarToToday();
     if (loadErrors.length && (!state.monthDailyBalances || state.monthDailyBalances.size === 0)) {
       const last = loadErrors[loadErrors.length - 1];
       show(calendarErr, (last && last.message) || "Failed to load calendar");
@@ -24049,6 +24081,38 @@ function readAccountSetupDraftJsonRaw() {
   return sessionJson || localJson || "";
 }
 
+function writeAccountSetupDraftJson(draft) {
+  const json = JSON.stringify(draft);
+  try {
+    sessionStorage.setItem("bw_account_setup_draft", json);
+  } catch (_) {}
+  try {
+    localStorage.setItem("bw_account_setup_draft", json);
+  } catch (_) {}
+}
+
+/** Open Add transaction filled from a setup item; the regular form requires a category before it saves. */
+async function openSetupItemNeedingCategory(t, date) {
+  await openTxAddModalAsync({ date, kind: t.kind === "income" ? "income" : "expense" });
+  if (!txAddModal || !txAddModal.classList.contains("modal-overlay--open")) return;
+  if (txAddAmount) txAddAmount.value = String(Number(t.amount));
+  if (txAddNotes) txAddNotes.value = t.notes ? String(t.notes) : "";
+  if (txAddVariable) txAddVariable.checked = !!t.variable;
+  const recurrence = t.recurring ? (t.recurrence === "bimonthly" ? "twice_monthly" : String(t.recurrence || "")) : "";
+  if (txAddRecurrence && recurrence && txAddRecurrence.querySelector(`option[value="${recurrence}"]`)) {
+    txAddRecurrence.value = recurrence;
+    if (txAddEndsMode) txAddEndsMode.value = t.end_date ? "on_date" : t.end_count != null ? "after_count" : "never";
+    if (txAddEndDate && t.end_date) txAddEndDate.value = String(t.end_date);
+    if (txAddEndCount && t.end_count != null) txAddEndCount.value = String(t.end_count);
+    if (txAddSecondDayOfMonth && t.second_day_of_month != null) txAddSecondDayOfMonth.value = String(t.second_day_of_month);
+  }
+  try {
+    updateTxAddRepeatingUi();
+  } catch (_) {}
+  show(txAddErr, "Choose a category to finish adding this item from setup.");
+  updateTxAddFormValidity({ forceShow: true });
+}
+
 function clearAccountSetupDraftJsonStorage() {
   try {
     sessionStorage.removeItem("bw_account_setup_draft");
@@ -24200,15 +24264,32 @@ async function tryRecoverAccountSetupDraft() {
 
   let txTotal = 0;
   let txCreated = 0;
+  /** Items to retry on the next visit. */
+  const unsaved = [];
+  /** Items saved during setup without a usable category; the user has to pick one. */
+  const needsCategory = [];
   for (const t of txs) {
     const amt = Number(t.amount);
     if (!Number.isFinite(amt) || amt <= 0) continue;
     txTotal += 1;
     const description = (t.category || "").trim() || "Transaction";
     const txDate = recoveryEffectiveTxDate(t.date);
+    const labelKey = onboardingCategoryLookupKey(t.category);
+    if (!labelKey || labelKey === "uncategorized") {
+      needsCategory.push(t);
+      continue;
+    }
+    if (t.recurring && !createdAccountId) {
+      unsaved.push(t);
+      continue;
+    }
+    const categoryId = await categoryIdForOnboardingDraftLabel(t.category, t.kind);
+    if (!categoryId) {
+      unsaved.push(t);
+      continue;
+    }
     try {
       if (t.recurring) {
-        if (!createdAccountId) continue;
         await api(`/api/families/${state.activeFamilyId}/expected-transactions`, "POST", {
           account_id: createdAccountId,
           start_date: txDate,
@@ -24223,7 +24304,7 @@ async function tryRecoverAccountSetupDraft() {
           kind: t.kind,
           amount: amt,
           variable: !!t.variable,
-          category_id: await categoryIdForOnboardingDraftLabel(t.category, t.kind),
+          category_id: categoryId,
           bg_color: t.bg_color ? t.bg_color : null,
           fg_color: null,
         });
@@ -24235,7 +24316,7 @@ async function tryRecoverAccountSetupDraft() {
           notes: t.notes ? t.notes : null,
           kind: t.kind,
           amount: amt,
-          category_id: await categoryIdForOnboardingDraftLabel(t.category, t.kind),
+          category_id: categoryId,
           fg_color: null,
           bg_color: t.bg_color ? t.bg_color : null,
           reimbursable: false,
@@ -24243,6 +24324,7 @@ async function tryRecoverAccountSetupDraft() {
         txCreated += 1;
       }
     } catch (e) {
+      unsaved.push(t);
       try {
         if (window.console && console.warn) {
           console.warn("[onboarding] transaction recovery failed", e && e.message, { txDate, kind: t.kind });
@@ -24252,8 +24334,17 @@ async function tryRecoverAccountSetupDraft() {
     }
   }
 
+  // The forecast-ready popup follows any recovered work, so only open the form when nothing else will.
+  let openForCategory = null;
+  if (needsCategory.length && !anyAccountWork && txCreated === 0 && !document.querySelector(".modal-overlay--open")) {
+    openForCategory = needsCategory.shift();
+  }
+  const leftover = [...unsaved, ...needsCategory];
+  if (leftover.length) writeAccountSetupDraftJson({ ...draft, transactions: leftover });
+  if (openForCategory) void openSetupItemNeedingCategory(openForCategory, recoveryEffectiveTxDate(openForCategory.date));
+
   const accountReady = hasAccounts || (anyAccountWork && createdAccountId);
-  const txsReady = pendingTxCount === 0 || txCreated >= pendingTxCount;
+  const txsReady = leftover.length === 0;
   if (accountReady && txsReady && (anyAccountWork || txCreated > 0 || (hasAccounts && pendingTxCount > 0))) {
     clearAccountSetupDraftJsonStorage();
     try {

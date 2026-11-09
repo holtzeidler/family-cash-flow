@@ -758,11 +758,6 @@ function initAccountSetupCategoryCombobox(hiddenId, inputId, listId) {
       commit(exactPreset);
       return;
     }
-    const ranked = filterCategoriesForSearch(raw, allowedKind);
-    if (ranked.length === 1) {
-      commit(ranked[0]);
-      return;
-    }
     if (hidden.value) {
       hidden.value = "";
       delete hidden.dataset.asCategoryKindForCustom;
@@ -2913,6 +2908,7 @@ function accountSetupCancelIncomeClick() {
     return;
   }
   setCallout(signupCalloutEl, "", "");
+  accountSetupCategoryFixIndex = -1;
   setAccountSetupStep3Phase("intro");
   resetAccountSetupTransactionForm();
   document.getElementById("asTxHubAddIncomeBtn")?.focus();
@@ -2952,7 +2948,12 @@ async function accountSetupSaveIncomeClick() {
     rejectAccountSetupParsedTransaction("asTx", parsed);
     return;
   }
-  const txs = [...existing, parsed.tx];
+  const fixIdx = accountSetupCategoryFixIndex;
+  accountSetupCategoryFixIndex = -1;
+  const txs =
+    fixIdx >= 0 && fixIdx < existing.length
+      ? existing.map((t, i) => (i === fixIdx ? parsed.tx : t))
+      : [...existing, parsed.tx];
   try {
     persistAccountSetupDraftObject({
         ...rawDraft,
@@ -3070,6 +3071,7 @@ function accountSetupTxHubContinueClick() {
   // Hub Continue should work even if the prior step's Next lock is still active.
   if (getAccountSetupWizardStep() !== 2 || getAccountSetupStep3Phase() !== "intro") return;
   if (getAccountSetupTransactionCounts().totalCount < 1) return;
+  if (reopenAccountSetupItemNeedingCategory()) return;
   setCallout(signupCalloutEl, "", "");
   lockAccountSetupWizardStepTransition();
   setAccountSetupWizardStep(4, { skipPersist: true });
@@ -3398,6 +3400,84 @@ function hydrateAccountSetupSurveyFromDraft(o) {
   if (otherInput && o.surveyOther != null) otherInput.value = String(o.surveyOther);
 }
 
+function fillAccountSetupTransactionForm(tx) {
+  const txAmountEl = document.getElementById("asTxAmount");
+  const txCategoryEl = document.getElementById("asTxCategory");
+  const txDateEl = document.getElementById("asTxDate");
+  const txNotesEl = document.getElementById("asTxNotes");
+  const txRecSelEl = document.getElementById("asTxRecurrence");
+  const txEndDateEl = document.getElementById("asTxEndDate");
+  const txEndCountEl = document.getElementById("asTxEndCount");
+  const txBgColorEl = document.getElementById("asTxBgColor");
+  const k = String(tx.kind || "").trim().toLowerCase();
+  const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
+  if (kindEl) kindEl.checked = true;
+  if (txAmountEl && tx.amount != null) {
+    txAmountEl.value = formatAccountSetupMoneyDisplay("", Number(tx.amount));
+  }
+  if (txCategoryEl && tx.category) {
+    const c = String(tx.category).trim();
+    txCategoryEl.value = c === "Uncategorized" ? "" : c;
+    bindAccountSetupCategoryKindFromTxn(txCategoryEl, c === "Uncategorized" ? "" : c, tx.kind);
+    accountSetupSyncCategorySearchDisplay("asTxCategory");
+  }
+  if (txDateEl && tx.date) txDateEl.value = String(tx.date);
+  if (txNotesEl && tx.notes) txNotesEl.value = String(tx.notes);
+  const txSecondDayEl = document.getElementById("asTxSecondDayOfMonth");
+  const txEndsModeEl = document.getElementById("asTxEndsMode");
+  const on = !!tx.recurring && !!tx.recurrence;
+  const hydratedRecurrence = String(tx.recurrence || "") === "bimonthly" ? "twice_monthly" : String(tx.recurrence || "");
+  if (txRecSelEl) txRecSelEl.value = on ? hydratedRecurrence : "once";
+  const txSecondYearlyEl = document.getElementById("asTxSecondYearlyDate");
+  if (hydratedRecurrence === "semiannual" && txSecondYearlyEl && tx.second_day_of_month != null && tx.second_occurrence_month != null) {
+    const y = String(tx.date || "").slice(0, 4) || String(new Date().getFullYear());
+    txSecondYearlyEl.value = `${y}-${String(tx.second_occurrence_month).padStart(2, "0")}-${String(tx.second_day_of_month).padStart(2, "0")}`;
+  } else if (txSecondDayEl && tx.second_day_of_month != null) {
+    txSecondDayEl.value = String(tx.second_day_of_month);
+    txSecondDayEl.dataset.userPicked = "1";
+  }
+  if (txEndsModeEl) txEndsModeEl.value = tx.end_date ? "on_date" : tx.end_count != null ? "after_count" : "never";
+  if (txEndDateEl && tx.end_date) txEndDateEl.value = String(tx.end_date);
+  if (txEndCountEl && tx.end_count != null) txEndCountEl.value = String(tx.end_count);
+  if (txBgColorEl && tx.bg_color) txBgColorEl.value = String(tx.bg_color);
+  syncAccountSetupScheduleUi("asTx");
+}
+
+/** Index of the saved item being given a category; its save replaces the item instead of adding one. */
+let accountSetupCategoryFixIndex = -1;
+
+/**
+ * Reopen the first saved item that has no usable category so the user picks one.
+ * Returns true when an item was reopened and the caller should stop.
+ */
+function reopenAccountSetupItemNeedingCategory() {
+  if (!isAccountSetupPath() || !document.getElementById("accountSetupWizard")) return false;
+  const rawDraft = readAccountSetupDraftRaw() || {};
+  const txs = Array.isArray(rawDraft.transactions) ? rawDraft.transactions : [];
+  const idx = accountSetupDraftCategoryFixIndex(txs);
+  if (idx < 0) return false;
+  const tx = txs[idx];
+  try {
+    persistAccountSetupDraftObject({
+      ...rawDraft,
+      wizardFlowVersion: ACCOUNT_SETUP_WIZARD_FLOW_VERSION,
+      wizardStep: 2,
+      step3Phase: "form",
+    });
+  } catch (_) {}
+  setCallout(signupCalloutEl, "", "");
+  setAccountSetupWizardStep(2, { skipPersist: true });
+  setAccountSetupStep3AfterSave(false);
+  setAccountSetupStep3Phase("form");
+  resetAccountSetupTransactionForm(String(tx.kind || "").toLowerCase() === "income" ? "income" : "expense");
+  fillAccountSetupTransactionForm(tx);
+  const variableEl = document.getElementById("asTxVariable");
+  if (variableEl) variableEl.checked = !!tx.variable;
+  accountSetupCategoryFixIndex = idx;
+  showAccountSetupCategoryError("asTx", ACCOUNT_SETUP_CATEGORY_REQUIRED_MESSAGE);
+  return true;
+}
+
 function hydrateAccountSetupDraft() {
   if (!isAccountSetupPath()) return;
   const merged = readAccountSetupDraftRaw();
@@ -3420,16 +3500,6 @@ function hydrateAccountSetupDraft() {
     const accBalEl = document.getElementById("accountStartingBalance");
     const accDateEl = document.getElementById("accountStartingBalanceDate");
     const accCushionEl = document.getElementById("accountSetupKeepInChecking");
-    const txAmountEl = document.getElementById("asTxAmount");
-    const txCategoryEl = document.getElementById("asTxCategory");
-    const txDateEl = document.getElementById("asTxDate");
-    const txNotesEl = document.getElementById("asTxNotes");
-    const txRecSelEl = document.getElementById("asTxRecurrence");
-    const txEndDateEl = document.getElementById("asTxEndDate");
-    const txEndCountEl = document.getElementById("asTxEndCount");
-    const txEndDateWrapEl = document.getElementById("asTxEndDateWrap");
-    const txEndCountWrapEl = document.getElementById("asTxEndCountWrap");
-    const txBgColorEl = document.getElementById("asTxBgColor");
     if (tzEl && o.timeZone) tzEl.value = String(o.timeZone);
     if (o.account) {
       if (accNameEl && o.account.name) accNameEl.value = String(o.account.name);
@@ -3490,38 +3560,7 @@ function hydrateAccountSetupDraft() {
         if (eBg && lastTx.bg_color) eBg.value = String(lastTx.bg_color);
         syncAccountSetupScheduleUi("asExp");
       } else {
-        const kindEl = k ? document.querySelector(`input[name="asTxKind"][value="${k}"]`) : null;
-        if (kindEl) kindEl.checked = true;
-        if (txAmountEl && lastTx.amount != null) {
-          txAmountEl.value = formatAccountSetupMoneyDisplay("", Number(lastTx.amount));
-        }
-        if (txCategoryEl && lastTx.category) {
-          const c = String(lastTx.category).trim();
-          txCategoryEl.value = c === "Uncategorized" ? "" : c;
-          bindAccountSetupCategoryKindFromTxn(txCategoryEl, c === "Uncategorized" ? "" : c, lastTx.kind);
-          accountSetupSyncCategorySearchDisplay("asTxCategory");
-        }
-        if (txDateEl && lastTx.date) txDateEl.value = String(lastTx.date);
-        if (txNotesEl && lastTx.notes) txNotesEl.value = String(lastTx.notes);
-        const txSecondDayEl = document.getElementById("asTxSecondDayOfMonth");
-        const txEndsModeEl = document.getElementById("asTxEndsMode");
-        const on = !!lastTx.recurring && !!lastTx.recurrence;
-        const hydratedRecurrence =
-          String(lastTx.recurrence || "") === "bimonthly" ? "twice_monthly" : String(lastTx.recurrence || "");
-        if (txRecSelEl) txRecSelEl.value = on ? hydratedRecurrence : "once";
-        const txSecondYearlyEl = document.getElementById("asTxSecondYearlyDate");
-        if (hydratedRecurrence === "semiannual" && txSecondYearlyEl && lastTx.second_day_of_month != null && lastTx.second_occurrence_month != null) {
-          const y = String(lastTx.date || "").slice(0, 4) || String(new Date().getFullYear());
-          txSecondYearlyEl.value = `${y}-${String(lastTx.second_occurrence_month).padStart(2, "0")}-${String(lastTx.second_day_of_month).padStart(2, "0")}`;
-        } else if (txSecondDayEl && lastTx.second_day_of_month != null) {
-          txSecondDayEl.value = String(lastTx.second_day_of_month);
-          txSecondDayEl.dataset.userPicked = "1";
-        }
-        if (txEndsModeEl) txEndsModeEl.value = lastTx.end_date ? "on_date" : lastTx.end_count != null ? "after_count" : "never";
-        if (txEndDateEl && lastTx.end_date) txEndDateEl.value = String(lastTx.end_date);
-        if (txEndCountEl && lastTx.end_count != null) txEndCountEl.value = String(lastTx.end_count);
-        if (txBgColorEl && lastTx.bg_color) txBgColorEl.value = String(lastTx.bg_color);
-        syncAccountSetupScheduleUi("asTx");
+        fillAccountSetupTransactionForm(lastTx);
       }
     }
     if (document.getElementById("accountSetupWizard")) {
@@ -3731,7 +3770,7 @@ async function ensureOnboardingCategoryId(familyId, lookup, label, kind) {
   const { byKey, groupNames } = lookup;
   const raw = String(label || "").trim();
   const key = onboardingCategoryLookupKey(raw);
-  if (!key || key === "uncategorized" || key === "transaction") return null;
+  if (!key || key === "uncategorized") return null;
   const want = ONBOARDING_CATEGORY_ALIAS_KEYS[key] || key;
   if (byKey.has(want)) return byKey.get(want);
   if (byKey.has(key)) return byKey.get(key);
@@ -3755,7 +3794,9 @@ async function ensureOnboardingCategoryId(familyId, lookup, label, kind) {
 /**
  * Create the user's first transactions from the wizard draft. Returns:
  *   { ok: true,  createdCount, totalCount }   — every applicable item created
- *   { ok: false, createdCount, totalCount, error }
+ *   { ok: false, createdCount, totalCount, error, unsaved }
+ * unsaved lists the draft items that were not created, so recovery doesn't duplicate the rest.
+ * An item is never created without a category.
  */
 async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, knownFamilyId) {
   if (!draft) return { ok: true, createdCount: 0, totalCount: 0 };
@@ -3774,6 +3815,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, kno
   let createdCount = 0;
   let totalApplicable = 0;
   let lastError = null;
+  const unsaved = [];
   const categoryLookup = await signupCategoryIdByKey(familyId);
 
   for (const t of list) {
@@ -3783,11 +3825,18 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, kno
     totalApplicable += 1;
     const txDate = accountSetupEffectiveTxDate(t.date, draft);
     const categoryId = await ensureOnboardingCategoryId(familyId, categoryLookup, t.category, t.kind);
+    if (!categoryId) {
+      lastError = "category_unavailable";
+      unsaved.push(t);
+      continue;
+    }
+    let created = false;
     try {
       if (t.recurring) {
         const accountId = Number(createdAccountId);
         if (!Number.isFinite(accountId) || accountId <= 0) {
           lastError = "missing_account_for_recurring";
+          unsaved.push(t);
           continue;
         }
         const r = await requestWithRetry(
@@ -3813,7 +3862,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, kno
           },
           { maxMs: 12000 }
         );
-        if (r && r.ok) createdCount += 1;
+        if (r && r.ok) created = true;
         else lastError = `expected_create_failed_${r?.status || "network"}`;
       } else {
         const r = await requestWithRetry(
@@ -3832,21 +3881,32 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, kno
           },
           { maxMs: 12000 }
         );
-        if (r && r.ok) createdCount += 1;
+        if (r && r.ok) created = true;
         else lastError = `transaction_create_failed_${r?.status || "network"}`;
       }
     } catch (e) {
       lastError = (e && e.message) || "transaction_create_threw";
     }
+    if (created) createdCount += 1;
+    else unsaved.push(t);
   }
 
-  if (totalApplicable === 0) return { ok: true, createdCount: 0, totalCount: 0, familyId };
+  if (totalApplicable === 0) return { ok: true, createdCount: 0, totalCount: 0, familyId, unsaved };
   return {
     ok: createdCount === totalApplicable,
     createdCount,
     totalCount: totalApplicable,
     error: createdCount === totalApplicable ? null : lastError,
+    unsaved,
   };
+}
+
+/** Leave only the items that were not created for /calendar recovery. */
+function keepUnsavedAccountSetupTransactions(txResult, extra) {
+  const raw = readAccountSetupDraftRaw() || {};
+  const next = { ...raw, ...(extra || {}) };
+  if (txResult && Array.isArray(txResult.unsaved)) next.transactions = txResult.unsaved;
+  persistAccountSetupDraftObject(next);
 }
 
 const BW_FORECAST_INTRO_KEY = "bw_forecast_intro_family";
@@ -4000,6 +4060,7 @@ async function maybeEnterAccountSetupResume() {
 
 async function finishResumeAccountSetup() {
   if (bwSignupInFlight) return;
+  if (reopenAccountSetupItemNeedingCategory()) return;
   bwSignupInFlight = true;
   setBusy(true);
   const startedAt = Date.now();
@@ -4035,7 +4096,10 @@ async function finishResumeAccountSetup() {
     if (txResult && txResult.ok) {
       try { removeAccountSetupDraftStorage(); } catch (_) {}
     } else {
-      try { markOnboardingRecoveryPending(); } catch (_) {}
+      try {
+        markOnboardingRecoveryPending();
+        keepUnsavedAccountSetupTransactions(txResult);
+      } catch (_) {}
     }
     await ensureMinOverlayDuration(startedAt, 1200);
     bumpForecastBuildOverlayProgress(overlay, 78);
@@ -4055,6 +4119,7 @@ async function finishResumeAccountSetup() {
 async function doSignup() {
   if (!signupBtn) return;
   if (bwSignupInFlight) return;
+  if (reopenAccountSetupItemNeedingCategory()) return;
   bwSignupInFlight = true;
   bwEmailPrecheckStep0Generation += 1;
   setBusy(true);
@@ -4234,8 +4299,7 @@ async function doSignup() {
     } else {
       try {
         markOnboardingRecoveryPending();
-        const raw = readAccountSetupDraftRaw() || {};
-        persistAccountSetupDraftObject({ ...raw, signupEmail: email });
+        keepUnsavedAccountSetupTransactions(txResult, { signupEmail: email });
       } catch (_) {}
       try {
         if (window.console && console.warn) {

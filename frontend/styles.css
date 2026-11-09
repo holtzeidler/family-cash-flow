@@ -24513,6 +24513,20 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-balance-strip--has-status .cal-balance-strip__amt{
   flex: 1 1 auto;
 }
+/* A narrow day moves the status pill to its own line above the balance instead of clipping the amount;
+   the balance stays on the bottom line with the rest of the week. */
+.calendar:not(.calendar--mobile) .cal-balance-strip--has-status .cal-balance-strip__row{
+  flex-wrap: wrap-reverse;
+  row-gap: 3px;
+}
+.calendar:not(.calendar--mobile) .cal-balance-strip--has-status .cal-balance-strip__amt{
+  flex-shrink: 0;
+}
+.calendar:not(.calendar--mobile) .cal-balance-strip--has-status .cal-balance-status-pill{
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+}
 .cal-balance-strip--has-status .cal-stat.cal-balance{
   min-width: 0;
 }
