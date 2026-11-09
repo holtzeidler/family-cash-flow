@@ -5,6 +5,7 @@ const {
   detectTxEditSeriesOnlyChanges,
   formatTxEditSeriesOnlyError,
   formatTxEditApplyScopeCopy,
+  formatTxEditDeleteScopeCopy,
 } = require("./tx-edit-scope.js");
 
 assert.strictEqual(formatTxEditMonthDay("2026-11-15"), "Nov 15");
@@ -76,6 +77,21 @@ assert.ok(formatTxEditSeriesOnlyError(["Notes", "Repeat"]).includes("Notes and R
   assert.strictEqual(copy.defaultChoice, "series");
   assert.strictEqual(copy.recommended, "series");
   assert.ok(copy.seriesNotice.includes("Notes applies to the series"));
+}
+
+{
+  const copy = formatTxEditDeleteScopeCopy({ openedIso: "2026-11-15" });
+  assert.strictEqual(copy.title, "Skip or end this series");
+  assert.strictEqual(copy.instanceTitle, "Skip this occurrence");
+  assert.strictEqual(copy.seriesTitle, "End recurring series from this date");
+  assert.strictEqual(copy.instanceConfirm, "Skip");
+  assert.strictEqual(copy.seriesConfirm, "End series");
+  assert.ok(copy.helper.includes("skip Nov 15"));
+  assert.ok(copy.instanceHint.includes("Nov 15"));
+  assert.ok(!copy.helper.toLowerCase().includes("cannot be undone"));
+  assert.ok(!copy.instanceHint.toLowerCase().includes("cannot be undone"));
+  assert.ok(!copy.seriesHint.toLowerCase().includes("cannot be undone"));
+  assert.ok(!/\bundo\b/i.test(`${copy.helper} ${copy.instanceHint} ${copy.seriesHint}`));
 }
 
 console.log("tx-edit-scope.test.js: ok");

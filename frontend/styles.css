@@ -25150,6 +25150,7 @@ body[data-bw-view="transactions"] .tm__field label{
   line-height: 1.3;
   letter-spacing: 0;
   color: rgba(11, 61, 46, 0.88);
+  overflow-wrap: anywhere;
 }
 .apply-scope-option__badge{
   display: inline-flex;
@@ -31625,7 +31626,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave,
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditRecurringUpdateBtn{
     width: 100%;
-    min-height: 38px !important;
+    min-height: 44px !important;
   }
 
   #txAddCancel,
@@ -31633,7 +31634,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   #txEditInner #txEditCancel.tx-edit-dismiss--close{
     width: auto !important;
     align-self: center;
-    min-height: 36px !important;
+    min-height: 44px !important;
   }
 
   #txEditInner > .modal-actions.modal-actions--tx-edit-foot{
@@ -31645,6 +31646,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     align-self: center;
     margin: 0;
     order: 1;
+    min-height: 44px !important;
   }
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row,
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row--main,
@@ -32169,6 +32171,82 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     gap: 12px;
     padding-top: 12px;
     padding-bottom: 12px;
+  }
+}
+
+/* Transaction edit: mobile touch targets, sheet scroll, and safe-area. Desktop unchanged. */
+@media (max-width: 768px){
+  #txEditModal.modal-overlay--open,
+  #txEditApplyScopeModal.modal-overlay--open,
+  #txEditDeleteScopeModal.modal-overlay--open{
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 8px max(8px, env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #txEditInner.modal,
+  #txEditInner.modal.modal--expected-edit{
+    width: min(100%, calc(100vw - 16px));
+    max-width: none;
+    max-height: calc(var(--bw-vv-height, 100dvh) - 20px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    margin: 0 auto;
+  }
+
+  #txEditInner > .modal-actions.modal-actions--tx-edit-foot,
+  .modal--expected-edit > .modal-actions.modal-actions--tx-edit-foot{
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    margin: 0;
+    padding: 10px 12px max(12px, env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    box-shadow: 0 -10px 14px rgba(255, 255, 255, 0.92);
+  }
+
+  #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave,
+  #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditRecurringUpdateBtn,
+  #txEditInner > .modal-actions #txEditCancel,
+  #txEditInner #txEditCancel.tx-edit-cancel-btn,
+  #txEditInner #txEditCancel.tx-edit-dismiss--close,
+  #txEditInner > .modal-actions > #txEditDelete.danger,
+  #txEditDelete.danger.tx-edit-delete-link{
+    min-height: 44px !important;
+  }
+
+  .modal.modal--apply-scope{
+    width: min(100%, 380px);
+    max-width: calc(100vw - 16px);
+    max-height: calc(var(--bw-vv-height, 100dvh) - 20px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 auto;
+  }
+
+  .modal.modal--apply-scope .modal-actions--apply-scope-foot{
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 12px 0 0;
+    padding: 12px 0 max(8px, env(safe-area-inset-bottom, 0px));
+    background: #fff;
+  }
+
+  .modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__cancel,
+  .modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__save,
+  .modal.modal--apply-scope .modal-actions--apply-scope-foot .apply-scope-foot__delete{
+    min-height: 44px;
+  }
+
+  .apply-scope-option{
+    min-height: 44px;
   }
 }
 

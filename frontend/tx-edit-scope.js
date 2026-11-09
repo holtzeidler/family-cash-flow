@@ -123,6 +123,25 @@ function formatTxEditApplyScopeCopy({
   };
 }
 
+function formatTxEditDeleteScopeCopy({ openedIso } = {}) {
+  const label = formatTxEditMonthDay(openedIso);
+  return {
+    title: "Skip or end this series",
+    helper: label
+      ? `Choose whether to skip ${label} only, or stop later dates from here. Past dates stay.`
+      : "Choose whether to skip only this date, or stop later dates from here. Past dates stay.",
+    instanceTitle: "Skip this occurrence",
+    instanceHint: label
+      ? `Takes ${label} off the schedule. Later dates stay. The series continues.`
+      : "Takes this date off the schedule. Later dates stay. The series continues.",
+    seriesTitle: "End recurring series from this date",
+    seriesHint: "Stops this date and every later occurrence. Earlier dates stay.",
+    instanceConfirm: "Skip",
+    seriesConfirm: "End series",
+    idleConfirm: "Continue",
+  };
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     formatTxEditMonthDay,
@@ -130,5 +149,6 @@ if (typeof module !== "undefined" && module.exports) {
     detectTxEditSeriesOnlyChanges,
     formatTxEditSeriesOnlyError,
     formatTxEditApplyScopeCopy,
+    formatTxEditDeleteScopeCopy,
   };
 }
