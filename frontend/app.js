@@ -1000,6 +1000,7 @@ const lowBalanceResult = document.getElementById("lowBalanceResult");
 const sidebarLowBalanceBanner = document.getElementById("sidebarLowBalanceBanner");
 const sidebarHighBalanceBanner = document.getElementById("sidebarHighBalanceBanner");
 const sidebarBalanceThresholdHint = document.getElementById("sidebarBalanceThresholdHint");
+const cashHealthHorizon = document.getElementById("cashHealthHorizon");
 const sidebarCashHealthCard = document.getElementById("sidebarCashHealthCard");
 // Legacy browser-local keys kept only long enough to migrate older sessions to
 // the server-backed family threshold fields.
@@ -1439,8 +1440,16 @@ function showForecastGettingStartedBanner() {
 }
 
 /** @param {"off"|"danger"|"muted"} style */
+function setCashHealthHorizon(text) {
+  if (!cashHealthHorizon) return;
+  const t = String(text || "").trim();
+  cashHealthHorizon.textContent = t;
+  cashHealthHorizon.hidden = !t;
+}
+
 function setSidebarLowBalanceBanner(text, style = "off") {
   if (!sidebarLowBalanceBanner) return;
+  setCashHealthHorizon("");
   if (!text || style === "off") {
     sidebarLowBalanceBanner.style.display = "none";
     sidebarLowBalanceBanner.textContent = "";
@@ -2517,56 +2526,51 @@ function syncSidebarCashHealthCardVisibility() {
   sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
 }
 
-function cashHealthPaymentRowHtml(p) {
-  const name = escapeHtml(String(p.label || "Payment").trim());
-  const est = p.variable ? ` <span class="cash-health-card__pay-est">(est.)</span>` : "";
-  const date = escapeHtml(cashHealthMonthDay(p.date));
-  const amt = `−$${Math.round(Number(p.amount) || 0).toLocaleString("en-US")}`;
-  return `<span class="cash-health-card__pay">
-      <span class="cash-health-card__pay-desc"><span class="cash-health-card__pay-name">${name}${est}</span><span class="cash-health-card__pay-sep" aria-hidden="true"> · </span><span class="cash-health-card__pay-date">${date}</span></span>
-      <span class="cash-health-card__pay-amt">${escapeHtml(amt)}</span>
+function cashHealthStatusIconHtml(tone) {
+  if (tone === "healthy") {
+    return `<span class="cash-health-card__icon cash-health-card__icon--healthy" aria-hidden="true"></span>`;
+  }
+  return `<span class="cash-health-card__icon cash-health-card__icon--${tone}" aria-hidden="true">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" focusable="false">
+        <path d="M8 2.2L14.2 13.4H1.8L8 2.2z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"></path>
+        <path d="M8 6.5v3.1M8 11.4v.01" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"></path>
+      </svg>
     </span>`;
 }
 
 function cashHealthCardHtml(copy) {
-  const notes = (copy.lines || []).map((t) => `<span class="cash-health-card__note">${escapeHtml(t)}</span>`).join("");
-  const payRows = (copy.payments || []).map(cashHealthPaymentRowHtml).join("");
-  const payBlock = payRows
-    ? `<span class="cash-health-card__payments"><span class="cash-health-card__payments-label">${escapeHtml(
-        copy.paymentsHeading || "Significant upcoming payments"
-      )}</span>${payRows}</span>`
-    : copy.paymentsNote
-      ? `<span class="cash-health-card__note cash-health-card__note--muted">${escapeHtml(copy.paymentsNote)}</span>`
-      : "";
-  if (copy.tone === "healthy") {
-    return `<div class="cash-outlook-card cash-health-card cash-health-card--healthy">
-      <span class="cash-outlook-card__headline">${escapeHtml(copy.headline)}</span>
-      ${notes}
-      <span class="cash-health-card__footer">${escapeHtml(copy.footer)}</span>
-    </div>`;
-  }
-  const [windowText, viewText] = copy.footer.split(" · ");
-  return `<button type="button" class="cash-outlook-card cash-health-card cash-health-card--${copy.tone}" data-cash-health-open="1" aria-label="${escapeHtml(copy.ariaLabel)}">
-      <span class="cash-outlook-card__row">
-        ${cashOutlookWarnIconHtml()}
-        <span class="cash-outlook-card__body">
-          <span class="cash-outlook-card__kicker">${escapeHtml(copy.kicker)}</span>
-          <span class="cash-outlook-card__date">${escapeHtml(copy.headline)}</span>
-        </span>
-      </span>
-      ${notes}
-      ${payBlock}
-      <span class="cash-health-card__footer"><span>${escapeHtml(windowText)}</span><span class="cash-health-card__view">${escapeHtml(viewText)} <span aria-hidden="true">›</span></span></span>
-    </button>`;
+  const amount = escapeHtml(copy.amountText || "");
+  const when = escapeHtml(copy.whenLabel || "");
+  const descriptor = escapeHtml(copy.descriptor || "");
+  const kicker = escapeHtml(copy.kicker || copy.headline || "");
+  const figureBits = [];
+  if (amount) figureBits.push(`<span class="cash-health-card__amount">${amount}</span>`);
+  if (when) figureBits.push(`<span class="cash-health-card__when">${when}</span>`);
+  if (descriptor) figureBits.push(`<span class="cash-health-card__desc">${descriptor}</span>`);
+  const figure = figureBits.length ? `<span class="cash-health-card__figure">${figureBits.join("")}</span>` : "";
+  const chevron = `<span class="cash-health-card__chevron" aria-hidden="true">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" focusable="false">
+        <path d="M6 3.5L11 8l-5 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </span>`;
+  const figureBlock =
+    copy.tone !== "healthy" && figure
+      ? `<button type="button" class="cash-health-card__nav" data-cash-health-open="1" aria-label="${escapeHtml(copy.ariaLabel)}">${figure}${chevron}</button>`
+      : figure;
+  const inner = `<span class="cash-health-card__body">
+      <span class="cash-health-card__kicker">${cashHealthStatusIconHtml(copy.tone)}${kicker}</span>
+      ${figureBlock}
+    </span>`;
+  return `<div class="cash-outlook-card cash-health-card cash-health-card--${copy.tone}">${inner}</div>`;
 }
 
 function setSidebarCashHealthCard(copy) {
   if (!sidebarLowBalanceBanner) return;
-  const warn = copy.tone !== "healthy";
   sidebarLowBalanceBanner.innerHTML = cashHealthCardHtml(copy);
   sidebarLowBalanceBanner.style.display = "flex";
   sidebarLowBalanceBanner.classList.remove("is-danger", "is-muted", "is-intro", "is-suggestion");
-  sidebarLowBalanceBanner.classList.add(warn ? "is-danger" : "is-muted");
+  sidebarLowBalanceBanner.classList.add("is-muted");
+  setCashHealthHorizon(copy.horizon || "");
   if (sidebarLowBalanceBanner.dataset.cashHealthBound !== "1") {
     sidebarLowBalanceBanner.dataset.cashHealthBound = "1";
     sidebarLowBalanceBanner.addEventListener("click", (e) => {
