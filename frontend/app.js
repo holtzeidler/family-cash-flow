@@ -2122,10 +2122,9 @@ function syncTxAddHiddenAccount(preferredId) {
 }
 
 function txAddMoreOptionsHasValues() {
-  const notes = String(txAddNotes?.value || "").trim();
   const variable = !!(txAddVariable && txAddVariable.checked);
   const color = !!(txAddColorTouched && txAddSelectedBgColor);
-  return !!(notes || variable || color);
+  return !!(variable || color);
 }
 
 function setTxAddMoreOptionsOpen(open) {
@@ -2150,7 +2149,6 @@ function bindTxAddMoreOptions() {
     const panel = document.getElementById("txAddMoreOptionsPanel");
     setTxAddMoreOptionsOpen(!!(panel && panel.hidden));
   });
-  txAddNotes?.addEventListener("input", syncTxAddMoreOptionsReveal);
   txAddVariable?.addEventListener("change", syncTxAddMoreOptionsReveal);
 }
 
@@ -2165,12 +2163,11 @@ function syncTxEditHiddenAccount(preferredId) {
 }
 
 function txEditMoreOptionsHasValues() {
-  const notes = String(txEditNotes?.value || "").trim();
   const variableWrap = document.getElementById("txEditRecurringVariableWrap");
   const variableVisible = !!(variableWrap && variableWrap.style.display !== "none");
   const variable = variableVisible && !!(seriesVariable && seriesVariable.checked);
   const color = !!(txEditSelectedBgColor && String(txEditSelectedBgColor).trim());
-  return !!(notes || variable || color);
+  return !!(variable || color);
 }
 
 function setTxEditMoreOptionsOpen(open) {
@@ -2195,7 +2192,6 @@ function bindTxEditMoreOptions() {
     const panel = document.getElementById("txEditMoreOptionsPanel");
     setTxEditMoreOptionsOpen(!!(panel && panel.hidden));
   });
-  txEditNotes?.addEventListener("input", syncTxEditMoreOptionsReveal);
   seriesVariable?.addEventListener("change", syncTxEditMoreOptionsReveal);
 }
 

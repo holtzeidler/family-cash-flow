@@ -258,8 +258,8 @@ def test_amount_category_account_notes_and_color_do_not_change_days(page, guard)
 
     _open_line(page, "2026-03-01", "Bonus")
     page.locator("#txEditAmount").fill("250")
-    _open_tx_edit_more_options(page)
     page.locator("#txEditNotes").fill("Holt")
+    _open_tx_edit_more_options(page)
     page.locator("#txEditCategoryId_search").evaluate(
         """() => {
           const st = categoryComboboxRegistry.get("txEditCategoryId");
@@ -352,7 +352,6 @@ def test_reopening_and_saving_in_a_short_month_keeps_both_days(page, guard):
 
     _open_line(page, "2026-02-28", "Bonus")
     assert _day(page, "#instanceSecondDayOfMonth") == 31
-    _open_tx_edit_more_options(page)
     page.locator("#txEditNotes").fill("February save")
     saved = _save_series(page)
     series_id = int(saved.get("future_series_id") or created["id"])
@@ -403,7 +402,6 @@ def test_monthly_31_notes_edit_from_february_keeps_the_31st(page, guard):
     created = _save_new(page)
 
     _open_line(page, "2026-02-28", "Bonus")
-    _open_tx_edit_more_options(page)
     page.locator("#txEditNotes").fill("Still the 31st")
     saved = _save_series(page)
     series_id = int(saved.get("future_series_id") or created["id"])
