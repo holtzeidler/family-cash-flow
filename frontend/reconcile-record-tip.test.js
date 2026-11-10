@@ -54,4 +54,33 @@ assert.notStrictEqual(reconcileRecordCaption({ matched: false, diff: 10, fmtMone
   assert.strictEqual(byMonth.get("2026-09").has("2026-09-08"), true);
 }
 
+{
+  const {
+    isSameReconciledIso,
+    shouldKeepBalanceRecordTipBusy,
+    shouldHideBalanceRecordTipAfterRemoval,
+  } = require("./reconcile-record-tip.js");
+
+  assert.strictEqual(isSameReconciledIso("2026-11-10", "2026-11-10"), true);
+  assert.strictEqual(isSameReconciledIso("2026-11-10", "2026-11-04"), false);
+  assert.strictEqual(isSameReconciledIso("", "2026-11-04"), false);
+
+  assert.strictEqual(shouldKeepBalanceRecordTipBusy("2026-11-10", "2026-11-10"), true);
+  assert.strictEqual(
+    shouldKeepBalanceRecordTipBusy("2026-11-10", "2026-11-04"),
+    false,
+    "opening another date must not inherit the in-flight loading state",
+  );
+  assert.strictEqual(shouldKeepBalanceRecordTipBusy("", "2026-11-04"), false);
+  assert.strictEqual(shouldKeepBalanceRecordTipBusy("2026-11-10", ""), false);
+
+  assert.strictEqual(shouldHideBalanceRecordTipAfterRemoval("2026-11-10", "2026-11-10"), true);
+  assert.strictEqual(shouldHideBalanceRecordTipAfterRemoval("2026-11-10", ""), true);
+  assert.strictEqual(
+    shouldHideBalanceRecordTipAfterRemoval("2026-11-10", "2026-11-04"),
+    false,
+    "removing one date must not close another date's popover",
+  );
+}
+
 console.log("reconcile-record-tip.test.js: ok");

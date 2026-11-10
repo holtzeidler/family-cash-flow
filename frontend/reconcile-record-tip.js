@@ -69,6 +69,22 @@ function addReconciledIso(iso, merged, byMonth) {
   return d;
 }
 
+function isSameReconciledIso(a, b) {
+  const x = normalizeReconciledIso(a);
+  const y = normalizeReconciledIso(b);
+  return !!(x && y && x === y);
+}
+
+/** Loading UI belongs only to the date whose action is in flight. */
+function shouldKeepBalanceRecordTipBusy(busyIso, shownIso) {
+  return isSameReconciledIso(busyIso, shownIso);
+}
+
+function shouldHideBalanceRecordTipAfterRemoval(removedIso, shownIso) {
+  const shown = normalizeReconciledIso(shownIso);
+  return !shown || isSameReconciledIso(removedIso, shown);
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     finiteMoney,
@@ -79,5 +95,8 @@ if (typeof module !== "undefined" && module.exports) {
     normalizeReconciledIso,
     dropReconciledIso,
     addReconciledIso,
+    isSameReconciledIso,
+    shouldKeepBalanceRecordTipBusy,
+    shouldHideBalanceRecordTipAfterRemoval,
   };
 }

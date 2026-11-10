@@ -7178,11 +7178,19 @@ function markCalendarReconcileBusy(iso, busy) {
   calendarGrid.querySelector(`.cal-cell[data-iso="${d}"]`)?.classList.toggle("cal-cell--recon-busy", !!busy);
 }
 
+let balanceRecordBusyIso = "";
+
+function pinnedBalanceRecordIso() {
+  const el = riskPressureTipEl?.querySelector("[data-bw-bal-action][data-iso]");
+  return normalizeIsoDate(el?.getAttribute("data-iso") || "") || "";
+}
+
 function setBalanceRecordTipBusy(busy, label) {
   const tip = riskPressureTipEl;
   if (!tip) return;
   tip.classList.toggle("is-busy", !!busy);
-  tip.setAttribute("aria-busy", busy ? "true" : "false");
+  if (busy) tip.setAttribute("aria-busy", "true");
+  else tip.removeAttribute("aria-busy");
   const btn = tip.querySelector("[data-bw-bal-action='remove-reconciliation']");
   tip.querySelectorAll("[data-bw-bal-action]").forEach((el) => {
     el.disabled = !!busy;
@@ -7195,6 +7203,14 @@ function setBalanceRecordTipBusy(busy, label) {
     btn.textContent = btn.dataset.bwIdleLabel;
     delete btn.dataset.bwIdleLabel;
   }
+}
+
+function syncBalanceRecordTipBusy() {
+  const shown = pinnedBalanceRecordIso();
+  const keep = typeof shouldKeepBalanceRecordTipBusy === "function"
+    ? shouldKeepBalanceRecordTipBusy(balanceRecordBusyIso, shown)
+    : !!(balanceRecordBusyIso && shown && balanceRecordBusyIso === shown);
+  setBalanceRecordTipBusy(keep, keep ? "Removing…" : undefined);
 }
 
 async function refreshAfterBalanceRecordChange(iso) {
@@ -7408,34 +7424,36 @@ async function confirmRemoveAdjustment() {
   }
 }
 
-let balanceRecordActionBusy = false;
-
 async function removeReconciliationForDate(iso) {
-  if (balanceRecordActionBusy) return;
+  if (balanceRecordBusyIso) return;
   if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const d = normalizeIsoDate(iso);
   if (!d) throw new Error("Invalid date");
-  balanceRecordActionBusy = true;
-  setBalanceRecordTipBusy(true, "Removing…");
+  balanceRecordBusyIso = d;
+  syncBalanceRecordTipBusy();
   markCalendarReconcileBusy(d, true);
   try {
     await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
       date: d,
       reconciled: false,
     });
-    hidePinnedBalanceRecordTip();
+    const shownIso = pinnedBalanceRecordIso();
+    const hideTip = typeof shouldHideBalanceRecordTipAfterRemoval === "function"
+      ? shouldHideBalanceRecordTipAfterRemoval(d, shownIso)
+      : !shownIso || shownIso === d;
+    if (hideTip) hidePinnedBalanceRecordTip();
     dropReconciledDateLocally(d);
     renderCalendar();
     if (typeof showBwToast === "function") showBwToast("Reconciliation removed.", { placement: "calendar" });
     void refreshAfterBalanceRecordChange(d);
   } catch (e) {
-    setBalanceRecordTipBusy(false);
-    markCalendarReconcileBusy(d, false);
     restoreReconciledDateLocally(d);
     renderCalendar();
     throw e;
   } finally {
-    balanceRecordActionBusy = false;
+    balanceRecordBusyIso = "";
+    setBalanceRecordTipBusy(false);
+    markCalendarReconcileBusy(d, false);
   }
 }
 
@@ -19789,6 +19807,8 @@ function hideRiskPressureTipNow(force = false) {
     riskPressureTipEl.classList.remove("reports-risk-tip--visible");
     riskPressureTipEl.classList.remove("reports-risk-tip--pinned");
     riskPressureTipEl.classList.remove("reports-risk-tip--interactive");
+    riskPressureTipEl.classList.remove("is-busy");
+    riskPressureTipEl.removeAttribute("aria-busy");
     riskPressureTipEl.hidden = true;
     riskPressureTipEl.innerHTML = "";
   }
@@ -19830,10 +19850,11 @@ function ensureRiskPressureTipEl() {
       if (!btn || !riskPressureTipEl.contains(btn)) return;
       e.preventDefault();
       e.stopPropagation();
-      if (btn.disabled || balanceRecordActionBusy) return;
+      if (btn.disabled) return;
       const action = btn.getAttribute("data-bw-bal-action");
       const iso = normalizeIsoDate(btn.getAttribute("data-iso") || "");
       if (!action || !iso) return;
+      if (balanceRecordBusyIso && balanceRecordBusyIso === iso) return;
       void handleBalanceRecordTipAction(action, iso);
     });
   }
@@ -19843,7 +19864,7 @@ function ensureRiskPressureTipEl() {
       "pointerdown",
       (e) => {
         if (!riskPressureTipPinned || !riskPressureTipEl) return;
-        if (balanceRecordActionBusy) return;
+        if (balanceRecordBusyIso && pinnedBalanceRecordIso() === balanceRecordBusyIso) return;
         if (riskPressureTipEl.contains(e.target)) return;
         if (e.target.closest?.(".cal-ledger-metrics.cal-day-balance-hit")) return;
         hidePinnedBalanceRecordTip();
@@ -19881,6 +19902,7 @@ function paintRiskPressureTip(anchorEl, html, { interactive = false, pinned = fa
   tip.classList.remove("reports-risk-tip--visible");
   riskPressureTipPinned = !!pinned;
   tip.setAttribute("role", pinned || interactive ? "dialog" : "tooltip");
+  syncBalanceRecordTipBusy();
   positionRiskPressureTip(anchorEl);
   requestAnimationFrame(() => {
     positionRiskPressureTip(anchorEl);
