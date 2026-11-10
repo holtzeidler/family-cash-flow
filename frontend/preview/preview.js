@@ -330,7 +330,9 @@
           escapeHtml(txn.name) +
           '"><span class="cal-tx-label-wrap"><span class="cal-tx-label">' +
           escapeHtml(txn.name) +
-          '</span></span><span class="cal-amt ' +
+          "</span>" +
+          (txn.hypothetical ? '<span class="preview-tx-scenario">Scenario</span>' : "") +
+          '</span><span class="cal-amt ' +
           (income ? "income" : "expense") +
           '">' +
           calendarTxnMoney(txn.amount) +
@@ -599,7 +601,7 @@
     apply.disabled = reconciled;
     apply.textContent = reconciled ? "Balance applied" : "Apply this balance";
     document.getElementById("previewReconcileState").hidden = !reconciled;
-    document.getElementById("previewExploreState").hidden = !extra;
+    syncExploreUi();
   }
 
   function renderAll() {
@@ -652,13 +654,38 @@
     return { iso: isoFor(year, monthIndex, day), amount: amount };
   }
 
+  function showExpenseError(message) {
+    var err = document.getElementById("previewExpenseErr");
+    var amount = document.getElementById("previewExpenseAmount");
+    var text = String(message || "").trim();
+    if (err) {
+      err.hidden = !text;
+      err.textContent = text;
+    }
+    if (amount) {
+      if (text) amount.setAttribute("aria-invalid", "true");
+      else amount.removeAttribute("aria-invalid");
+    }
+  }
+
+  function syncExploreUi() {
+    var reset = document.getElementById("previewReset");
+    if (reset) reset.hidden = !extra;
+  }
+
+  function resetHypotheticalForm() {
+    extra = null;
+    var amount = document.getElementById("previewExpenseAmount");
+    if (amount) amount.value = "";
+    showExpenseError("");
+    fillDaySelect();
+    syncExploreUi();
+  }
+
   function setMonth(nextYear, nextMonth, clearExtra) {
     year = nextYear;
     monthIndex = nextMonth;
-    if (clearExtra) {
-      extra = null;
-      document.getElementById("previewExpenseAmount").value = "";
-    }
+    if (clearExtra) resetHypotheticalForm();
     selectedIso = "";
     selectedTxn = null;
     fillDaySelect();
@@ -1031,7 +1058,29 @@
   document.getElementById("calendarYear").addEventListener("change", function (event) {
     setMonth(Number(event.target.value), monthIndex, true);
   });
-  document.getElementById("previewWhatIfForm").addEventListener("submit", function (event) { event.preventDefault(); });
+  function applyHypotheticalExpense() {
+    var next = readExtra();
+    if (!next) {
+      showExpenseError("Enter an amount greater than zero.");
+      return false;
+    }
+    extra = next;
+    showExpenseError("");
+    renderAll();
+    var cell = document.querySelector('.cal-cell[data-iso="' + extra.iso + '"]');
+    if (cell && typeof cell.scrollIntoView === "function") {
+      cell.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    return true;
+  }
+
+  document.getElementById("previewWhatIfForm").addEventListener("submit", function (event) {
+    event.preventDefault();
+    applyHypotheticalExpense();
+  });
+  document.getElementById("previewExpenseAmount").addEventListener("input", function () {
+    showExpenseError("");
+  });
   document.getElementById("previewApplyReconcile").addEventListener("click", function () {
     reconciled = true;
     renderAll();
@@ -1040,17 +1089,8 @@
     reconciled = false;
     renderAll();
   });
-  document.getElementById("previewExpenseAmount").addEventListener("input", function () {
-    extra = readExtra();
-    renderAll();
-  });
-  document.getElementById("previewExpenseDay").addEventListener("change", function () {
-    extra = readExtra();
-    renderAll();
-  });
   document.getElementById("previewReset").addEventListener("click", function () {
-    extra = null;
-    document.getElementById("previewExpenseAmount").value = "";
+    resetHypotheticalForm();
     renderAll();
   });
   document.getElementById("previewDetailClose").addEventListener("click", closeDetail);

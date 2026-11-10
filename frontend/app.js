@@ -6759,19 +6759,12 @@ function bindTxAddModalDismiss() {
   const modal = txAddModal || document.getElementById("txAddModal");
   if (!modal || modal.dataset.txAddDismissBound === "1") return;
   modal.dataset.txAddDismissBound = "1";
-  modal.addEventListener(
-    "pointerdown",
-    (e) => {
-      if (e.target.closest("#txAddCancel")) {
-        e.preventDefault();
-        closeTxAddModal();
-      }
-    },
-    true
-  );
+  // Close on click, not pointerdown. Closing on pointerdown uncovers the
+  // calendar cell under the finger so iOS/Safari's follow-up click reopens Add.
   modal.addEventListener("click", (e) => {
     if (!e.target.closest("#txAddCancel") || !modal.classList.contains("modal-overlay--open")) return;
     e.preventDefault();
+    e.stopPropagation();
     closeTxAddModal();
   });
 }
@@ -8761,6 +8754,7 @@ function openCalendarTxnAction(action, e) {
 }
 
 function handleCalendarPanelClick(e) {
+  if (txAddModal?.classList.contains("modal-overlay--open")) return;
   const grid = document.getElementById("calendarGrid");
   // A press that starts on a transaction wins even if a calendar reflow moves
   // the balance row under the cursor before mouseup.
@@ -16797,6 +16791,7 @@ function applyCalendarDayLabelColumnWidth(txnsEl) {
   if (!txnsEl) return;
   txnsEl.classList.remove("cal-day-txns--uniform-label-col");
   txnsEl.style.removeProperty("--cal-day-label-col-w");
+  if (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches) return;
   if (!txnsEl.querySelector(".cal-tx-label-wrap--category-fill")) return;
   const colW = measureCalendarDayLabelColumnWidth(txnsEl);
   if (colW > 0) {
@@ -19811,22 +19806,11 @@ async function loadMonthAndCalendar() {
   const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
   beginNeedsReviewMonthLoad(viewedYm);
   try {
-    state.monthActualItems = [];
-    state.monthExpectedItems = [];
-    state.calendarExtraActualItems = [];
-    state.calendarExtraExpectedItems = [];
     // Keep matching and adjusted dates until the month fetch replaces them so
     // Last Reconciled cannot flash back to an older matching-only date.
-    // Do not blank the grid while waiting on the network: seed from accounts so
-    // balances stay visible if a later request hangs. Only this newest load may
-    // publish that seed — an older load must not wipe a newer result.
-    if (!stillCurrent()) return;
-    state.monthDailyBalances = new Map();
-    try {
-      if (Array.isArray(state.accounts) && state.accounts.length > 0) {
-        computeMonthDailyBalancesLegacy();
-      }
-    } catch (_) {}
+    // Keep the current grid until daily-balances return — wiping txs/balances
+    // here flashes an empty month and holds the green ribbon over a client
+    // estimate while six secondary requests still have not started.
     if (!stillCurrent()) return;
     // The green forecast ribbon is the loading message. #calendarErr is the
     // red error slot, so a loading state must not appear there as well.
@@ -19834,7 +19818,6 @@ async function loadMonthAndCalendar() {
       show(calendarErr, "");
     }
     ensureForecastStatusRibbon("Loading forecast…");
-    renderCalendar();
 
     if (!state.activeFamilyId) {
       if (stillCurrent()) finishNeedsReviewMonthLoad(viewedYm);
@@ -19867,6 +19850,9 @@ async function loadMonthAndCalendar() {
       } catch (_) {}
     }
     renderCalendar();
+    // Daily balances are the forecast. Drop the banner now; txs/reconcile/etc.
+    // continue in the background without blocking the calendar.
+    if (stillCurrent()) updateCalendarEmptyStateBanner();
 
     await Promise.all([
       runStep("transactions", () => loadTransactions(gen)),

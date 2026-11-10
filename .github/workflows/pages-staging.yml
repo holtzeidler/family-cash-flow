@@ -36,6 +36,9 @@ jobs:
           node --check frontend/tx-edit-scope.js
           node frontend/tx-edit-scope.test.js
 
+      - name: Mobile calendar UX
+        run: node frontend/mobile-calendar-ux.test.js
+
       - name: Build staging frontend
         env:
           API_BASE: ${{ secrets.API_BASE_STAGING }}

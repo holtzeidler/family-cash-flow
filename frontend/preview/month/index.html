@@ -330,8 +330,56 @@
       }
       .preview-page .preview-demo input,
       .preview-page .preview-demo select {
-        min-height: 32px;
+        min-height: 36px;
+        padding: 6px 10px;
+        border: 1px solid rgba(11, 61, 46, 0.22);
+        border-radius: 8px;
+        background: #fff;
+        color: rgba(15, 23, 42, 0.92);
         font: inherit;
+        font-size: 16px;
+        font-weight: 600;
+        box-sizing: border-box;
+      }
+      .preview-page .preview-demo input::placeholder {
+        color: rgba(100, 116, 139, 0.62);
+        font-weight: 500;
+        opacity: 1;
+      }
+      .preview-page .preview-demo input:focus,
+      .preview-page .preview-demo select:focus {
+        outline: 2px solid rgba(4, 120, 87, 0.28);
+        outline-offset: 1px;
+        border-color: rgba(4, 120, 87, 0.45);
+      }
+      .preview-page .preview-demo input[aria-invalid="true"] {
+        border-color: rgba(180, 83, 9, 0.55);
+      }
+      .preview-page #previewExpenseAmount {
+        width: 100%;
+        min-width: 8.5rem;
+      }
+      .preview-page .preview-demo__error {
+        margin: 0 0 8px;
+        color: rgba(146, 64, 14, 0.95);
+        font-size: 0.8rem;
+        font-weight: 650;
+      }
+      .preview-page .cal-day-tx-line--hypothetical {
+        background: rgba(180, 83, 9, 0.08);
+        box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.28);
+      }
+      .preview-page .preview-tx-scenario {
+        flex: 0 0 auto;
+        margin-left: 4px;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(180, 83, 9, 0.12);
+        color: rgba(146, 64, 14, 0.92);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
       .preview-page .preview-snapshot-month {
         margin: 2px 0 2px;
@@ -718,27 +766,28 @@
               </details>
               <details class="preview-demo" id="previewExplore">
                 <summary>
-                  <span class="preview-demo__label">Try a hypothetical expense <span class="preview-demo__state" id="previewExploreState" hidden>Added</span></span>
+                  <span class="preview-demo__label">Try a hypothetical expense</span>
                   <svg class="preview-demo__chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </summary>
                 <div class="preview-demo__body">
-                  <p>See how an additional expense would affect your forecast.</p>
-                  <p>Demo only. This is not available in the signed-in forecast, and nothing is saved.</p>
+                  <p>See how an extra purchase could affect your future balance. Nothing is saved.</p>
                   <form id="previewWhatIfForm">
                     <div class="preview-modal__row">
                       <label>
                         Expense amount
-                        <input id="previewExpenseAmount" name="amount" type="number" min="1" step="1" inputmode="decimal" placeholder="500" />
+                        <input id="previewExpenseAmount" name="amount" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" spellcheck="false" placeholder="e.g., 500" />
                       </label>
                       <label>
                         Date in this month
                         <select id="previewExpenseDay" name="day"></select>
                       </label>
                     </div>
+                    <p id="previewExpenseErr" class="preview-demo__error" hidden role="alert"></p>
                     <div class="preview-demo__actions">
-                      <button type="button" class="preview-demo__reset" id="previewReset">Reset</button>
+                      <button type="submit" class="preview-demo__apply" id="previewApplyExpense">See impact</button>
+                      <button type="button" class="preview-demo__reset" id="previewReset" hidden>Reset scenario</button>
                     </div>
                   </form>
                 </div>
@@ -867,6 +916,6 @@
     </div>
 
     <script src="../sample-forecast-cta.js?v=1"></script>
-    <script src="../preview.js?v=19"></script>
+    <script src="../preview.js?v=21"></script>
   </body>
 </html>

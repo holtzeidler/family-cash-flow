@@ -17,6 +17,15 @@ def _month_label(year: int, month: int) -> str:
     return f"{calendar.month_name[month]} {year}"
 
 
+def _apply_hypothetical(page, amount: str, day: str | None = None) -> None:
+    if not page.locator("#previewExplore").evaluate("el => el.open"):
+        page.locator("#previewExplore summary").click()
+    if day is not None:
+        page.locator("#previewExpenseDay").select_option(day)
+    page.locator("#previewExpenseAmount").fill(amount)
+    page.locator("#previewApplyExpense").click()
+
+
 def _freeze(page, year: int, month: int, day: int) -> None:
     page.add_init_script(
         f"""
@@ -272,8 +281,22 @@ def test_sample_forecast_hypothetical_and_reset(page, guard):
     )
     low = _cell(page, _iso(2026, 10, 15, 4))
     page.locator("#previewExplore summary").click()
+    expect(page.locator("#previewExpenseAmount")).to_have_attribute("placeholder", "e.g., 500")
+    expect(page.locator("#previewExpenseAmount")).to_have_value("")
+    expect(page.locator("#previewApplyExpense")).to_have_text("See impact")
+    expect(page.locator("#previewReset")).to_be_hidden()
+    expect(page.locator("#previewExplore")).to_contain_text(
+        "See how an extra purchase could affect your future balance. Nothing is saved."
+    )
+    page.locator("#previewApplyExpense").click()
+    expect(page.locator("#previewExpenseErr")).to_contain_text("Enter an amount greater than zero.")
+    expect(low).to_have_attribute("data-end", "150")
     page.locator("#previewExpenseDay").select_option("19")
     page.locator("#previewExpenseAmount").fill("500")
+    expect(low).to_have_attribute("data-end", "150")
+    page.locator("#previewApplyExpense").click()
+    expect(page.locator("#previewReset")).to_be_visible()
+    expect(page.locator("#previewReset")).to_have_text("Reset scenario")
     expect(low).to_have_attribute("data-end", "-350")
     expect(low).to_have_class(re.compile(r"cal-cell--bal-risk"))
     expect(_cell(page, _iso(2026, 10, 15, 6))).to_have_attribute("data-end", "3050")
@@ -283,11 +306,16 @@ def test_sample_forecast_hypothetical_and_reset(page, guard):
     expect(page.locator("#previewBufferGap")).to_have_text("$1,850 below your $1,500 safety cushion.")
     expect(page.locator("#previewExpenses")).to_have_text("$5,810")
     expect(page.locator("#previewNet")).to_have_text("$-2,410")
+    expect(low.locator(".preview-tx-scenario")).to_have_text("Scenario")
     low.locator("button", has_text="Hypothetical expense").click()
     expect(page.locator("#previewDetailList")).to_contain_text("Demo only. Not saved.")
     page.locator("#previewDetailClose").click()
+    page.locator("#previewExpenseAmount").fill("200")
+    page.locator("#previewApplyExpense").click()
+    expect(low).to_have_attribute("data-end", "-50")
     page.locator("#previewReset").click()
     expect(page.locator("#previewExpenseAmount")).to_have_value("")
+    expect(page.locator("#previewReset")).to_be_hidden()
     expect(_cell(page, _iso(2026, 10, 15, -3))).to_have_attribute("data-end", "2060")
     expect(_cell(page, _iso(2026, 10, 15, -3)).locator(".cal-balance-status-pill--reconciled")).to_have_text("✓ Reconciled")
     expect(low).to_have_attribute("data-end", "150")
@@ -359,9 +387,7 @@ def test_sample_forecast_reconciliation(page, guard):
     expect(page.locator("#previewDetailBalance")).to_contain_text("Starting balance $2,270.00")
     page.locator("#previewDetailClose").click()
 
-    page.locator("#previewExplore summary").click()
-    page.locator("#previewExpenseDay").select_option("19")
-    page.locator("#previewExpenseAmount").fill("500")
+    _apply_hypothetical(page, "500", "19")
     expect(cell(-4)).to_have_attribute("data-end", "1925")
     expect(cell(-5)).to_have_attribute("data-end", "2270")
     expect(cell(-3)).to_have_attribute("data-end", "1925")
@@ -386,8 +412,7 @@ def test_sample_forecast_reconciliation(page, guard):
     expect(page.locator("#previewLowBalance")).to_have_text("$150")
 
     page.locator("#previewApplyReconcile").click()
-    page.locator("#previewExpenseDay").select_option("11")
-    page.locator("#previewExpenseAmount").fill("100")
+    _apply_hypothetical(page, "100", "11")
     expect(cell(-5)).to_have_attribute("data-end", "2270")
     expect(cell(-4)).to_have_attribute("data-projected", "1960")
     expect(cell(-4)).to_have_attribute("data-end", "1925")
@@ -571,10 +596,15 @@ def test_public_preview_mobile(page, guard):
     page.locator("#previewTourContinue").click()
     page.set_viewport_size({"width": 390, "height": 800})
     page.locator("#previewExplore summary").click()
+    expect(page.locator("#previewExpenseAmount")).to_have_value("")
     page.locator("#previewExpenseAmount").fill("80")
+    expect(page.locator("#previewLowBalance")).to_have_text("$150")
+    page.locator("#previewApplyExpense").click()
     expect(page.locator("#previewLowBalance")).not_to_have_text("$150")
+    expect(page.locator("#previewReset")).to_be_visible()
     page.locator("#previewReset").click()
     expect(page.locator("#previewLowBalance")).to_have_text("$150")
+    expect(page.locator("#previewReset")).to_be_hidden()
     assert_no_horizontal_overflow(page)
     page.set_viewport_size({"width": 320, "height": 700})
     assert_no_horizontal_overflow(page)

@@ -31406,6 +31406,17 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     background: transparent;
   }
 
+  .sidebar-sticky-head,
+  body[data-bw-view="calendar"] .sidebar-sticky-head,
+  body[data-bw-view="transactions"] .sidebar-sticky-head{
+    position: static;
+    top: auto;
+    z-index: auto;
+    padding-top: 0;
+    padding-bottom: 0;
+    gap: 10px;
+  }
+
   .main-column,
   .main-column-aux{
     overflow: visible;
@@ -31485,10 +31496,18 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     display: none;
   }
 
+  #calendarGrid{
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .calendar--mobile{
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .calendar--mobile .cal-cell.cal-cell--out{
@@ -31497,6 +31516,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
   .calendar--mobile .cal-cell{
     min-height: 0 !important;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
     padding: 12px 12px 10px;
     border-radius: 14px;
   }
@@ -31549,10 +31572,19 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
   .calendar--mobile .cal-cell-stack{
     gap: 8px;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .calendar--mobile .cal-day-txns{
     gap: 5px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .calendar--mobile .cal-day-txns--uniform-label-col .cal-day-tx-line{
+    grid-template-columns: minmax(0, 1fr) max-content;
   }
 
   /* Mobile hierarchy: date → transactions (events) → reconcile balance (result). */
@@ -31632,6 +31664,24 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
   .calendar--mobile .cal-day-tx-line{
     font-size: var(--cal-tx-font-size, 11.4px);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .calendar--mobile .cal-day-tx-line .cal-tx-label-wrap{
+    min-width: 0;
+    overflow: hidden;
+  }
+  .calendar--mobile .cal-day-tx-line .cal-tx-label{
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .calendar--mobile .cal-day-tx-line .cal-amt{
+    flex: 0 0 auto;
+    min-width: 0;
   }
 
   .calendar--mobile .cal-day-more{
@@ -31653,23 +31703,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-balance-strip__row{
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 8px;
     flex-wrap: nowrap;
   }
 
-  .calendar--mobile .cal-balance-strip__row::before{
-    content: "Balance";
-    font-size: 10.5px;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    color: rgba(100, 116, 139, 0.62);
-  }
-
+  .calendar--mobile .cal-balance-strip__row::before,
   .calendar--mobile .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
-    content: "Reconcile balance";
-    font-weight: 500;
-    color: rgba(100, 116, 139, 0.58);
+    content: none;
+    display: none;
   }
 
   .calendar--mobile .cal-stat.cal-balance{
@@ -31694,9 +31736,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     color: rgba(71, 85, 105, 0.7);
   }
   .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
-    content: "Balance";
-    font-weight: 500;
-    color: rgba(100, 116, 139, 0.62);
+    content: none;
+    display: none;
   }
   .calendar--mobile .cal-stat.cal-balance.cal-balance--below-floor{
     color: rgba(146, 64, 14, 0.88);
@@ -31845,7 +31886,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .modal--tx-add .tx-add-variable-form-row,
   .modal--tx-add .tx-add-cat-color-row{
     grid-template-columns: 1fr;
-    row-gap: 8px;
+    row-gap: 4px;
   }
   .modal--tx-add .tx-add-variable-block .form-row-h__label label{
     white-space: normal;
@@ -31855,8 +31896,36 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     grid-template-columns: 1fr;
     gap: 5px;
   }
-  .modal--tx-add .tx-add-form .form-row-h__label{
+  .modal--tx-add .tx-add-form .form-row-h__label,
+  .modal--tx-add .tx-add-schedule-compact .form-row-h__label,
+  .modal--tx-add .tx-add-end-detail__row .form-row-h__label,
+  .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label,
+  .modal--tx-add .tx-add-variable-block .form-row-h__label,
+  .modal--tx-add .tx-add-notes-row .form-row-h__label,
+  .modal--tx-add .tx-add-cat-color-row .form-row-h__label,
+  #txEditInner .form-row-h__label,
+  .modal--expected-edit .form-row-h__label{
     padding-top: 0;
+    padding-right: 0;
+    padding-left: 0;
+    justify-content: flex-start;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .modal--tx-add .tx-add-form .form-row-h__label label,
+  .modal--tx-add .tx-add-schedule-compact .form-row-h__label label,
+  .modal--tx-add .tx-add-end-detail__row .form-row-h__label label,
+  .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label label,
+  .modal--tx-add .tx-add-variable-block .form-row-h__label label,
+  .modal--tx-add .tx-add-notes-row .form-row-h__label label,
+  .modal--tx-add .tx-add-cat-color-row .form-row-h__label label,
+  #txEditInner .form-row-h__label label,
+  .modal--expected-edit .form-row-h__label label{
+    text-align: left;
+  }
+  .modal--tx-add .tx-add-form,
+  #txEditInner.modal{
+    --tx-field-font: 16px;
   }
   .modal--tx-add .tx-quick-chips{
     flex-wrap: nowrap;
@@ -33526,6 +33595,24 @@ body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
   padding-top: 10px;
   padding-bottom: 22px;
   overflow: visible;
+}
+@media (max-width: 768px){
+  body[data-bw-view="calendar"] .sidebar,
+  body[data-bw-view="transactions"] .sidebar{
+    gap: 10px;
+    overflow: visible;
+    height: auto;
+    max-height: none;
+  }
+  body[data-bw-view="calendar"] .sidebar-sticky-head,
+  body[data-bw-view="transactions"] .sidebar-sticky-head{
+    position: static;
+    gap: 10px;
+  }
+  body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
+  body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
+    margin-top: 0;
+  }
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth,
 body[data-bw-view="transactions"] #sidebarBodyMonth,
