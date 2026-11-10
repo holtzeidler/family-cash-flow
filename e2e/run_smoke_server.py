@@ -50,7 +50,9 @@ def main() -> None:
 
     backend = Path(__file__).resolve().parents[1] / "backend"
     sys.path.insert(0, str(backend))
-    from app.main import settings
+    from app import main as app_main
+    from app.main import app, settings
+    from smoke_guard import append_verify_link
 
     assert_loaded_settings(
         database_url=settings.DATABASE_URL,
@@ -60,12 +62,18 @@ def main() -> None:
         smtp_host=settings.CONTACT_SMTP_HOST,
         db_filename=db_path.name,
     )
+
+    def _local_deliver(*, to_addr, kind, confirm_url, first_name):
+        append_verify_link(to_addr=to_addr, kind=kind, confirm_url=confirm_url)
+        return "local-not-sent"
+
+    app_main._deliver_account_email = _local_deliver
     print("Smoke server: local sqlite, Stripe off, email off", flush=True)
 
     import uvicorn
 
     uvicorn.run(
-        "app.main:app",
+        app,
         host="127.0.0.1",
         port=SMOKE_PORT,
         log_level="warning",

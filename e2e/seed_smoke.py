@@ -16,8 +16,9 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from urllib.parse import parse_qs, urlparse
 
-from smoke_guard import SMOKE_ORIGIN, assert_bot_email, smoke_db_path, smoke_run_dir
+from smoke_guard import SMOKE_ORIGIN, assert_bot_email, latest_confirm_url, smoke_db_path, smoke_run_dir
 
 ACTIVE_EMAIL = "bw-smoke-active@example.com"
 VIEWONLY_EMAIL = "bw-smoke-viewonly@example.com"
@@ -66,11 +67,20 @@ def _assert_public_config() -> None:
         raise SystemExit("Smoke seed refused to create accounts: " + "; ".join(problems) + ".")
 
 
+def _wait_confirm_url(email: str) -> str:
+    for _ in range(25):
+        url = latest_confirm_url(email)
+        if url:
+            return url
+        time.sleep(0.2)
+    raise SystemExit("Smoke seed failed: confirmation link was not captured.")
+
+
 def _register(email: str) -> str:
     assert_bot_email(email)
-    _status, body = _request(
+    _request(
         "POST",
-        "/api/auth/register",
+        "/api/auth/verification/start",
         body={
             "email": email,
             "password": PASSWORD,
@@ -78,9 +88,18 @@ def _register(email: str) -> str:
             "last_name": "Bot",
         },
     )
-    token = str((body or {}).get("access_token") or "").strip()
+    confirm_url = _wait_confirm_url(email)
+    token = str(parse_qs(urlparse(confirm_url).query).get("verify", [""])[0] or "").strip()
     if not token:
-        raise SystemExit("Smoke seed failed: register did not return a token.")
+        raise SystemExit("Smoke seed failed: confirmation link had no token.")
+    _status, verified = _request("POST", "/api/auth/verify-email", body={"token": token})
+    access = str((verified or {}).get("access_token") or "").strip()
+    if not access:
+        raise SystemExit("Smoke seed failed: verify-email did not return a token.")
+    _status, complete = _request("POST", "/api/auth/onboarding/complete", token=access, body={})
+    token = str((complete or {}).get("access_token") or access).strip()
+    if not token:
+        raise SystemExit("Smoke seed failed: onboarding/complete did not return a token.")
     return token
 
 
@@ -101,10 +120,17 @@ def _seed_forecast(token: str) -> int:
         },
     )
     _status, categories = _request("GET", f"/api/families/{family_id}/categories", token=token)
-    other_id = next((int(row["id"]) for row in categories if row.get("name") == "Other"), None)
+    other_id = next(
+        (
+            int(row["id"])
+            for row in categories
+            if row.get("name") in ("Other Expense", "Other")
+        ),
+        None,
+    )
     if other_id is None:
         names = ", ".join(sorted({str(row.get("name") or "") for row in categories}))
-        raise SystemExit(f"Smoke seed failed: category Other was not found. Saw: {names}")
+        raise SystemExit(f"Smoke seed failed: category Other Expense was not found. Saw: {names}")
     _request(
         "POST",
         f"/api/families/{family_id}/transactions",

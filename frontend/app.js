@@ -3555,7 +3555,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "11";
+const BW_FORECAST_READY_MODAL_VERSION = "12";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -18293,6 +18293,7 @@ async function loadExpectedTransactions() {
 }
 
 let calendarLoadGen = 0;
+let calendarInitialMonthReady = false;
 
 function showForecastStatus(msg, isError) {
   // One status line only. #calendarErr used to repeat the same text under the month controls.
@@ -19914,7 +19915,13 @@ async function loadMonthAndCalendar() {
       updateCalendarEmptyStateBanner();
     } catch (_) {}
   } finally {
-    if (stillCurrent()) setCalendarLoadingUi(false);
+    if (stillCurrent()) {
+      setCalendarLoadingUi(false);
+      calendarInitialMonthReady = true;
+      try {
+        maybeShowForecastReadyPopup();
+      } catch (_) {}
+    }
   }
 }
 
@@ -25510,6 +25517,61 @@ function drawProjectionChart(daily) {
     },
   });
 }
+function forecastReadyIncomeExpenseFlags() {
+  const items = [
+    ...(state.monthExpectedItems || []),
+    ...(state.calendarExtraExpectedItems || []),
+    ...(state.upcomingActualItems || []),
+    ...(state.monthActualItems || []),
+    ...(state.calendarExtraActualItems || []),
+  ];
+  let income = false;
+  let expense = false;
+  for (const it of items) {
+    const kind = String((it && (it.kind || it.type)) || "").toLowerCase();
+    if (kind === "income") income = true;
+    else if (kind === "expense") expense = true;
+  }
+  return { income, expense };
+}
+
+function forecastReadyWelcomeTagline(flags) {
+  const income = !!(flags && flags.income);
+  const expense = !!(flags && flags.expense);
+  if (income && !expense) {
+    return "Add your upcoming bills from the calendar anytime to see where your checking balance is headed.";
+  }
+  if (expense && !income) {
+    return "Add your upcoming income from the calendar anytime to see where your checking balance is headed.";
+  }
+  return "See how your income and bills affect your checking balance — and what’s coming next.";
+}
+
+function forecastReadyCalendarCanShowWelcome() {
+  if (!calendarViewPanel || calendarViewPanel.hidden) return false;
+  if (!calendarInitialMonthReady) return false;
+  const panel = document.getElementById("calendarPanel");
+  if (panel && panel.getAttribute("aria-busy") === "true") return false;
+  const ribbon = document.getElementById("bwForecastStatusRibbon");
+  if (ribbon && ribbon.style.display !== "none") {
+    const text = String(ribbon.textContent || "").trim();
+    if (text === "Loading forecast…") return false;
+  }
+  try {
+    if (sessionStorage.getItem("bw_onboarding_recovery_pending") === "1") return false;
+  } catch (_) {}
+  try {
+    if (localStorage.getItem("bw_onboarding_recovery_pending") === "1") return false;
+  } catch (_) {}
+  return true;
+}
+
+function applyForecastReadyWelcomeCopy(modal) {
+  const tag = modal && modal.querySelector(".bw-forecast-ready__tagline");
+  if (!tag) return;
+  tag.textContent = forecastReadyWelcomeTagline(forecastReadyIncomeExpenseFlags());
+}
+
 function ensureForecastReadyModal() {
   const existing = document.getElementById("bwForecastReadyModal");
   if (existing) {
@@ -25563,20 +25625,22 @@ function ensureForecastReadyModal() {
     } catch (_) {}
   };
   wrap.addEventListener("click", (e) => {
-    if (e.target === wrap) close();
+    if (e.target === wrap) skipTourFromModal();
   });
   wrap.querySelector("#bwForecastReadyStartTourBtn")?.addEventListener("click", startTourFromModal);
   wrap.querySelector("#bwForecastReadySkipBtn")?.addEventListener("click", skipTourFromModal);
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && wrap.classList.contains("modal-overlay--open")) close();
+    if (e.key === "Escape" && wrap.classList.contains("modal-overlay--open")) skipTourFromModal();
   });
 
   return wrap;
 }
 
 function maybeShowForecastReadyPopup() {
-  // Only on Calendar view.
-  if (!calendarViewPanel || calendarViewPanel.hidden) return;
+  // Only after the first calendar month and its transactions have loaded, and
+  // never over the “Loading forecast…” ribbon. Keep the session flag if we are
+  // not ready yet so a later load can still show the welcome once.
+  if (!forecastReadyCalendarCanShowWelcome()) return;
   try {
     const v = sessionStorage.getItem(BW_FORECAST_READY_POPUP_KEY);
     if (v !== "1") return;
@@ -25586,20 +25650,13 @@ function maybeShowForecastReadyPopup() {
   }
 
   const modal = ensureForecastReadyModal();
+  applyForecastReadyWelcomeCopy(modal);
   try {
     modal.classList.add("modal-overlay--open");
     modal.setAttribute("aria-hidden", "false");
     modal.querySelector("#bwForecastReadyStartTourBtn")?.focus?.();
   } catch (_) {}
 }
-
-// Show it once after initial calendar render (when the app has mounted).
-try {
-  if (window.__BW_FORCE_VIEW === "calendar") {
-    // Give the calendar a tick to render before showing.
-    window.setTimeout(maybeShowForecastReadyPopup, 60);
-  }
-} catch (_) {}
 
 function setDefaultMonth() {
   initCalendarYearOptions();
