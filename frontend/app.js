@@ -6754,9 +6754,13 @@ bindTxAddModalDismiss();
 function forecastBalanceForReconcileModal(iso) {
   const row = iso && state.monthDailyBalances ? state.monthDailyBalances.get(iso) : null;
   if (!row) return null;
-  if (row.verified && Number.isFinite(Number(row.projectedEnd))) return Number(row.projectedEnd);
-  if (Number.isFinite(Number(row.end))) return Number(row.end);
-  return null;
+  if (row.verified) {
+    const projected = typeof finiteMoney === "function" ? finiteMoney(row.projectedEnd) : null;
+    if (projected != null) return projected;
+  }
+  if (typeof finiteMoney === "function") return finiteMoney(row.end);
+  const end = Number(row.end);
+  return Number.isFinite(end) ? end : null;
 }
 
 function ingestCalendarMonthDailyRows(days) {
@@ -7091,9 +7095,11 @@ async function refreshAfterBalanceRecordChange(iso) {
 function originalForecastForAdjustment(iso) {
   const d = normalizeIsoDate(iso);
   const stored = d && state.verifiedBalances ? state.verifiedBalances.get(d) : null;
-  if (stored && Number.isFinite(Number(stored.projected_amount))) return Number(stored.projected_amount);
+  const storedAmt = typeof finiteMoney === "function" ? finiteMoney(stored?.projected_amount) : null;
+  if (storedAmt != null) return storedAmt;
   const dayBal = d && state.monthDailyBalances ? state.monthDailyBalances.get(d) : null;
-  if (dayBal && Number.isFinite(Number(dayBal.projectedEnd))) return Number(dayBal.projectedEnd);
+  const projected = typeof finiteMoney === "function" ? finiteMoney(dayBal?.projectedEnd) : null;
+  if (projected != null) return projected;
   return forecastBalanceForReconcileModal(d);
 }
 
@@ -7292,41 +7298,45 @@ function balanceMatchesForecast(entered, forecast) {
 }
 
 function confirmedBalanceDiffCopy(diff) {
+  if (typeof reconcileRecordCaption === "function") {
+    return reconcileRecordCaption({ matched: false, diff, fmtMoney });
+  }
   const n = Number(diff);
-  if (!Number.isFinite(n) || Math.abs(n) < 0.005) return "";
+  if (!Number.isFinite(n) || Math.abs(n) < 0.005) return "Did not match forecast";
   const amt = fmtMoney(Math.abs(n));
   if (n > 0) return `Your balance was $${amt} higher than forecast.`;
   return `Your balance was $${amt} lower than forecast.`;
 }
 
+function buildReconcileRecordStatusHtml(kind, iso) {
+  const d = normalizeIsoDate(iso) || "";
+  const label = kind === "adjusted" ? "Adjusted" : "Reconciled";
+  const cls = kind === "adjusted" ? "cal-confirmed-tip__head--adjusted" : "cal-confirmed-tip__head--reconciled";
+  const dateLabel = d ? fmtDateMedDisplay(d) : "";
+  const when = dateLabel ? ` · <span class="cal-confirmed-tip__when">${escapeHtml(dateLabel)}</span>` : "";
+  return `<div class="cal-confirmed-tip__head ${cls}">${label}${when}</div>`;
+}
+
 function buildReconciledBalanceTipHtml(dayBal, iso) {
   if (!dayBal) return "";
   const d = normalizeIsoDate(iso) || "";
-  const forecast = Number.isFinite(Number(dayBal.projectedEnd))
-    ? Number(dayBal.projectedEnd)
-    : Number.isFinite(Number(dayBal.end))
-      ? Number(dayBal.end)
-      : null;
-  const bank = Number.isFinite(Number(dayBal.verifiedAmount))
-    ? Number(dayBal.verifiedAmount)
-    : forecast;
-  if (forecast == null && bank == null) return "";
-  const balance = Number.isFinite(Number(bank)) ? bank : forecast;
+  const balance =
+    typeof reconciledConfirmedBalance === "function" ? reconciledConfirmedBalance(dayBal) : finiteMoney?.(dayBal.end);
+  if (balance == null && !d) return "";
 
   const parts = [
     '<div class="cal-confirmed-tip" data-bw-balance-record="reconciled">',
-    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--reconciled">✓ Reconciled</div>',
+    buildReconcileRecordStatusHtml("reconciled", d),
   ];
-  if (d) {
-    parts.push(`<p class="cal-confirmed-tip__date">${escapeHtml(fmtDateLongDisplay(d))}</p>`);
-  }
-  parts.push('<p class="cal-confirmed-tip__match">Bank balance matched forecast</p>');
-  if (Number.isFinite(Number(balance))) {
-    parts.push('<dl class="cal-confirmed-tip__rows">');
+  if (balance != null) {
+    parts.push(`<p class="cal-confirmed-tip__amount">$${escapeHtml(fmtMoney(balance))}</p>`);
     parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Reconciled balance</dt><dd>$${escapeHtml(fmtMoney(balance))}</dd></div>`,
+      `<p class="cal-confirmed-tip__match">${escapeHtml(
+        typeof reconcileRecordCaption === "function"
+          ? reconcileRecordCaption({ matched: true })
+          : "Matched bank balance",
+      )}</p>`,
     );
-    parts.push("</dl>");
   }
   if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
     parts.push('<div class="cal-confirmed-tip__actions">');
@@ -7345,42 +7355,21 @@ function buildReconciledBalanceTipHtml(dayBal, iso) {
 function buildAdjustedBalanceTipHtml(dayBal, iso) {
   if (!dayBal || !dayBal.verified) return "";
   const d = normalizeIsoDate(iso) || "";
-  const bank = Number.isFinite(Number(dayBal.verifiedAmount))
-    ? Number(dayBal.verifiedAmount)
-    : Number.isFinite(Number(dayBal.end))
-      ? Number(dayBal.end)
-      : null;
-  const stored = d && state.verifiedBalances ? state.verifiedBalances.get(d) : null;
-  const forecast = Number.isFinite(Number(stored?.projected_amount))
-    ? Number(stored.projected_amount)
-    : Number.isFinite(Number(dayBal.projectedEnd))
-      ? Number(dayBal.projectedEnd)
-      : null;
+  const bank = typeof adjustedConfirmedBalance === "function" ? adjustedConfirmedBalance(dayBal) : finiteMoney?.(dayBal.verifiedAmount);
   if (bank == null) return "";
+  const stored = d && state.verifiedBalances ? state.verifiedBalances.get(d) : null;
+  const forecast =
+    typeof adjustedForecastBalance === "function"
+      ? adjustedForecastBalance(dayBal, stored?.projected_amount)
+      : finiteMoney?.(dayBal.projectedEnd);
+  const caption = confirmedBalanceDiffCopy(forecast != null ? bank - forecast : NaN);
 
   const parts = [
     '<div class="cal-confirmed-tip cal-confirmed-tip--adjusted" data-bw-balance-record="adjusted">',
-    '<div class="cal-confirmed-tip__head cal-confirmed-tip__head--adjusted">↺ Adjusted</div>',
+    buildReconcileRecordStatusHtml("adjusted", d),
+    `<p class="cal-confirmed-tip__amount">$${escapeHtml(fmtMoney(bank))}</p>`,
+    `<p class="cal-confirmed-tip__match">${escapeHtml(caption)}</p>`,
   ];
-  if (forecast != null) {
-    const diff = bank - forecast;
-    parts.push('<dl class="cal-confirmed-tip__rows">');
-    parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Forecast</dt><dd>$${escapeHtml(fmtMoney(forecast))}</dd></div>`,
-    );
-    parts.push(
-      `<div class="cal-confirmed-tip__row"><dt>Bank Balance</dt><dd>$${escapeHtml(fmtMoney(bank))}</dd></div>`,
-    );
-    if (Math.abs(diff) >= 0.005) {
-      parts.push(
-        `<div class="cal-confirmed-tip__row cal-confirmed-tip__row--diff"><dt>Difference</dt><dd>${escapeHtml(fmtSignedMoneyDiff(diff))}</dd></div>`,
-      );
-    }
-    parts.push("</dl>");
-  }
-  parts.push(
-    '<p class="cal-confirmed-tip__note">Future forecasts continue from this bank balance. Transactions before this date aren\'t changed.</p>',
-  );
   if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
     parts.push('<div class="cal-confirmed-tip__actions cal-confirmed-tip__actions--edit">');
     parts.push(
@@ -7395,13 +7384,13 @@ function buildAdjustedBalanceTipHtml(dayBal, iso) {
 function buildReconcileThisDateTipHtml(dayBal, iso) {
   const d = normalizeIsoDate(iso) || "";
   if (!d) return "";
-  const endNum = Number(dayBal?.end);
+  const endNum = typeof finiteMoney === "function" ? finiteMoney(dayBal?.end) : Number(dayBal?.end);
   const parts = [
     '<div class="cal-confirmed-tip cal-confirmed-tip--reconcile" data-bw-balance-record="reconcile">',
     '<div class="cal-confirmed-tip__head">Projected end-of-day</div>',
   ];
   parts.push(`<p class="cal-confirmed-tip__date">${escapeHtml(fmtDateLongDisplay(d))}</p>`);
-  if (Number.isFinite(endNum)) {
+  if (endNum != null && Number.isFinite(Number(endNum))) {
     parts.push('<dl class="cal-confirmed-tip__rows">');
     parts.push(
       `<div class="cal-confirmed-tip__row"><dt>Balance</dt><dd>$${escapeHtml(fmtMoney(endNum))}</dd></div>`,

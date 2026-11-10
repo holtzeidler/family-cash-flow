@@ -32867,6 +32867,19 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   font-weight: 700;
   color: rgba(22, 101, 52, 0.95);
 }
+.cal-confirmed-tip__when{
+  font-weight: 550;
+  color: rgba(71, 85, 105, 0.88);
+}
+.cal-confirmed-tip__amount{
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(15, 23, 42, 0.94);
+}
 .cal-confirmed-tip__match,
 .cal-confirmed-tip__note{
   margin: 0;
@@ -32960,6 +32973,9 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   margin-top: 18px;
   gap: 0;
 }
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__actions--edit{
+  margin-top: 8px;
+}
 .cal-confirmed-tip__action{
   border: none;
   background: transparent;
@@ -32977,6 +32993,17 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-confirmed-tip__action:hover{
   color: rgba(15, 23, 42, 0.92);
   text-decoration-color: rgba(100, 116, 139, 0.7);
+}
+@media (max-width: 820px){
+  .cal-confirmed-tip{
+    min-width: 196px;
+    max-width: min(260px, calc(100vw - 32px));
+  }
+  .cal-confirmed-tip__action{
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 .cal-confirmed-tip__action--danger{
   color: rgba(127, 29, 29, 0.78);
