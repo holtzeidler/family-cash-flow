@@ -25557,6 +25557,17 @@ button.review-amount__edit-link:focus-visible{
   border: none;
   border-bottom: 1px solid rgba(17, 24, 39, 0.07);
   border-radius: 14px 14px 0 0;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.modal--tx-add.is-dragging > h3,
+.modal--tx-add > h3:active{
+  cursor: grabbing;
+}
+.modal--tx-add.is-dragging{
+  transition: none;
 }
 
 .tx-add-form .tx-add-vspace--xs{
@@ -28626,6 +28637,38 @@ body.account-setup-page
   border-radius: 14px 14px 0 0;
   border-bottom: 1px solid rgba(0,0,0,0.18);
   text-transform: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.balance-check-in__header,
+.tx-history-head,
+.tx-fav-dialog__title{
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.balance-check-in__header input,
+.balance-check-in__header label,
+.tx-history-head button{
+  cursor: auto;
+  user-select: auto;
+  -webkit-user-select: auto;
+  touch-action: auto;
+}
+.modal.is-dragging,
+.tx-history-panel.is-dragging,
+.tx-fav-dialog__card.is-dragging{
+  transition: none;
+}
+.modal.is-dragging h3:not(.sr-only),
+.modal.is-dragging .balance-check-in__header,
+.modal.is-dragging .tx-edit-top,
+.tx-history-panel.is-dragging .tx-history-head,
+.tx-fav-dialog__card.is-dragging .tx-fav-dialog__title{
+  cursor: grabbing;
 }
 
 /* Billing interval confirm: white card heading, not the global green bar. */
