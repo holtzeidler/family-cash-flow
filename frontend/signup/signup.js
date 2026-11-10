@@ -5433,9 +5433,9 @@ if (accountSetupBackBtn) {
  * Most users entering their first 2–3 recurring items pick from a tiny set of
  * categories (paycheck, mortgage, credit card, utility, etc.). The chips skip
  * the category combobox search entirely: clicking a chip sets the hidden
- * category id, mirrors the label into the visible search box, dispatches the
- * "change" event so recurrence defaults still fire, then focuses the Amount
- * field so the user can keep typing.
+ * category id, mirrors the label into the visible search box, and dispatches
+ * the "change" event so recurrence defaults still fire. Do not move focus:
+ * returning to Amount reopens the iOS numeric keyboard and jumps the scroll.
  */
 const ACCOUNT_SETUP_INCOME_CHIPS = [
   { label: "Paycheck", value: "Paycheck" },
@@ -5453,7 +5453,6 @@ const ACCOUNT_SETUP_EXPENSE_CHIPS = [
 function applyAccountSetupChipSelection(prefix, value) {
   const hidden = document.getElementById(prefix + "Category");
   const search = document.getElementById(prefix + "CategorySearch");
-  const amount = document.getElementById(prefix + "Amount");
   if (hidden) {
     hidden.value = value || "";
     delete hidden.dataset.asCategoryKindForCustom;
@@ -5466,9 +5465,6 @@ function applyAccountSetupChipSelection(prefix, value) {
       search.classList.add("category-search__input--prefilled");
       window.setTimeout(() => search.classList.remove("category-search__input--prefilled"), 600);
     } catch (_) {}
-  }
-  if (amount) {
-    try { amount.focus({ preventScroll: true }); } catch (_) { amount.focus(); }
   }
 }
 

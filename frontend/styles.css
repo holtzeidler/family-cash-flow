@@ -243,24 +243,31 @@ body.account-setup-page .container > .grid{
   margin-bottom: 0;
   padding: var(--as-below-nav) 0 14px;
 }
-/* Confirmation card uses the same header gap, in a narrower column. */
+/* Confirmation card: centered, capped on desktop, inset on phones. */
 body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])),
 body.account-setup-page .container > .grid:has(#accountSetupVerifyRecovery:not([hidden])){
-  width: min(480px, 100%);
-  max-width: 480px;
+  width: min(32rem, calc(100% - 2rem));
+  max-width: 32rem;
   margin-top: 0;
-  padding: var(--as-below-nav) 0 18px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: var(--as-below-nav) 0 20px;
   justify-content: flex-start;
   align-items: stretch;
+  flex: 0 1 auto;
 }
 body.account-setup-page #accountSetupEmailCheck.email-check,
 body.account-setup-page #accountSetupVerifyRecovery.email-check{
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   margin: 0;
-  padding: 28px 28px 22px;
-  overflow: hidden;
+  padding: 28px 28px 24px;
+  overflow: visible;
   text-align: center;
   background: #fff;
   border: 1px solid rgba(11, 61, 46, 0.22);
@@ -271,8 +278,8 @@ body.account-setup-page .email-check__icon{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   margin: 0 auto 14px;
   border-radius: 50%;
   color: var(--accent);
@@ -281,7 +288,7 @@ body.account-setup-page .email-check__icon{
 body.account-setup-page .email-check__title{
   margin: 0;
   color: var(--accent);
-  font-size: 1.45rem;
+  font-size: clamp(1.35rem, 2.4vw, 1.6rem);
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.2;
@@ -297,59 +304,72 @@ body.account-setup-page .email-check__reassurance{
 body.account-setup-page .email-check__lead{
   margin: 16px 0 0;
   color: #5c6b76;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 400;
   line-height: 1.4;
 }
 body.account-setup-page .email-check__address{
-  margin: 4px 0 0;
+  margin: 6px 0 0;
+  max-width: 100%;
+  min-width: 0;
   color: #12261f;
-  font-size: 1.05rem;
+  font-size: clamp(1rem, 2.2vw, 1.12rem);
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.4;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 body.account-setup-page .email-check__next{
-  margin: 14px 0 0;
+  margin: 16px 0 0;
   color: #3d4d60;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   font-weight: 400;
-  line-height: 1.45;
+  line-height: 1.5;
   text-wrap: pretty;
 }
 body.account-setup-page .email-check__expire{
-  margin: 6px 0 0;
-  color: #8b97a3;
-  font-size: 0.8rem;
-  font-weight: 400;
+  margin: 8px 0 0;
+  color: #6b7c74;
+  font-size: 0.84rem;
+  font-weight: 500;
   line-height: 1.4;
 }
 body.account-setup-page .email-check__actions{
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
-  margin-top: 18px;
+  gap: 8px;
+  width: 100%;
+  margin-top: 22px;
 }
-body.account-setup-page .email-check__resend{
+body.account-setup-page .email-check__resend,
+body.account-setup-page .email-check__change{
   appearance: none;
   -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
   box-sizing: border-box;
   width: 100%;
   min-height: 48px;
-  padding: 12px 18px;
-  border: 1px solid transparent;
+  margin: 0;
+  padding: 12px 16px;
   border-radius: 12px;
-  background: var(--accent);
-  color: #fff;
   font-family: inherit;
   font-size: 1rem;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1;
   letter-spacing: 0.005em;
+  text-align: center;
+  text-decoration: none;
   cursor: pointer;
-  box-shadow: none;
+}
+body.account-setup-page .email-check__resend{
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(11, 61, 46, 0.12);
 }
 body.account-setup-page .email-check__resend:hover:not(:disabled){
   filter: none;
@@ -361,35 +381,21 @@ body.account-setup-page .email-check__resend:disabled:hover{
   cursor: not-allowed;
   filter: none;
   background: #eef1ef;
-  color: #8b97a3;
-  border-color: transparent;
+  color: #6b7c74;
+  border-color: rgba(11, 61, 46, 0.12);
   box-shadow: none;
-  font-weight: 500;
+  font-weight: 600;
 }
 body.account-setup-page .email-check__change{
-  appearance: none;
-  -webkit-appearance: none;
-  align-self: center;
-  min-height: 44px;
-  margin-top: 2px;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: #5d6f66;
-  font-family: inherit;
-  font-size: 0.92rem;
-  font-weight: 500;
-  line-height: 1.3;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-  cursor: pointer;
+  border: 1.5px solid rgba(11, 61, 46, 0.28);
+  background: #fff;
+  color: var(--accent);
 }
 body.account-setup-page .email-check__change:hover{
   filter: none;
-  color: #14532d;
-  background: transparent;
+  color: color-mix(in srgb, var(--accent) 80%, #000);
+  background: color-mix(in srgb, var(--accent) 6%, #fff);
+  border-color: rgba(11, 61, 46, 0.42);
 }
 body.account-setup-page .email-check__resend:focus-visible,
 body.account-setup-page .email-check__change:focus-visible{
@@ -397,7 +403,7 @@ body.account-setup-page .email-check__change:focus-visible{
   outline-offset: 3px;
 }
 body.account-setup-page .email-check__note{
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   color: #24312c;
   font-size: 0.9rem;
   font-weight: 500;
@@ -408,78 +414,11 @@ body.account-setup-page .email-check__note:empty{
   margin: 0;
 }
 body.account-setup-page .email-check__spam{
-  margin: 8px 0 0;
+  margin: 14px 0 0;
   color: #8b97a3;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 400;
   line-height: 1.4;
-}
-body.account-setup-page #accountSetupEmailCheck.email-check{
-  padding: 20px 26px 14px;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__icon{
-  width: 42px;
-  height: 42px;
-  margin: 0 auto 8px;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__icon svg{
-  width: 22px;
-  height: 22px;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__lead{
-  margin-top: 10px;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__address{
-  margin-top: 2px;
-  font-size: 1rem;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__next{
-  margin-top: 12px;
-  color: #3d4a55;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__expire{
-  margin-top: 4px;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__actions{
-  align-items: center;
-  gap: 0;
-  margin-top: 12px;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__resend{
-  width: auto;
-  max-width: 100%;
-  min-height: 44px;
-  padding: 8px 16px;
-  border: 1.5px solid rgba(11, 61, 46, 0.45);
-  border-radius: 10px;
-  background: #fff;
-  color: #0B3D2E;
-  font-size: 0.92rem;
-  font-weight: 600;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__resend:hover:not(:disabled){
-  background: color-mix(in srgb, var(--accent) 7%, #fff);
-  border-color: rgba(11, 61, 46, 0.62);
-  filter: none;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__resend:disabled,
-body.account-setup-page #accountSetupEmailCheck .email-check__resend:disabled:hover{
-  background: #fff;
-  color: #8b97a3;
-  border-color: rgba(11, 61, 46, 0.16);
-  font-weight: 500;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__change{
-  margin-top: 0;
-  min-height: 40px;
-  padding: 6px 10px;
-  text-decoration: none;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__note{
-  margin-top: 8px;
-}
-body.account-setup-page #accountSetupEmailCheck .email-check__spam{
-  margin-top: 2px;
 }
 body.account-setup-page #accountSetupVerifyRecovery .email-check__next{
   max-width: 34rem;
@@ -487,7 +426,7 @@ body.account-setup-page #accountSetupVerifyRecovery .email-check__next{
   margin-right: auto;
 }
 body.account-setup-page #accountSetupVerifyRecovery a.email-check__resend{
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
@@ -495,20 +434,22 @@ body.account-setup-page #accountSetupVerifyRecovery a.email-check__resend{
 @media (max-width: 640px){
   body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])),
   body.account-setup-page .container > .grid:has(#accountSetupVerifyRecovery:not([hidden])){
-    padding-top: 14px;
-    padding-bottom: 16px;
+    width: min(32rem, calc(100% - 1.5rem));
+    padding-top: 16px;
+    padding-bottom: 20px;
   }
-  body.account-setup-page #accountSetupEmailCheck.email-check{
-    padding: 18px 18px 12px;
-  }
+  body.account-setup-page #accountSetupEmailCheck.email-check,
   body.account-setup-page #accountSetupVerifyRecovery.email-check{
-    padding: 22px 16px 16px;
+    padding: 22px 18px 20px;
   }
   body.account-setup-page .email-check__title{
     font-size: 1.32rem;
   }
   body.account-setup-page .email-check__address{
-    font-size: 0.98rem;
+    font-size: 1rem;
+  }
+  body.account-setup-page .email-check__actions{
+    margin-top: 18px;
   }
 }
 @media (max-height: 700px){
@@ -518,11 +459,11 @@ body.account-setup-page #accountSetupVerifyRecovery a.email-check__resend{
   body.account-setup-page .container > .grid:has(#accountSetupEmailCheck:not([hidden])),
   body.account-setup-page .container > .grid:has(#accountSetupVerifyRecovery:not([hidden])){
     padding-top: 12px;
-    padding-bottom: 12px;
+    padding-bottom: 16px;
   }
   body.account-setup-page .email-check__icon{
-    width: 48px;
-    height: 48px;
+    width: 42px;
+    height: 42px;
     margin-bottom: 10px;
   }
   body.account-setup-page .email-check__actions{
@@ -18595,12 +18536,18 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   align-items: stretch;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel0.account-setup-wizard__panel--active) .account-setup-actions__forward #signupBtn{
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   align-self: stretch;
   min-height: 48px;
   padding: 12px 16px;
   font-size: 1rem;
   font-weight: 700;
+  line-height: 1;
 }
 body.account-setup-page #accountSetupWizardPanel0.account-setup-wizard__panel--active{
   min-height: 0;
@@ -18798,12 +18745,25 @@ body.account-setup-page #accountStartingBalance::placeholder{
   color: rgba(148, 163, 184, 0.95);
   font-weight: 400;
 }
+body.account-setup-page #accountSetupWizardPanel1 .row,
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h,
+body.account-setup-page #accountSetupWizardPanel1 .form-row-h__field{
+  min-width: 0;
+  max-width: 100%;
+}
 body.account-setup-page #accountStartingBalanceDate{
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-style: normal;
   font-weight: 500;
   letter-spacing: normal;
-  line-height: normal;
+  line-height: 1.35;
   font-variant: normal;
 }
 body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit,
@@ -18813,11 +18773,22 @@ body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit-month
 body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit-day-field,
 body.account-setup-page #accountStartingBalanceDate::-webkit-datetime-edit-year-field,
 body.account-setup-page #accountStartingBalanceDate::-webkit-date-and-time-value{
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-style: normal;
   font-weight: 500;
   letter-spacing: normal;
-  line-height: normal;
+  line-height: 1.35;
+}
+body.account-setup-page #accountStartingBalanceDate::-webkit-date-and-time-value{
+  text-align: left;
+}
+body.account-setup-page #accountStartingBalanceDate::-webkit-calendar-picker-indicator{
+  flex-shrink: 0;
+  margin-inline-start: auto;
+  cursor: pointer;
 }
 body.account-setup-page .form-row-h__field .money-input input{
   display: block;
@@ -20398,11 +20369,18 @@ body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPane
   gap: 3px;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="intro"].account-setup-wizard__panel--active) .account-setup-actions__forward #signupBtn{
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-height: 44px;
   height: 44px;
   padding: 0 22px;
   font-size: 0.9375rem;
   font-weight: 700;
+  line-height: 1;
   border-radius: 12px;
   box-shadow:
     0 1px 2px rgba(11, 61, 46, 0.08),
@@ -20599,10 +20577,17 @@ body.account-setup-page .account-setup-actions #accountSetupBackBtn{
   margin-right: 0;
 }
 body.account-setup-page .account-setup-wizard__shell .account-setup-actions--shell #signupBtn{
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-height: 48px;
   padding: 10px 24px;
   font-size: 1.02rem;
   font-weight: 700;
+  line-height: 1;
   border-radius: 10px;
   box-shadow:
     0 1px 2px rgba(11, 61, 46, 0.1),
@@ -29132,17 +29117,16 @@ body.account-setup-page
   .bw-tour-support-highlight{ transition: none; }
 }
 
-/* Step 2 "Cash Outlook" treatment: brighter background + softer green
-   outline + a subtle outer glow so the warning system reads as the
-   primary focus on the page. Used on top of `.bw-tour-target`. */
+/* Cash Health step: ring the status + lowest projected figure, not the
+   whole sidebar card. Keep the glow tight so a small target stays readable. */
 .bw-tour-target--cash-outlook{
+  overflow: visible !important;
   background-color: color-mix(in srgb, var(--accent) 5%, #ffffff) !important;
   box-shadow:
-    0 0 0 1.5px color-mix(in srgb, var(--accent) 42%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent),
     0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent),
-    0 0 28px 6px color-mix(in srgb, var(--accent) 16%, transparent),
-    0 14px 40px -18px rgba(11, 61, 46, 0.32) !important;
-  border-radius: 14px;
+    0 8px 18px -10px rgba(11, 61, 46, 0.28) !important;
+  border-radius: 12px;
 }
 
 /* Step 2 sidebar dimming. We slightly fade non-target sidebar cards so
@@ -29173,6 +29157,7 @@ body.account-setup-page
 
 .bw-tour-tooltip{
   position: fixed;
+  overflow: visible;
   width: min(420px, calc(100vw - 28px));
   background: #ffffff;
   color: #1f2937;
@@ -29199,29 +29184,41 @@ body.account-setup-page
 
 .bw-tour-tooltip__arrow{
   position: absolute;
+  z-index: 1;
   width: 14px;
   height: 14px;
+  pointer-events: none;
   background: #ffffff;
-  border-left: 1px solid rgba(11, 61, 46, 0.10);
-  border-top: 1px solid rgba(11, 61, 46, 0.10);
+  border-left: 1px solid rgba(11, 61, 46, 0.16);
+  border-top: 1px solid rgba(11, 61, 46, 0.16);
+  box-shadow: -1px -1px 0 rgba(11, 61, 46, 0.04);
   transform: rotate(45deg);
 }
 .bw-tour-tooltip__arrow[data-side="top"]{
-  top: -8px;
+  top: -7px;
   transform: rotate(45deg);
 }
 .bw-tour-tooltip__arrow[data-side="bottom"]{
-  bottom: -8px;
+  bottom: -7px;
   transform: rotate(225deg);
 }
-/* Side arrows for tooltips placed beside their target (Step 2). */
 .bw-tour-tooltip__arrow[data-side="left"]{
-  left: -8px;
+  left: -7px;
   transform: rotate(-45deg);
 }
 .bw-tour-tooltip__arrow[data-side="right"]{
-  right: -8px;
+  right: -7px;
   transform: rotate(135deg);
+}
+@media (max-width: 800px){
+  .bw-tour-tooltip__arrow{
+    width: 16px;
+    height: 16px;
+  }
+  .bw-tour-tooltip__arrow[data-side="top"]{ top: -8px; }
+  .bw-tour-tooltip__arrow[data-side="bottom"]{ bottom: -8px; }
+  .bw-tour-tooltip__arrow[data-side="left"]{ left: -8px; }
+  .bw-tour-tooltip__arrow[data-side="right"]{ right: -8px; }
 }
 
 .bw-tour-tooltip__head{
@@ -29818,6 +29815,11 @@ body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pend
   background: color-mix(in srgb, var(--accent) 6%, #ffffff);
   border-color: color-mix(in srgb, var(--accent) 22%, rgba(17, 24, 39, 0.08));
   animation: bw-tour-soft-pulse 2200ms ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce){
+  body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pending-item{
+    animation: none;
+  }
 }
 body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pending-item::after{
   content: "Variable amount";
@@ -35298,20 +35300,45 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   background: rgba(4, 120, 87, 0.08);
   outline: none;
 }
+.cal-mobile-add-row{
+  display: none;
+  min-width: 0;
+}
+.cal-mobile-add-row[hidden]{
+  display: none !important;
+}
 @media (max-width: 768px){
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn),
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split){
-    grid-template-rows: auto auto auto;
-  }
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-nav-leading,
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split) .cal-nav-leading{
-    grid-column: 1 / -1;
+  body[data-bw-view="calendar"] .cal-mobile-add-row:not([hidden]){
+    display: block;
+    position: static;
+    margin: 8px 0 0;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
   }
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-detail-toggle,
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split) .cal-detail-toggle{
-    grid-column: 1 / -1;
-    grid-row: 3;
+  body[data-bw-view="calendar"] .cal-mobile-add-row .cal-add-split{
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border-radius: 12px;
+  }
+  body[data-bw-view="calendar"] .cal-mobile-add-row .cal-add-tx-btn{
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 650;
+  }
+  body[data-bw-view="calendar"] .cal-mobile-add-row .cal-add-tx-menu-btn{
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
   .cal-add-tx-menu-btn{
     min-width: 40px;

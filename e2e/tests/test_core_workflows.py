@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import uuid
 import urllib.request
 from datetime import date, timedelta
@@ -14,10 +15,24 @@ from datetime import date, timedelta
 import pytest
 from playwright.sync_api import expect
 
-from smoke_guard import SMOKE_ORIGIN, assert_bot_email
+from smoke_guard import SMOKE_ORIGIN, assert_bot_email, latest_confirm_url
 from support import assert_route_ok, login, money, open_add_on_day, show_month
 
 PASSWORD = "SmokeOnly1!"
+
+
+def _confirm_setup_email(page, email: str) -> None:
+    expect(page.get_by_role("heading", name="Check your email")).to_be_visible()
+    confirm_url = ""
+    deadline = time.time() + 8
+    while time.time() < deadline:
+        confirm_url = latest_confirm_url(email)
+        if confirm_url:
+            break
+        time.sleep(0.2)
+    assert confirm_url, "confirmation link was not captured"
+    page.goto(confirm_url)
+    expect(page.locator("#accountSetupWizardStepLabel")).to_have_text("Step 2 of 4")
 
 
 def _shift_month(day: date, months: int) -> date:
@@ -158,7 +173,7 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     page.locator("#password").fill(PASSWORD)
     page.locator("#password2").fill(PASSWORD)
     page.locator("#signupBtn").click()
-    expect(page.locator("#accountSetupWizardStepLabel")).to_have_text("Step 2 of 4")
+    _confirm_setup_email(page, email)
 
     page.locator("#accountName").fill("Checking")
     page.locator("#accountStartingBalance").fill("2000")
@@ -170,6 +185,10 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     page.locator('input[name="asTxKind"][value="income"]').check()
     page.locator("#asTxAmount").fill("100")
     page.locator("#asTxDate").fill(today)
+    chip = page.locator("#asTxQuickChips .as-quick-chip").first
+    expect(chip).to_be_visible()
+    chip.click()
+    page.locator("#asTxRecurrence").select_option("monthly")
     page.locator("#asTxSaveIncomeBtn").click()
     expect(page.locator("#accountSetupWizardStepLabel")).to_have_text("Step 3 of 4")
     page.wait_for_timeout(600)
@@ -182,6 +201,10 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     ready = page.locator("#bwForecastReadyModal.modal-overlay--open")
     expect(ready).to_be_visible()
     expect(ready.locator("#bwForecastReadyTitle")).to_have_text("Your first forecast is ready!")
+    expect(ready.locator(".bw-forecast-ready__tagline")).to_have_text(
+        "Add your upcoming bills from the calendar anytime to see where your checking balance is headed."
+    )
+    expect(page.locator("#bwForecastStatusRibbon")).not_to_contain_text("Loading forecast")
     ready.locator("#bwForecastReadyStartTourBtn").click()
 
     back = page.locator("[data-bw-tour-back]")
@@ -207,9 +230,9 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     nxt.click()
     _expect_tour_step(page, "Know before your balance gets too low", "3 of 4", "bw-tour-target--cash-outlook")
     nxt.click()
-    _expect_tour_step(page, "Keep your forecast accurate", "4 of 4", "bw-tour-target--reconcile-head")
+    _expect_tour_step(page, "Keep your forecast on track", "4 of 4", "bw-tour-target--sidebar-reconcile")
     expect(nxt).to_have_text("Finish Tour")
-    expect(page.locator("[data-bw-tour-body]")).to_contain_text("Something changed?")
+    expect(page.locator("[data-bw-tour-body]")).to_contain_text("Check your forecast against your actual bank balance")
     expect(back).to_be_visible()
     expect(page.locator("[data-bw-tour-skip-link]")).to_be_visible()
     assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')") is None
@@ -218,16 +241,15 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(1)
     assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')") is None
     nxt.click()
-    _expect_tour_step(page, "Keep your forecast accurate", "4 of 4", "bw-tour-target--reconcile-head")
+    _expect_tour_step(page, "Keep your forecast on track", "4 of 4", "bw-tour-target--sidebar-reconcile")
     nxt.click()
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
     expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Your forecast is getting started")
     expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text(
         "Add your upcoming bills and income to see where your balance is headed."
     )
-    expect(page.get_by_text("Stays above your")).to_have_count(0)
-    expect(page.get_by_text("All caught up.")).to_have_count(0)
-    expect(page.get_by_text("No estimates to review.")).to_have_count(0)
+    expect(page.locator("#sidebarLowBalanceBanner")).not_to_contain_text("Stays above your")
+    expect(page.locator("#sidebarPendingTxCard")).to_be_hidden()
     expect(page.locator(".cal-day-tx-line", has_text="Mortgage")).to_have_count(0)
     assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')")
     page.set_viewport_size({"width": 390, "height": 800})
@@ -236,7 +258,7 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     expect(page.locator("#trialStatusNotice")).to_contain_text(re.compile(r"1[34] days left in your free trial"))
 
     _add_planned_item(page, today, "40", kind="expense")
-    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Stays above your")
+    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Looking good")
     expect(page.locator("#sidebarLowBalanceBanner")).not_to_contain_text("Your forecast is getting started")
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text("No estimates to review.")
 
@@ -274,7 +296,7 @@ def test_sparse_forecast_keeps_a_real_shortfall(page, guard):
     page.locator("#password").fill(PASSWORD)
     page.locator("#password2").fill(PASSWORD)
     page.locator("#signupBtn").click()
-    expect(page.locator("#accountSetupWizardStepLabel")).to_have_text("Step 2 of 4")
+    _confirm_setup_email(page, email)
     page.locator("#accountName").fill("Checking")
     page.locator("#accountStartingBalance").fill("100")
     page.locator("#accountStartingBalanceDate").fill(today)
@@ -284,6 +306,10 @@ def test_sparse_forecast_keeps_a_real_shortfall(page, guard):
     page.locator("#asTxHubAddExpenseBtn").click()
     page.locator("#asTxAmount").fill("80")
     page.locator("#asTxDate").fill(today)
+    chip = page.locator("#asTxQuickChips .as-quick-chip").first
+    expect(chip).to_be_visible()
+    chip.click()
+    page.locator("#asTxRecurrence").select_option("monthly")
     page.locator("#asTxSaveIncomeBtn").click()
     expect(page.locator("#accountSetupWizardStepLabel")).to_have_text("Step 3 of 4")
     page.wait_for_timeout(600)
@@ -292,13 +318,118 @@ def test_sparse_forecast_keeps_a_real_shortfall(page, guard):
     page.wait_for_timeout(600)
     page.locator("#signupBtn").click()
     page.wait_for_url(re.compile(r"/calendar"), timeout=30_000)
-    page.locator("#bwForecastReadySkipBtn").click()
+    ready = page.locator("#bwForecastReadyModal.modal-overlay--open")
+    expect(ready).to_be_visible()
+    expect(ready.locator(".bw-forecast-ready__tagline")).to_have_text(
+        "Add your upcoming income from the calendar anytime to see where your checking balance is headed."
+    )
+    expect(page.locator("#bwForecastStatusRibbon")).not_to_contain_text("Loading forecast")
+    ready.locator("#bwForecastReadySkipBtn").click()
+    assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')")
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
-    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Below your minimum balance")
+    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Negative balance projected")
     expect(page.locator("#sidebarLowBalanceBanner")).not_to_contain_text("Your forecast is getting started")
     page.reload()
     expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
-    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Below your minimum balance")
+    expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Negative balance projected")
+    guard.assert_clean()
+
+
+def _complete_setup_through_forecast(page, email, *, balance="2000", txs):
+    today = date.today().isoformat()
+    response = page.goto("/account-setup/?fresh=1")
+    assert_route_ok(response, "/account-setup/")
+    page.locator("#firstName").fill("Ada")
+    page.locator("#lastName").fill("Bot")
+    page.locator("#email").fill(email)
+    page.locator("#password").fill(PASSWORD)
+    page.locator("#password2").fill(PASSWORD)
+    page.locator("#signupBtn").click()
+    _confirm_setup_email(page, email)
+    page.locator("#accountName").fill("Checking")
+    page.locator("#accountStartingBalance").fill(balance)
+    page.locator("#accountStartingBalanceDate").fill(today)
+    page.wait_for_timeout(600)
+    page.locator("#signupBtn").click()
+    expect(page.locator("#accountSetupWizardStepLabel")).to_have_text("Step 3 of 4")
+    for tx in txs:
+        kind = tx["kind"]
+        if kind == "income":
+            page.locator("#asTxHubAddIncomeBtn").click()
+        else:
+            page.locator("#asTxHubAddExpenseBtn").click()
+        page.locator(f'input[name="asTxKind"][value="{kind}"]').check()
+        page.locator("#asTxAmount").fill(tx["amount"])
+        page.locator("#asTxDate").fill(today)
+        chip = page.locator("#asTxQuickChips .as-quick-chip").first
+        expect(chip).to_be_visible()
+        chip.click()
+        page.locator("#asTxRecurrence").select_option("monthly")
+        page.locator("#asTxSaveIncomeBtn").click()
+        expect(page.locator("#asTxHubAddIncomeBtn")).to_be_visible()
+    page.wait_for_timeout(600)
+    page.locator("#signupBtn").click()
+    expect(page.locator("#accountSetupWizardStepLabel")).to_have_text("Step 4 of 4")
+    page.wait_for_timeout(600)
+    page.locator("#signupBtn").click()
+    page.wait_for_url(re.compile(r"/calendar"), timeout=30_000)
+    ready = page.locator("#bwForecastReadyModal.modal-overlay--open")
+    expect(ready).to_be_visible()
+    expect(page.locator("#bwForecastStatusRibbon")).not_to_contain_text("Loading forecast")
+    return ready
+
+
+@pytest.mark.smoke_title("First forecast welcomes income-plus-expense setup")
+def test_signup_income_and_expense_welcome_copy(page, guard):
+    email = f"bw-smoke-both-{uuid.uuid4().hex[:8]}@example.com"
+    ready = _complete_setup_through_forecast(
+        page,
+        email,
+        txs=[{"kind": "income", "amount": "100"}, {"kind": "expense", "amount": "40"}],
+    )
+    expect(ready.locator("#bwForecastReadyTitle")).to_have_text("Your first forecast is ready!")
+    expect(ready.locator(".bw-forecast-ready__tagline")).to_have_text(
+        "See how your income and bills affect your checking balance — and what’s coming next."
+    )
+    ready.locator("#bwForecastReadySkipBtn").click()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    expect(page.locator("#sidebarLowBalanceBanner")).not_to_contain_text("Your forecast is getting started")
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Escape on the first-forecast welcome skips the tour")
+def test_forecast_ready_escape_skips_tour(page, guard):
+    email = f"bw-smoke-esc-{uuid.uuid4().hex[:8]}@example.com"
+    ready = _complete_setup_through_forecast(
+        page,
+        email,
+        txs=[{"kind": "income", "amount": "100"}],
+    )
+    expect(ready.locator(".bw-forecast-ready__tagline")).to_contain_text("Add your upcoming bills")
+    page.keyboard.press("Escape")
+    expect(ready).to_be_hidden()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')")
+    page.reload()
+    expect(page.locator("#calendarGrid")).to_be_visible()
+    expect(page.locator("#bwForecastReadyModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Backdrop on the first-forecast welcome skips the tour")
+def test_forecast_ready_backdrop_skips_tour(page, guard):
+    email = f"bw-smoke-back-{uuid.uuid4().hex[:8]}@example.com"
+    ready = _complete_setup_through_forecast(
+        page,
+        email,
+        txs=[{"kind": "expense", "amount": "40"}],
+    )
+    expect(ready.locator(".bw-forecast-ready__tagline")).to_contain_text("Add your upcoming income")
+    page.locator("#bwForecastReadyModal").click(position={"x": 4, "y": 4}, force=True)
+    expect(ready).to_be_hidden()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')")
     guard.assert_clean()
 
 

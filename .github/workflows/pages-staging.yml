@@ -36,8 +36,19 @@ jobs:
           node --check frontend/tx-edit-scope.js
           node frontend/tx-edit-scope.test.js
 
+      - name: First-forecast welcome
+        run: node frontend/forecast-ready-welcome.test.js
+
       - name: Mobile calendar UX
         run: node frontend/mobile-calendar-ux.test.js
+
+      - name: Onboarding mobile UX
+        run: node frontend/onboarding-mobile-ux.test.js
+
+      - name: Guided tour targeting
+        run: |
+          node --check frontend/tour.js
+          node frontend/tour-guidance.test.js
 
       - name: Build staging frontend
         env:

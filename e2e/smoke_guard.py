@@ -6,6 +6,7 @@ backend/.env, which may point at a hosted database.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -57,6 +58,38 @@ def repo_root() -> Path:
 
 def smoke_run_dir() -> Path:
     return Path(__file__).resolve().parent / ".smoke-run"
+
+
+def verify_links_path() -> Path:
+    return smoke_run_dir() / "verify-links.jsonl"
+
+
+def append_verify_link(*, to_addr: str, kind: str, confirm_url: str) -> None:
+    path = verify_links_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"to": to_addr, "kind": kind, "confirm_url": confirm_url}) + "\n")
+
+
+def latest_confirm_url(email: str) -> str:
+    path = verify_links_path()
+    if not path.exists():
+        return ""
+    target = str(email or "").strip().lower()
+    found = ""
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if str(row.get("kind") or "") != "confirm":
+            continue
+        if str(row.get("to") or "").strip().lower() != target:
+            continue
+        found = str(row.get("confirm_url") or "").strip()
+    return found
 
 
 def smoke_db_path(filename: str = "balancewhiz-smoke.db") -> Path:

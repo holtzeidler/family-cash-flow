@@ -3555,7 +3555,7 @@ const catReportEnd = document.getElementById("catReportEnd");
 
 // After account creation, we show a one-time "forecast is ready" modal on first calendar load.
 const BW_FORECAST_READY_POPUP_KEY = "bw_forecast_ready_popup";
-const BW_FORECAST_READY_MODAL_VERSION = "11";
+const BW_FORECAST_READY_MODAL_VERSION = "12";
 const catReportYearSelect = document.getElementById("catReportYearSelect");
 const catReportRunBtn = document.getElementById("catReportRunBtn");
 const catReportErr = document.getElementById("catReportErr");
@@ -6601,6 +6601,63 @@ function ensureFavoriteLaunchers() {
 
 ensureFavoriteLaunchers();
 
+function isMobileCalendarToolbar() {
+  try {
+    return window.matchMedia("(max-width: 768px)").matches;
+  } catch (_) {
+    return window.innerWidth <= 768;
+  }
+}
+
+function ensureCalendarMobileAddRow(nav) {
+  if (!nav) return null;
+  let row = document.getElementById("calMobileAddRow");
+  if (!row) {
+    row = document.createElement("div");
+    row.id = "calMobileAddRow";
+    row.className = "cal-mobile-add-row";
+    nav.after(row);
+  }
+  return row;
+}
+
+function placeCalendarAddTransactionControl(split, cluster) {
+  if (!split) return;
+  const nav = document.querySelector(".calendar-nav-bar");
+  const row = ensureCalendarMobileAddRow(nav);
+  if (isMobileCalendarToolbar() && row) {
+    if (split.parentElement !== row) row.appendChild(split);
+    row.hidden = false;
+    return;
+  }
+  if (cluster && split.parentElement !== cluster) cluster.appendChild(split);
+  if (row) row.hidden = true;
+}
+
+function bindCalendarAddPlacement() {
+  if (bindCalendarAddPlacement.bound) return;
+  bindCalendarAddPlacement.bound = true;
+  const sync = () => {
+    const split = document.getElementById("calAddTxSplit");
+    const cluster = document.querySelector(".cal-nav-leading");
+    if (split) placeCalendarAddTransactionControl(split, cluster);
+  };
+  try {
+    const mq = window.matchMedia("(max-width: 768px)");
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  } catch (_) {}
+  window.addEventListener("orientationchange", sync);
+  window.addEventListener("resize", sync);
+}
+
+function calendarAddTransactionDate() {
+  const selected = document.querySelector(".cal-cell.is-selected[data-iso], .cal-cell[data-selected='1'][data-iso]");
+  const iso = selected && selected.getAttribute("data-iso");
+  if (iso) return iso;
+  return toISODate(new Date());
+}
+
 function ensureCalendarAddTransactionButton() {
   const today = document.getElementById("calendarGoToday");
   const nav = today ? today.closest(".calendar-nav-bar") : document.querySelector(".calendar-nav-bar");
@@ -6613,49 +6670,52 @@ function ensureCalendarAddTransactionButton() {
     cluster.appendChild(today);
   }
   document.getElementById("calFavoritesBtn")?.remove();
-  if (document.getElementById("calAddTxSplit")) return;
-  document.getElementById("calAddTxBtn")?.remove();
-  const split = document.createElement("div");
-  split.id = "calAddTxSplit";
-  split.className = "cal-add-split";
-  split.setAttribute("role", "group");
-  split.setAttribute("aria-label", "Add transaction");
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.id = "calAddTxBtn";
-  btn.className = "cal-add-tx-btn";
-  btn.innerHTML = '<span aria-hidden="true">+</span> Add transaction';
-  btn.addEventListener("click", (e) => {
-    closeCalAddTxMenu();
-    closeFavoritesMenu();
-    openCalendarDayAddTransaction(toISODate(new Date()), e);
-  });
-  const menuBtn = document.createElement("button");
-  menuBtn.type = "button";
-  menuBtn.id = "calAddTxMenuBtn";
-  menuBtn.className = "cal-add-tx-menu-btn";
-  menuBtn.dataset.favoritesToggle = "1";
-  menuBtn.setAttribute("aria-haspopup", "menu");
-  menuBtn.setAttribute("aria-expanded", "false");
-  menuBtn.setAttribute("aria-controls", "calAddTxMenu");
-  menuBtn.setAttribute("aria-label", "More add options");
-  menuBtn.innerHTML =
-    '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.25L6 8.25l3.5-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  menuBtn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    toggleCalAddTxMenu();
-  });
-  menuBtn.addEventListener("keydown", (event) => {
-    if (event.key !== "ArrowDown") return;
-    event.preventDefault();
-    const menu = document.getElementById("calAddTxMenu");
-    if (!menu || menu.hidden) toggleCalAddTxMenu();
-    else menu.querySelector('[role="menuitem"]')?.focus();
-  });
-  split.append(btn, menuBtn);
-  today.after(split);
-  ensureCalAddTxMenu();
+  let split = document.getElementById("calAddTxSplit");
+  if (!split) {
+    document.getElementById("calAddTxBtn")?.remove();
+    split = document.createElement("div");
+    split.id = "calAddTxSplit";
+    split.className = "cal-add-split";
+    split.setAttribute("role", "group");
+    split.setAttribute("aria-label", "Add transaction");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "calAddTxBtn";
+    btn.className = "cal-add-tx-btn";
+    btn.innerHTML = '<span aria-hidden="true">+</span> Add transaction';
+    btn.addEventListener("click", (e) => {
+      closeCalAddTxMenu();
+      closeFavoritesMenu();
+      openCalendarDayAddTransaction(calendarAddTransactionDate(), e);
+    });
+    const menuBtn = document.createElement("button");
+    menuBtn.type = "button";
+    menuBtn.id = "calAddTxMenuBtn";
+    menuBtn.className = "cal-add-tx-menu-btn";
+    menuBtn.dataset.favoritesToggle = "1";
+    menuBtn.setAttribute("aria-haspopup", "menu");
+    menuBtn.setAttribute("aria-expanded", "false");
+    menuBtn.setAttribute("aria-controls", "calAddTxMenu");
+    menuBtn.setAttribute("aria-label", "More add options");
+    menuBtn.innerHTML =
+      '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.25L6 8.25l3.5-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    menuBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleCalAddTxMenu();
+    });
+    menuBtn.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown") return;
+      event.preventDefault();
+      const menu = document.getElementById("calAddTxMenu");
+      if (!menu || menu.hidden) toggleCalAddTxMenu();
+      else menu.querySelector('[role="menuitem"]')?.focus();
+    });
+    split.append(btn, menuBtn);
+    ensureCalAddTxMenu();
+  }
+  placeCalendarAddTransactionControl(split, cluster);
+  bindCalendarAddPlacement();
 }
 
 ensureCalendarAddTransactionButton();
@@ -18280,6 +18340,7 @@ async function loadExpectedTransactions() {
 }
 
 let calendarLoadGen = 0;
+let calendarInitialMonthReady = false;
 
 function showForecastStatus(msg, isError) {
   // One status line only. #calendarErr used to repeat the same text under the month controls.
@@ -19892,7 +19953,13 @@ async function loadMonthAndCalendar() {
       updateCalendarEmptyStateBanner();
     } catch (_) {}
   } finally {
-    if (stillCurrent()) setCalendarLoadingUi(false);
+    if (stillCurrent()) {
+      setCalendarLoadingUi(false);
+      calendarInitialMonthReady = true;
+      try {
+        maybeShowForecastReadyPopup();
+      } catch (_) {}
+    }
   }
 }
 
@@ -25488,6 +25555,61 @@ function drawProjectionChart(daily) {
     },
   });
 }
+function forecastReadyIncomeExpenseFlags() {
+  const items = [
+    ...(state.monthExpectedItems || []),
+    ...(state.calendarExtraExpectedItems || []),
+    ...(state.upcomingActualItems || []),
+    ...(state.monthActualItems || []),
+    ...(state.calendarExtraActualItems || []),
+  ];
+  let income = false;
+  let expense = false;
+  for (const it of items) {
+    const kind = String((it && (it.kind || it.type)) || "").toLowerCase();
+    if (kind === "income") income = true;
+    else if (kind === "expense") expense = true;
+  }
+  return { income, expense };
+}
+
+function forecastReadyWelcomeTagline(flags) {
+  const income = !!(flags && flags.income);
+  const expense = !!(flags && flags.expense);
+  if (income && !expense) {
+    return "Add your upcoming bills from the calendar anytime to see where your checking balance is headed.";
+  }
+  if (expense && !income) {
+    return "Add your upcoming income from the calendar anytime to see where your checking balance is headed.";
+  }
+  return "See how your income and bills affect your checking balance — and what’s coming next.";
+}
+
+function forecastReadyCalendarCanShowWelcome() {
+  if (!calendarViewPanel || calendarViewPanel.hidden) return false;
+  if (!calendarInitialMonthReady) return false;
+  const panel = document.getElementById("calendarPanel");
+  if (panel && panel.getAttribute("aria-busy") === "true") return false;
+  const ribbon = document.getElementById("bwForecastStatusRibbon");
+  if (ribbon && ribbon.style.display !== "none") {
+    const text = String(ribbon.textContent || "").trim();
+    if (text === "Loading forecast…") return false;
+  }
+  try {
+    if (sessionStorage.getItem("bw_onboarding_recovery_pending") === "1") return false;
+  } catch (_) {}
+  try {
+    if (localStorage.getItem("bw_onboarding_recovery_pending") === "1") return false;
+  } catch (_) {}
+  return true;
+}
+
+function applyForecastReadyWelcomeCopy(modal) {
+  const tag = modal && modal.querySelector(".bw-forecast-ready__tagline");
+  if (!tag) return;
+  tag.textContent = forecastReadyWelcomeTagline(forecastReadyIncomeExpenseFlags());
+}
+
 function ensureForecastReadyModal() {
   const existing = document.getElementById("bwForecastReadyModal");
   if (existing) {
@@ -25541,20 +25663,22 @@ function ensureForecastReadyModal() {
     } catch (_) {}
   };
   wrap.addEventListener("click", (e) => {
-    if (e.target === wrap) close();
+    if (e.target === wrap) skipTourFromModal();
   });
   wrap.querySelector("#bwForecastReadyStartTourBtn")?.addEventListener("click", startTourFromModal);
   wrap.querySelector("#bwForecastReadySkipBtn")?.addEventListener("click", skipTourFromModal);
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && wrap.classList.contains("modal-overlay--open")) close();
+    if (e.key === "Escape" && wrap.classList.contains("modal-overlay--open")) skipTourFromModal();
   });
 
   return wrap;
 }
 
 function maybeShowForecastReadyPopup() {
-  // Only on Calendar view.
-  if (!calendarViewPanel || calendarViewPanel.hidden) return;
+  // Only after the first calendar month and its transactions have loaded, and
+  // never over the “Loading forecast…” ribbon. Keep the session flag if we are
+  // not ready yet so a later load can still show the welcome once.
+  if (!forecastReadyCalendarCanShowWelcome()) return;
   try {
     const v = sessionStorage.getItem(BW_FORECAST_READY_POPUP_KEY);
     if (v !== "1") return;
@@ -25564,20 +25688,13 @@ function maybeShowForecastReadyPopup() {
   }
 
   const modal = ensureForecastReadyModal();
+  applyForecastReadyWelcomeCopy(modal);
   try {
     modal.classList.add("modal-overlay--open");
     modal.setAttribute("aria-hidden", "false");
     modal.querySelector("#bwForecastReadyStartTourBtn")?.focus?.();
   } catch (_) {}
 }
-
-// Show it once after initial calendar render (when the app has mounted).
-try {
-  if (window.__BW_FORCE_VIEW === "calendar") {
-    // Give the calendar a tick to render before showing.
-    window.setTimeout(maybeShowForecastReadyPopup, 60);
-  }
-} catch (_) {}
 
 function setDefaultMonth() {
   initCalendarYearOptions();
