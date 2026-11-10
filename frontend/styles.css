@@ -6952,6 +6952,53 @@ button.nav-link:hover{
   white-space: normal;
 }
 
+.sidebar-reconcile{
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+.sidebar-reconcile__status{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.sidebar-reconcile__label{
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.76);
+}
+.sidebar-reconcile__date{
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  text-align: right;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.011em;
+  color: rgba(71, 85, 105, 0.86);
+}
+button.sidebar-reconcile__action{
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 8px 0 0;
+  min-height: 36px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
 .sidebar-balance-threshold-alerts{
   display: flex;
   flex-direction: column;
@@ -22109,23 +22156,6 @@ body.plans-page--polished .plans-quote{
   row-gap: 7px;
 }
 
-.calendar-balance-caption{
-  margin: 2px 2px 8px;
-  padding: 0 2px;
-  max-width: 40rem;
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 450;
-  color: rgba(71, 85, 105, 0.88);
-  text-wrap: pretty;
-}
-@media (max-width: 720px){
-  .calendar-balance-caption{
-    margin: 4px 0 8px;
-    max-width: none;
-    font-size: 12.5px;
-  }
-}
 .calendar-dow-row{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -22219,7 +22249,7 @@ body.plans-page--polished .plans-quote{
   cursor: pointer;
 }
 
-/* Reconciled / Adjusted days use compact status pills only — cell surface stays neutral. */
+/* Reconciled days use a compact check beside the balance; Adjusted / Starting stay as pills. Cell surface stays neutral. */
 
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start):hover{
   border-color: rgba(17, 24, 39, 0.1);
@@ -22467,6 +22497,30 @@ body.plans-page--polished .plans-quote{
   line-height: 1.35;
   color: rgba(71, 85, 105, 0.88);
   font-weight: 500;
+}
+.balance-check-in__date-field{
+  display: block;
+  margin: 6px 0 0;
+}
+.balance-check-in__date-input{
+  display: block;
+  width: 100%;
+  max-width: 11.5rem;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  color: rgba(51, 65, 85, 0.92);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.balance-check-in__date-input:focus{
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 1px;
+  border-color: color-mix(in srgb, var(--accent) 28%, rgba(17, 24, 39, 0.12));
 }
 .balance-check-in__forecast-card{
   margin: 0 0 16px;
@@ -23050,7 +23104,7 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   margin-top: auto;
   padding-top: 5px;
   padding-bottom: 3px;
-  border-top: 1px solid rgba(11, 61, 46, 0.1);
+  border-top: 1px solid rgba(11, 61, 46, 0.055);
   min-height: 22px;
   align-self: stretch;
 }
@@ -23068,24 +23122,50 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover,
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within{
   background: rgba(11, 61, 46, 0.055);
-  border-top-color: rgba(11, 61, 46, 0.16);
+  border-top-color: rgba(11, 61, 46, 0.1);
 }
-.calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update::before{
-  content: "Reconcile balance";
-  display: block;
-  margin-bottom: 1px;
-  font-size: 10.5px;
+.cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 1px;
+}
+.cal-daynum:has(.cal-day-reconcile-action){
+  justify-content: flex-end;
+}
+.cal-day-reconcile-action{
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  margin-right: 2px;
+  padding: 1px 5px 1px 3px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(71, 85, 105, 0.58);
+  font: inherit;
+  font-size: 9.5px;
   font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: 0.01em;
-  text-align: right;
+  letter-spacing: 0.02em;
+  line-height: 1;
   white-space: nowrap;
-  color: rgba(11, 61, 46, 0.66);
+  cursor: pointer;
+  flex: 0 0 auto;
 }
-.calendar:not(.calendar--mobile) .cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit--today-update:hover::before{
-  color: rgba(11, 61, 46, 0.92);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.cal-day-reconcile-action__icon{
+  display: block;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+}
+.cal-day-reconcile-action:hover,
+.cal-day-reconcile-action:focus-visible{
+  color: rgba(11, 61, 46, 0.86);
+  background: rgba(11, 61, 46, 0.06);
+}
+.cal-day-reconcile-action:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 1px;
 }
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:hover .cal-stat.cal-balance,
 .cal-cell:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit:focus-within .cal-stat.cal-balance{
@@ -23102,8 +23182,6 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   margin-bottom: 1px;
 }
 .cal-cell--no-tx .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone):not(.cal-balance--risk){
-  font-size: clamp(11.75px, 1.28vw, 12.75px);
-  font-weight: 560;
   color: rgba(71, 85, 105, 0.88);
 }
 
@@ -24526,7 +24604,6 @@ body[data-bw-view="transactions"] .tm__field label{
   background: transparent;
 }
 .cal-balance-strip--has-status .cal-stat.cal-balance{
-  font-weight: 650;
   color: rgba(15, 23, 42, 0.9);
 }
 /* Strip container stays visually quiet — risk/watch cues live on the balance
@@ -24562,6 +24639,24 @@ body[data-bw-view="transactions"] .tm__field label{
   gap: 3px;
   white-space: nowrap;
 }
+.cal-balance-strip__amt:has(.cal-balance-reconciled-mark){
+  align-items: center;
+}
+.cal-balance-reconciled-mark{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  color: #15803d;
+  line-height: 1;
+}
+.cal-balance-reconciled-mark__icon{
+  display: block;
+  width: 12px;
+  height: 12px;
+}
 .cal-balance-strip--has-status .cal-balance-strip__amt{
   flex: 1 1 auto;
 }
@@ -24590,26 +24685,21 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.income{ color: var(--text); }
 .cal-stat.expense{ color: var(--text); }
 .cal-stat.cal-balance{
-  /* End-of-day balance: readable anchor, secondary to transaction rows. */
-  font-size: clamp(12.25px, 1.32vw, 13.75px);
+  /* One type scale for every end-of-day balance, regardless of date or status. */
+  font-size: 13px;
   line-height: 1.24;
   font-weight: 500;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+  max-width: 100%;
   color: rgba(30, 41, 59, 0.82);
 }
-.cal-cell--density-sparse .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone){
-  font-size: clamp(12.75px, 1.38vw, 14.25px);
-}
-.cal-cell--density-dense .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor){
-  font-size: clamp(12px, 1.32vw, 13.5px);
-}
 .cal-stat.cal-balance.cal-balance--quiet{
-  font-weight: 560;
   color: rgba(51, 65, 85, 0.9);
 }
 .cal-stat.cal-balance.cal-balance--past-day{
-  font-weight: 520;
   color: rgba(100, 116, 139, 0.92);
   padding: 0;
   background: none;
@@ -24625,8 +24715,6 @@ body[data-bw-view="transactions"] .tm__field label{
 .cal-stat.cal-balance.cal-balance--past-day.cal-balance--recovery-milestone,
 .cal-stat.cal-balance.cal-balance--past-day.cal-balance--stabilizing,
 .cal-stat.cal-balance.cal-balance--past-day.cal-balance--strong-inflow{
-  font-weight: 520;
-  font-size: clamp(12.25px, 1.32vw, 13.75px);
   color: rgba(100, 116, 139, 0.92);
   padding: 0;
   background: none;
@@ -24635,7 +24723,6 @@ body[data-bw-view="transactions"] .tm__field label{
   text-decoration: none;
 }
 .cal-stat.cal-balance.cal-balance--watch-zone{
-  font-weight: 520;
   color: rgba(120, 98, 62, 0.72);
   padding: 0 4px;
   border-radius: 4px;
@@ -24644,8 +24731,6 @@ body[data-bw-view="transactions"] .tm__field label{
   box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--below-floor{
-  font-size: clamp(12.35px, 1.32vw, 13.85px);
-  font-weight: 620;
   color: rgba(146, 64, 14, 0.88);
   padding: 0 4px;
   border-radius: 4px;
@@ -24654,18 +24739,14 @@ body[data-bw-view="transactions"] .tm__field label{
   box-shadow: none;
 }
 .cal-stat.cal-balance.cal-balance--repeated:not(.cal-balance--risk):not(.is-negative){
-  font-weight: 540;
   color: rgba(120, 88, 52, 0.68);
 }
 .cal-stat.cal-balance.cal-balance--month-low-mark{
-  font-weight: 620;
   color: rgba(71, 85, 105, 0.72);
   text-decoration: none;
 }
 .cal-stat.cal-balance.cal-balance--risk,
 .cal-stat.cal-balance.is-negative{
-  font-weight: 560;
-  font-size: clamp(12.5px, 1.34vw, 14px);
   color: rgba(127, 45, 45, 0.82);
   padding: 0 5px;
   border-radius: 4px;
@@ -24675,25 +24756,19 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .cal-stat.cal-balance.cal-balance--risk.cal-balance--repeated,
 .cal-stat.cal-balance.is-negative.cal-balance--repeated{
-  font-weight: 690;
   color: rgba(127, 29, 29, 0.78);
 }
 .cal-stat.cal-balance.cal-balance--recovery-milestone{
-  font-weight: 560;
   color: rgba(22, 101, 52, 0.68);
-  letter-spacing: -0.01em;
 }
 .cal-stat.cal-balance.cal-balance--stabilizing{
-  font-weight: 560;
   color: rgba(22, 101, 52, 0.64);
 }
 .cal-stat.cal-balance.cal-balance--strong-inflow{
-  font-weight: 560;
   color: rgba(4, 100, 78, 0.66);
 }
 .cal-stat.cal-balance.is-muted{
   color: rgba(100, 116, 139, 0.46);
-  font-weight: 520;
 }
 .cal-stat.cal-balance.is-past{
   color: rgba(55, 65, 81, 0.7);
@@ -24981,6 +25056,130 @@ body[data-bw-view="transactions"] .tm__field label{
   margin-top: 11px;
   padding-top: 11px;
   border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+.modal.modal--review-amount{
+  max-width: 380px;
+  padding: 16px;
+}
+.review-amount__name{
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  line-height: 1.3;
+  color: rgba(30, 41, 59, 0.92);
+}
+.review-amount__date{
+  margin: 2px 0 12px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: rgba(100, 116, 139, 0.72);
+}
+.review-amount__estimate{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+}
+.review-amount__estimate-k{
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(100, 116, 139, 0.78);
+}
+.review-amount__estimate-v{
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgba(30, 41, 59, 0.9);
+}
+.review-amount__actual{
+  display: block;
+  margin: 0 0 8px;
+}
+.review-amount__actual-label{
+  display: block;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(51, 65, 85, 0.88);
+}
+.modal.modal--review-amount .money-input{
+  width: 100%;
+}
+.modal.modal--review-amount .money-input input{
+  width: 100%;
+}
+.modal.modal--review-amount #reviewAmountErr{
+  min-height: 0;
+  margin: 0 0 4px;
+}
+.review-amount__actions{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 12px;
+}
+.review-amount__actions #reviewAmountCancelBtn,
+.review-amount__actions #reviewAmountConfirmBtn{
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+.review-amount__actions #reviewAmountConfirmBtn{
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid rgba(11, 61, 46, 0.22);
+  box-shadow: 0 1px 3px rgba(11, 61, 46, 0.12);
+}
+.review-amount__actions #reviewAmountConfirmBtn:hover{
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+  filter: none;
+}
+.review-amount__actions #reviewAmountConfirmBtn:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+.review-amount__actions #reviewAmountConfirmBtn:disabled{
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+button.review-amount__edit-link{
+  display: block;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(71, 85, 105, 0.72);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+button.review-amount__edit-link:hover,
+button.review-amount__edit-link:focus-visible{
+  color: rgba(11, 61, 46, 0.92);
+  filter: none;
+}
+button.review-amount__edit-link:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 .modal--choice{
@@ -25314,6 +25513,9 @@ body[data-bw-view="transactions"] .tm__field label{
 .tx-add-form{
   max-width: 100%;
 }
+.tx-add-form #txAddAccountId[hidden]{
+  display: none !important;
+}
 .tx-add-form #txAddErr{
   margin-top: 10px;
   margin-bottom: 4px;
@@ -25334,7 +25536,7 @@ body[data-bw-view="transactions"] .tm__field label{
   padding: 14px;
   --tx-add-label-inset: 2.1ch;
   --tx-add-row-gap-x: 9.8px;
-  --tx-add-row-gap-y: 6px;
+  --tx-add-row-gap-y: 4px;
   /* Unified neutral field chrome (standard inputs only; toggles/chips stay separate). */
   --tx-field-bg: #ffffff;
   --tx-field-border: rgba(17, 24, 39, 0.12);
@@ -25350,7 +25552,7 @@ body[data-bw-view="transactions"] .tm__field label{
 .modal--tx-add > h3{
   box-sizing: border-box;
   width: calc(100% + 28px);
-  margin: -14px -14px 8px -14px;
+  margin: -14px -14px 6px -14px;
   padding: 6px 14px 7px calc(14px + var(--tx-add-label-inset, 3ch));
   text-align: left;
   font-size: 0.9rem;
@@ -25638,8 +25840,8 @@ body[data-bw-view="transactions"] .tm__field label{
 
 .modal--tx-add .tx-add-form .modal-actions.modal-actions--tx-add-foot{
   flex-shrink: 0;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
   border-top-color: rgba(17, 24, 39, 0.07);
   position: sticky;
   bottom: 0;
@@ -25862,19 +26064,19 @@ body[data-bw-view="transactions"] .tm__field label{
   opacity: 0.75;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--xs{
-  height: 6px;
-}
-.modal--tx-add .tx-add-form .tx-add-vspace--sm{
-  height: 8px;
-}
-.modal--tx-add .tx-add-form .tx-add-vspace--2xs{
   height: 4px;
 }
+.modal--tx-add .tx-add-form .tx-add-vspace--sm{
+  height: 6px;
+}
+.modal--tx-add .tx-add-form .tx-add-vspace--2xs{
+  height: 3px;
+}
 .modal--tx-add .tx-add-form .tx-add-vspace{
-  height: 8px;
+  height: 6px;
 }
 .modal--tx-add .tx-add-form .tx-add-vspace--lg{
-  height: 12px;
+  height: 8px;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-vspace--2xs{
   display: none;
@@ -25888,13 +26090,18 @@ body[data-bw-view="transactions"] .tm__field label{
   gap: var(--tx-add-row-gap-y, 6px) var(--tx-add-row-gap-x, 14px);
 }
 .modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field),
-.modal--tx-add .tx-add-form .form-row-h.tx-add-cat-color-row{
+.modal--tx-add .tx-add-form .form-row-h.tx-add-variable-form-row{
   align-items: start;
 }
-.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field) .form-row-h__label,
-.modal--tx-add .tx-add-form .form-row-h.tx-add-cat-color-row .form-row-h__label{
+.modal--tx-add .tx-add-form .form-row-h:has(.tx-add-category-field) .form-row-h__label{
   align-items: flex-start;
   padding-top: 8px;
+  min-height: 0;
+}
+.modal--tx-add .tx-add-form .form-row-h.tx-add-variable-form-row .form-row-h__label{
+  align-self: start;
+  align-items: flex-start;
+  padding-top: 2px;
   min-height: 0;
 }
 .modal--tx-add .tx-add-form .form-row-h__label,
@@ -25943,7 +26150,7 @@ body[data-bw-view="transactions"] .tm__field label{
   gap: var(--tx-add-row-gap-y, 6px) var(--tx-add-row-gap-x, 14px);
 }
 .modal--tx-add .tx-add-variable-form-row{
-  display: contents;
+  align-items: start;
 }
 .modal--tx-add .tx-add-cat-color-row{
   margin-top: 2px;
@@ -26037,52 +26244,24 @@ body[data-bw-view="transactions"] .tm__field label{
   align-items: center;
 }
 .modal--tx-add .tx-add-variable-block{
-  display: grid;
-  grid-template-columns: var(--tx-add-label-col, calc(11.25rem - 2ch)) minmax(0, 1fr);
-  column-gap: var(--tx-add-row-gap-x, 9.8px);
-  row-gap: 2px;
-  align-items: center;
   width: 100%;
   margin: 3px 0 0;
   padding: 0 0 4px;
   box-sizing: border-box;
-  /* Width of “Amount varies” at 12px/600 — aligns caption with label text start. */
-  --tx-add-variable-label-text-width: 6.5rem;
-}
-.modal--tx-add .tx-add-variable-block .form-row-h__label{
-  grid-column: 1;
-  grid-row: 1;
-  justify-content: flex-end;
-  align-items: center;
-  align-self: center;
-  padding-right: var(--tx-add-label-inset, 2.1ch);
-  text-align: right;
-}
-.modal--tx-add .tx-add-variable-block .form-row-h__label label{
-  text-align: right;
 }
 .modal--tx-add .tx-add-variable-block .tx-add-variable-field-wrap{
-  grid-column: 2;
-  grid-row: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start;
-  align-self: center;
+  gap: 3px;
   width: 100%;
   min-width: 0;
   padding-top: 0;
 }
 .modal--tx-add .tx-add-variable-block__caption{
-  grid-column: 1 / -1;
-  grid-row: 2;
-  margin: 1px 0 0;
+  margin: 0;
   padding: 0;
-  padding-left: max(
-    0px,
-    calc(
-      var(--tx-add-label-col, calc(11.25rem - 2ch)) - var(--tx-add-label-inset, 2.1ch) - var(--tx-add-variable-label-text-width, 6.5rem) + 0.6em
-    )
-  );
   max-width: none;
   font-size: 9.5px;
   line-height: 1.38;
@@ -26114,9 +26293,8 @@ body[data-bw-view="transactions"] .tm__field label{
   white-space: nowrap;
 }
 .modal--tx-add .tx-add-variable-block .form-row-h__label label{
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.3;
-  overflow-wrap: anywhere;
 }
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-field{
   display: flex;
@@ -26145,7 +26323,10 @@ body[data-bw-view="transactions"] .tm__field label{
   cursor: pointer;
 }
 .modal--tx-add .tx-add-advanced{
-  margin-top: 5px;
+  margin-top: 2px;
+}
+.modal--tx-add .tx-add-advanced__panel[hidden]{
+  display: none !important;
 }
 .modal--tx-add .tx-add-advanced__expander{
   display: inline-flex;
@@ -26171,7 +26352,10 @@ body[data-bw-view="transactions"] .tm__field label{
   display: none !important;
 }
 .modal--tx-add .tx-add-advanced__panel{
-  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
   padding-left: 0;
   border-left: none;
   width: 100%;
@@ -27017,17 +27201,14 @@ body.account-setup-page
   min-width: 0;
 }
 .tx-add-form .tx-add-category-hint{
-  margin: 0 0 6px;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  color: rgba(71, 85, 105, 0.82);
+  display: none;
 }
 .tx-add-form .tx-quick-chips{
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 5px;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
 }
 .tx-add-form .tx-quick-chip{
   appearance: none;
@@ -27674,6 +27855,9 @@ body.account-setup-page
 .tx-edit-series-mark[hidden]{
   display: none;
 }
+#txEditInner:not(.modal--expected-edit) .tx-edit-series-mark{
+  display: none !important;
+}
 .modal.modal--apply-scope .modal--apply-scope__series-notice{
   margin: 8px 0 0;
   padding: 8px 9px;
@@ -27704,6 +27888,94 @@ body.account-setup-page
 /* Edit Transaction: Date → Repeat had no .tx-add-vspace (unlike other rows). */
 #txEditInner:not(.modal--expected-edit) #expectedEditInstancePanel > #txEditRecurringScheduleWrap{
   margin-top: 5px;
+}
+#txEditInner #instanceAccountId[hidden],
+#txEditAccountCol{
+  display: none !important;
+}
+#txEditInner #txEditEndsRow[hidden],
+#txEditInner #txEditMoreOptionsPanel[hidden]{
+  display: none !important;
+}
+#txEditInner .tx-add-advanced{
+  margin-top: 2px;
+}
+#txEditInner .tx-add-advanced__expander{
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: auto;
+  max-width: max-content;
+  box-sizing: border-box;
+  padding: 0 2px 0 var(--tx-add-label-inset, 3ch);
+  min-height: 30px;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+#txEditInner .tx-add-advanced__expander-label{
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#txEditInner .tx-add-advanced__panel{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+  padding-left: 0;
+  border-left: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+#txEditInner #txEditRecurringVariableWrap.tx-edit-variable-form-row{
+  margin-top: 4px;
+  width: 100%;
+}
+#txEditInner #txEditRecurringVariableWrap .tx-edit-variable-toggle{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+}
+#txEditInner #txEditRecurringVariableWrap .tx-edit-variable-toggle__head{
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  max-width: 100%;
+}
+#txEditInner #txEditRecurringVariableWrap .tx-edit-variable-toggle__label{
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(100, 116, 139, 0.72);
+  white-space: nowrap;
+}
+#txEditInner #txEditRecurringVariableWrap .tx-edit-variable-row__hint{
+  display: block;
+  margin: 0;
+  padding: 0 0 0 calc(13px + 0.4rem);
+  font-size: 9.5px;
+  line-height: 1.32;
+  color: rgba(100, 116, 139, 0.52);
+  white-space: nowrap;
+  max-width: 100%;
+}
+#txEditInner #txEditRecurringVariableWrap .tx-edit-variable-row__input{
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  margin: 0.12em 0 0;
 }
 .modal--tx-add #txAddScheduleCompact{
   margin-top: 4px;
@@ -29470,6 +29742,12 @@ body[data-bw-view="calendar"] .cal-cell.bw-tour-target--reconcile-head .cal-ledg
   background: color-mix(in srgb, var(--accent) 10%, #ffffff);
   border-radius: 8px;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+body[data-bw-view="calendar"] #sidebarReconcileRow.bw-tour-target--sidebar-reconcile{
+  background: color-mix(in srgb, var(--accent) 6%, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+  padding: 6px 8px 7px;
 }
 
 body[data-bw-view="calendar"] #sidebarCashHealthCard.bw-tour-support-highlight--sidebar-soft,
@@ -31291,7 +31569,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .calendar--mobile .cal-ledger-metrics{
     margin-top: 4px;
     padding-top: 8px;
-    border-top: 1px solid rgba(17, 24, 39, 0.06);
+    border-top: 1px solid rgba(17, 24, 39, 0.04);
     align-items: stretch;
     text-align: left;
   }
@@ -31321,42 +31599,33 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-stat.cal-balance{
-    font-size: 12.75px;
-    font-weight: 550;
+    font-size: 13px;
+    line-height: 1.24;
+    font-weight: 500;
   }
   .calendar--mobile .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--risk):not(.cal-balance--below-floor):not(.cal-balance--watch-zone){
     color: rgba(71, 85, 105, 0.92);
   }
-  .calendar--mobile .cal-cell--density-sparse .cal-stat.cal-balance{
-    font-size: 13px;
-  }
-  .calendar--mobile .cal-cell--no-tx .cal-stat.cal-balance{
-    font-size: 12.5px;
-    font-weight: 540;
-  }
   .calendar--mobile .cal-cell--no-tx .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--watch-zone):not(.cal-balance--risk){
     color: rgba(71, 85, 105, 0.88);
   }
-
-  /* Keep today / status / risk treatments readable above the quieter default balance. */
-  .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-stat.cal-balance,
-  .calendar--mobile .cal-balance-strip--has-status .cal-stat.cal-balance,
-  .calendar--mobile .cal-stat.cal-balance.cal-balance--watch-zone,
-  .calendar--mobile .cal-stat.cal-balance.cal-balance--risk,
-  .calendar--mobile .cal-stat.cal-balance.is-negative{
-    font-weight: 650;
+  .calendar--mobile .cal-daynum:has(.cal-day-reconcile-action){
+    justify-content: space-between;
+  }
+  .calendar--mobile .cal-day-reconcile-action{
+    min-height: 32px;
+    margin-right: 0;
+    padding: 4px 6px;
+    font-size: 11px;
+    color: rgba(71, 85, 105, 0.7);
   }
   .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit .cal-balance-strip__row::before{
-    color: rgba(11, 61, 46, 0.72);
-    font-weight: 600;
+    content: "Balance";
+    font-weight: 500;
+    color: rgba(100, 116, 139, 0.62);
   }
-  .calendar--mobile .cal-cell.cal-cell--today:not(.cal-cell--out):not(.cal-cell--before-start) .cal-stat.cal-balance:not(.is-negative):not(.cal-balance--below-floor):not(.cal-balance--risk){
-    color: rgba(11, 61, 46, 0.88);
-  }
-
   .calendar--mobile .cal-stat.cal-balance.cal-balance--below-floor{
-    font-size: 13px;
-    font-weight: 600;
+    color: rgba(146, 64, 14, 0.88);
   }
 
   body[data-bw-view="transactions"] .tm{
@@ -31486,41 +31755,27 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     align-items: stretch;
     gap: 6px;
   }
+  #txEditInner .tx-add-advanced__expander{
+    min-height: 40px;
+    padding-left: 0;
+  }
+  #txEditInner #txEditRecurringVariableWrap .tx-edit-variable-row__input{
+    width: 18px;
+    height: 18px;
+  }
 
   .modal--tx-add .tx-add-form .form-row-h,
   .modal--tx-add .tx-add-schedule-compact .form-row-h,
   .modal--tx-add .tx-add-end-detail__row,
   .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row,
-  .modal--tx-add .tx-add-variable-block,
-  .modal--tx-add .tx-add-advanced__panel{
+  .modal--tx-add .tx-add-variable-form-row,
+  .modal--tx-add .tx-add-cat-color-row{
     grid-template-columns: 1fr;
     row-gap: 8px;
   }
-  .modal--tx-add .tx-add-variable-form-row{
-    display: contents;
-  }
-  .modal--tx-add .tx-add-variable-block .form-row-h__label{
-    grid-column: 1;
-    grid-row: 1;
-    padding-right: 0;
-    justify-content: flex-end;
-    text-align: right;
-  }
   .modal--tx-add .tx-add-variable-block .form-row-h__label label{
-    text-align: right;
+    white-space: normal;
   }
-  .modal--tx-add .tx-add-variable-block__caption{
-    padding-left: 0;
-  }
-  .modal--tx-add .tx-add-variable-block .tx-add-variable-field-wrap{
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .modal--tx-add .tx-add-variable-block__caption{
-    grid-column: 1;
-    grid-row: 3;
-  }
-  .modal--tx-add .tx-add-cat-color-row,
   .modal--tx-add .tx-add-notes-row{
     display: grid;
     grid-template-columns: 1fr;
@@ -32245,6 +32500,16 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     min-height: 44px;
   }
 
+  .modal.modal--review-amount{
+    width: min(100%, 380px);
+    max-width: calc(100vw - 16px);
+  }
+  .review-amount__actions #reviewAmountCancelBtn,
+  .review-amount__actions #reviewAmountConfirmBtn,
+  button.review-amount__edit-link{
+    min-height: 44px;
+  }
+
   .apply-scope-option{
     min-height: 44px;
   }
@@ -32541,11 +32806,6 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   border-color: rgba(100, 116, 139, 0.38);
   outline: none;
 }
-.cal-balance-status-pill--reconciled{
-  color: rgba(22, 101, 52, 0.9);
-  background: rgba(220, 252, 231, 0.72);
-  border-color: rgba(22, 101, 52, 0.14);
-}
 .cal-balance-status-pill--adjusted{
   color: rgba(130, 112, 94, 0.88);
   background: rgba(248, 245, 240, 0.9);
@@ -32762,6 +33022,29 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   outline: 2px solid rgba(100, 116, 139, 0.45);
   outline-offset: 2px;
 }
+.cal-confirmed-tip--reconcile .cal-confirmed-tip__edit-btn{
+  width: 100%;
+  justify-content: center;
+  color: #fff;
+  background: var(--accent);
+  border-color: rgba(11, 61, 46, 0.22);
+  box-shadow: 0 1px 3px rgba(11, 61, 46, 0.12);
+}
+.cal-confirmed-tip--reconcile .cal-confirmed-tip__edit-btn:hover{
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+  border-color: rgba(11, 61, 46, 0.28);
+  color: #fff;
+  filter: none;
+}
+.cal-confirmed-tip--reconcile .cal-confirmed-tip__edit-btn:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+@media (max-width: 820px){
+  .cal-confirmed-tip--reconcile .cal-confirmed-tip__edit-btn{
+    min-height: 44px;
+  }
+}
 .cal-confirmed-tip__edit-btn-icon{
   display: inline-flex;
   align-items: center;
@@ -32905,6 +33188,13 @@ body[data-bw-view="reports"] .cash-health-status--review{
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid rgba(17, 24, 39, 0.07);
+}
+body[data-bw-view="calendar"] .sidebar-reconcile,
+body[data-bw-view="transactions"] .sidebar-reconcile,
+body[data-bw-view="settings"] .sidebar-reconcile,
+body[data-bw-view="reports"] .sidebar-reconcile{
+  margin-top: 12px;
+  padding-top: 10px;
 }
 body[data-bw-view="calendar"] .cash-health-status--balance .cash-health-status__row,
 body[data-bw-view="transactions"] .cash-health-status--balance .cash-health-status__row,
@@ -33177,7 +33467,7 @@ body[data-bw-view="settings"] #sidebarBodyMonth .total--net,
 body[data-bw-view="reports"] #sidebarBodyMonth .total--net{
   margin-top: 1px;
   margin-bottom: 0;
-  padding: 5px 4px;
+  padding: 5px 2px;
   background: rgba(236, 253, 245, 0.42);
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger),
@@ -33268,13 +33558,13 @@ body[data-bw-view="calendar"] #sidebarBodyMonth .total--expense{
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:not(:has(.v.danger)){
   margin-top: 8px;
-  padding: 8px 8px;
+  padding: 8px 2px;
   border-radius: 8px;
   background: #e7f6ee;
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger){
   margin-top: 8px;
-  padding: 8px 8px;
+  padding: 8px 2px;
 }
 
 
@@ -34180,15 +34470,15 @@ body[data-bw-view] #sidebarBodyMonth .total{
   justify-content: space-between;
   gap: 12px;
   margin: 0;
-  padding: 8px 2px;
+  padding: 6px 2px;
   border: none;
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
   border-radius: 0;
   background: transparent;
 }
 body[data-bw-view] #sidebarBodyMonth .total--net{
-  margin-top: 4px;
-  padding: 8px 2px;
+  margin-top: 3px;
+  padding: 6px 2px;
   border-bottom: none;
   border-radius: 8px;
   background: rgba(254, 242, 242, 0.42);
@@ -34199,7 +34489,7 @@ body[data-bw-view] #sidebarBodyMonth .total--net:not(:has(.v.danger)){
 body[data-bw-view] #sidebarBodyMonth .total .k{
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.01em;
   text-transform: none;
@@ -34209,7 +34499,7 @@ body[data-bw-view] #sidebarBodyMonth .total .v{
   flex: 0 0 auto;
   min-width: 6.5ch;
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.02em;
   text-align: right;
@@ -34450,6 +34740,43 @@ button.secondary.tx-fav-action{
   line-height: 1.2;
   white-space: nowrap;
   touch-action: manipulation;
+}
+.modal--tx-add .tx-fav-action--quiet,
+#txEditInner .tx-fav-action--quiet{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: auto;
+  flex: 0 1 auto;
+  min-height: 36px;
+  margin: 0;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: rgba(100, 116, 139, 0.86);
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.modal--tx-add .tx-fav-action--quiet:hover,
+.modal--tx-add .tx-fav-action--quiet:focus-visible,
+#txEditInner .tx-fav-action--quiet:hover,
+#txEditInner .tx-fav-action--quiet:focus-visible{
+  color: rgba(17, 24, 39, 0.86);
+  background: transparent;
+  box-shadow: none;
+}
+.modal--tx-add .tx-fav-action--quiet[aria-pressed="true"],
+#txEditInner .tx-fav-action--quiet[aria-pressed="true"]{
+  color: rgba(11, 61, 46, 0.78);
 }
 .tx-fav-dialog[hidden]{
   display: none !important;
@@ -34951,6 +35278,11 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   button.secondary.tx-fav-action{
     min-height: 40px;
   }
+  .modal--tx-add .tx-fav-action--quiet,
+  #txEditInner .tx-fav-action--quiet{
+    min-height: 40px;
+    padding: 6px 4px;
+  }
   .modal--tx-add .tx-add-actions-row .tx-add-btn-primary,
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditSave,
   #txEditInner > .modal-actions #txEditFooterSecondary.tx-edit-actions-row #txEditRecurringUpdateBtn{
@@ -35229,5 +35561,215 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   .calendar--mobile .cal-cell.cal-cell--out.cal-cell--cash-health-payment{
     display: flex;
   }
+}
+
+/* Sidebar typography: one restrained hierarchy across Cash Health, Needs Review, and Monthly Cash Flow. */
+body[data-bw-view] .sidebar{
+  --sb-heading-size: 11px;
+  --sb-heading-weight: 600;
+  --sb-heading-tracking: 0.04em;
+  --sb-heading-color: rgba(71, 85, 105, 0.72);
+  --sb-body-size: 13px;
+  --sb-body-weight: 500;
+  --sb-body-color: rgba(51, 65, 85, 0.88);
+  --sb-support-size: 11px;
+  --sb-support-weight: 400;
+  --sb-support-color: rgba(100, 116, 139, 0.72);
+  --sb-amount-size: 13px;
+  --sb-amount-weight: 600;
+}
+body[data-bw-view] #cashOutlookTitle,
+body[data-bw-view] .sidebar-forecast-head h2,
+body[data-bw-view] #sidebarPendingTitle,
+body[data-bw-view] .cash-health-status--review .cash-health-status__label,
+body[data-bw-view] .sidebar-reconcile__label{
+  font-size: var(--sb-heading-size);
+  font-weight: var(--sb-heading-weight);
+  letter-spacing: var(--sb-heading-tracking);
+  text-transform: uppercase;
+  color: var(--sb-heading-color);
+  line-height: 1.2;
+}
+body[data-bw-view] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view] #sidebarPendingTxCard.sidebar-pending--success #sidebarPendingTitle,
+body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view="transactions"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view="settings"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view="reports"] #sidebarPendingTxCard.sidebar-pending--empty #sidebarPendingTitle,
+body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label,
+body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--success .cash-health-status__label{
+  text-transform: none;
+  letter-spacing: -0.011em;
+  font-size: var(--sb-body-size);
+  font-weight: var(--sb-body-weight);
+  line-height: 1.3;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__value,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__value{
+  font-family: inherit;
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-heading-weight);
+  letter-spacing: 0;
+  color: var(--sb-heading-color);
+}
+body[data-bw-view] .sidebar-cash-health__horizon{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  letter-spacing: 0;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .cash-health-card__kicker{
+  font-size: var(--sb-body-size);
+  font-weight: var(--sb-body-weight);
+  letter-spacing: -0.011em;
+  line-height: 1.3;
+  color: var(--sb-body-color);
+}
+body[data-bw-view] .cash-health-card--healthy .cash-health-card__kicker,
+body[data-bw-view] .cash-health-card--below .cash-health-card__kicker,
+body[data-bw-view] .cash-health-card--negative .cash-health-card__kicker{
+  font-size: var(--sb-body-size);
+  font-weight: var(--sb-body-weight);
+  color: var(--sb-body-color);
+}
+body[data-bw-view] .cash-health-card__amount{
+  font-size: var(--sb-amount-size);
+  font-weight: var(--sb-amount-weight);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: rgba(30, 41, 59, 0.9);
+}
+body[data-bw-view] .cash-health-card--below .cash-health-card__amount{
+  color: rgba(146, 64, 14, 0.88);
+}
+body[data-bw-view] .cash-health-card--negative .cash-health-card__amount{
+  color: color-mix(in srgb, var(--danger) 72%, #78716c);
+}
+body[data-bw-view] .cash-health-card__when,
+body[data-bw-view] .cash-health-card__desc{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  letter-spacing: 0;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .pending-attn-name,
+body[data-bw-view="calendar"] .pending-attn-name,
+body[data-bw-view="transactions"] .pending-attn-name,
+body[data-bw-view="settings"] .pending-attn-name,
+body[data-bw-view="reports"] .pending-attn-name,
+body[data-bw-view] .pending-attn-item.is-critical .pending-attn-name,
+body[data-bw-view] .pending-attn-item.is-overdue .pending-attn-name{
+  font-size: var(--sb-body-size);
+  font-weight: var(--sb-body-weight);
+  letter-spacing: -0.011em;
+  line-height: 1.3;
+  color: var(--sb-body-color);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+body[data-bw-view] .pending-attn-meta,
+body[data-bw-view="calendar"] .pending-attn-meta,
+body[data-bw-view="transactions"] .pending-attn-meta,
+body[data-bw-view="settings"] .pending-attn-meta,
+body[data-bw-view="reports"] .pending-attn-meta,
+body[data-bw-view] .pending-attn-item.is-notable .pending-attn-meta,
+body[data-bw-view] .pending-attn-item.is-major .pending-attn-meta{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  letter-spacing: 0;
+  line-height: 1.3;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] .sidebar-reconcile__date{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-support-weight);
+  letter-spacing: 0;
+  line-height: 1.35;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] button.sidebar-reconcile__action{
+  font-size: 12px;
+  font-weight: var(--sb-heading-weight);
+  letter-spacing: 0;
+}
+@media (max-width: 820px){
+  body[data-bw-view] button.sidebar-reconcile__action{
+    min-height: 44px;
+  }
+}
+body[data-bw-view] #sidebarBodyMonth .total .k,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .k,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .k,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .k,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .k,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__k,
+body[data-bw-view="reports"] .totals-compact__k{
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-body-weight);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--sb-support-color);
+}
+body[data-bw-view] #sidebarBodyMonth .total .v,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total .v,
+body[data-bw-view] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net .v,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__v,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__v,
+body[data-bw-view="reports"] .totals-compact__v,
+body[data-bw-view="reports"] .totals-compact__row--net .totals-compact__v{
+  font-size: var(--sb-amount-size);
+  font-weight: var(--sb-amount-weight);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+body[data-bw-view] #sidebarBodyMonth .total--net,
+body[data-bw-view] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net,
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view="calendar"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net,
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view="transactions"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net,
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view="settings"] #sidebarBodyMonth .total--net:has(.v.danger),
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net,
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net:not(:has(.v.danger)),
+body[data-bw-view="reports"] #sidebarBodyMonth .total--net:has(.v.danger){
+  background: transparent;
+  border-radius: 0;
+}
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net{
+  background: transparent;
+}
+body[data-bw-view] #sidebarBodyMonth .total--income .v.ok,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--income .totals-compact__v.ok,
+body[data-bw-view] #sidebarBodyMonth .total--net .v.ok,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__v.ok{
+  color: color-mix(in srgb, var(--ok) 78%, #64748b);
+}
+body[data-bw-view] #sidebarBodyMonth .total--expense .v.danger,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--expense .totals-compact__v.danger,
+body[data-bw-view] #sidebarBodyMonth .total--net .v.danger,
+body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__v.danger{
+  color: color-mix(in srgb, var(--danger) 72%, #78716c);
 }
 

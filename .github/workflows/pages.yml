@@ -30,6 +30,11 @@ jobs:
           node --check frontend/needs-review.js
           node frontend/needs-review.test.js
 
+      - name: Sidebar reconcile
+        run: |
+          node --check frontend/sidebar-reconcile.js
+          node frontend/sidebar-reconcile.test.js
+
       - name: Transaction edit scope
         run: |
           node --check frontend/tx-edit-scope.js

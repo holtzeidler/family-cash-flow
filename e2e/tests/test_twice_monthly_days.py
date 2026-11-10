@@ -123,6 +123,14 @@ def _line(page, iso: str, text: str):
     return page.locator(f'.cal-cell[data-iso="{iso}"] .cal-day-tx-line', has_text=text).first
 
 
+def _open_tx_edit_more_options(page) -> None:
+    toggle = page.locator("#txEditMoreOptionsToggle")
+    panel = page.locator("#txEditMoreOptionsPanel")
+    if toggle.count() and panel.is_hidden():
+        toggle.click()
+    expect(panel).to_be_visible()
+
+
 def _open_line(page, iso: str, text: str) -> None:
     show_month(page, iso[:7], iso)
     line = _line(page, iso, text)
@@ -251,6 +259,7 @@ def test_amount_category_account_notes_and_color_do_not_change_days(page, guard)
     _open_line(page, "2026-03-01", "Bonus")
     page.locator("#txEditAmount").fill("250")
     page.locator("#txEditNotes").fill("Holt")
+    _open_tx_edit_more_options(page)
     page.locator("#txEditCategoryId_search").evaluate(
         """() => {
           const st = categoryComboboxRegistry.get("txEditCategoryId");

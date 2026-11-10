@@ -155,6 +155,7 @@ function isBillingWriteRequest(path, method) {
   if (p.includes("/webhook")) return false;
   if (/^\/api\/families\/?(\?|$)/.test(p) && m === "POST") return false;
   if (p.includes("/api/families/")) return true;
+  if (p.includes("/api/reimbursements")) return true;
   return false;
 }
 
@@ -651,6 +652,10 @@ let state = {
   needsReviewExpectedByKey: new Map(),
   needsReviewActualByKey: new Map(),
   reconciledDates: new Set(),
+  reconciledDatesByMonth: new Map(),
+  lastReconciledIso: null,
+  reconciledCacheFamilyId: null,
+  reconciledLookbackDone: false,
   verifiedBalances: new Map(),
   forecastConfidence: null,
   monthDailyBalances: new Map(),
@@ -1748,6 +1753,11 @@ const calendarGrid = document.getElementById("calendarGrid");
 const calViewSimplified = document.getElementById("calViewSimplified");
 const calViewDetailed = document.getElementById("calViewDetailed");
 
+const CAL_STARTING_POINT_FLAG_SVG =
+  '<svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg>';
+const CAL_RECONCILED_CHECK_SVG =
+  '<svg class="cal-balance-reconciled-mark__icon" viewBox="0 0 16 16" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3.2 8.35 6.55 11.5 12.8 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 // 5-year projection collapse
 const PROJECTION_COLLAPSED_KEY = "familyCashFlow_projectionCollapsed";
 function applyProjectionCollapsed(collapsed) {
@@ -1976,6 +1986,7 @@ if (instanceRecurrence) {
   instanceRecurrence.addEventListener("change", () => {
     updateInstanceTwiceMonthlyVisibility();
     updateTxEditActualScheduleUi();
+    syncTxEditEndsRowVisibility();
   });
 }
 if (instanceEndsMode) {
@@ -2032,6 +2043,7 @@ const reconcileErr = document.getElementById("reconcileErr");
 const reconcileConfirmErr = document.getElementById("reconcileConfirmErr");
 const reconcileTitle = document.getElementById("reconcileTitle");
 const reconcileDateDisplay = document.getElementById("reconcileDateDisplay");
+const reconcileDateInput = document.getElementById("reconcileDateInput");
 const reconcileBalanceBlock = document.getElementById("reconcileBalanceBlock");
 const reconcileForecastBal = document.getElementById("reconcileForecastBal");
 const reconcileConfirmState = document.getElementById("reconcileConfirmState");
@@ -2073,6 +2085,9 @@ const forecastConfidenceLabel = document.getElementById("forecastConfidenceLabel
 const forecastConfidenceDetail = document.getElementById("forecastConfidenceDetail");
 const forecastConfidenceHelper = document.getElementById("forecastConfidenceHelper");
 const forecastConfidenceVerifyBtn = document.getElementById("forecastConfidenceVerifyBtn");
+const sidebarReconcileRow = document.getElementById("sidebarReconcileRow");
+const sidebarReconcileDetail = document.getElementById("sidebarReconcileDetail");
+const sidebarReconcileBtn = document.getElementById("sidebarReconcileBtn");
 
 // Add transaction modal (one-time or recurring from calendar)
 const txAddModal = document.getElementById("txAddModal");
@@ -2094,7 +2109,6 @@ const txAddSave = document.getElementById("txAddSave");
 const txAddCancel = document.getElementById("txAddCancel");
 const txAddAmountValidation = document.getElementById("txAddAmountValidation");
 const txAddCategoryValidation = document.getElementById("txAddCategoryValidation");
-const txAddAccountValidation = document.getElementById("txAddAccountValidation");
 const txAddDateValidation = document.getElementById("txAddDateValidation");
 let txAddValidationTouched = false;
 /** Category hint only after Add is clicked without a category (not when other fields are edited). */
@@ -2102,6 +2116,104 @@ let txAddCategoryValidationShown = false;
 let txAddValidationBound = false;
 let txAddSaveInFlight = false;
 const TX_ADD_SAVE_LABEL = "Add transaction";
+
+function defaultCheckingAccountId() {
+  const accounts = Array.isArray(state.accounts) ? state.accounts : [];
+  const checking = accounts.find((a) => String(a?.type || "").toLowerCase() === "checking");
+  const picked = checking || accounts[0];
+  return picked && picked.id != null ? String(picked.id) : "";
+}
+
+function syncTxAddHiddenAccount(preferredId) {
+  if (!txAddAccountId) return "";
+  renderAccountSelect(txAddAccountId, state.accounts || []);
+  const preferred = preferredId != null && String(preferredId).trim() ? String(preferredId) : "";
+  const validPreferred = preferred && (state.accounts || []).some((a) => String(a.id) === preferred);
+  const next = validPreferred ? preferred : defaultCheckingAccountId();
+  txAddAccountId.value = next;
+  return next;
+}
+
+function txAddMoreOptionsHasValues() {
+  const variable = !!(txAddVariable && txAddVariable.checked);
+  const color = !!(txAddColorTouched && txAddSelectedBgColor);
+  return !!(variable || color);
+}
+
+function setTxAddMoreOptionsOpen(open) {
+  const btn = document.getElementById("txAddMoreOptionsToggle");
+  const panel = document.getElementById("txAddMoreOptionsPanel");
+  if (!btn || !panel) return;
+  const isOpen = !!open;
+  panel.hidden = !isOpen;
+  btn.classList.toggle("is-open", isOpen);
+  btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function syncTxAddMoreOptionsReveal() {
+  if (txAddMoreOptionsHasValues()) setTxAddMoreOptionsOpen(true);
+}
+
+function bindTxAddMoreOptions() {
+  const btn = document.getElementById("txAddMoreOptionsToggle");
+  if (!btn || btn.dataset.bound === "1") return;
+  btn.dataset.bound = "1";
+  btn.addEventListener("click", () => {
+    const panel = document.getElementById("txAddMoreOptionsPanel");
+    setTxAddMoreOptionsOpen(!!(panel && panel.hidden));
+  });
+  txAddVariable?.addEventListener("change", syncTxAddMoreOptionsReveal);
+}
+
+function syncTxEditHiddenAccount(preferredId) {
+  if (!instanceAccountId) return "";
+  renderAccountSelect(instanceAccountId, state.accounts || []);
+  const preferred = preferredId != null && String(preferredId).trim() ? String(preferredId) : "";
+  const validPreferred = preferred && (state.accounts || []).some((a) => String(a.id) === preferred);
+  const next = validPreferred ? preferred : defaultCheckingAccountId();
+  instanceAccountId.value = next;
+  return next;
+}
+
+function txEditMoreOptionsHasValues() {
+  const variableWrap = document.getElementById("txEditRecurringVariableWrap");
+  const variableVisible = !!(variableWrap && variableWrap.style.display !== "none");
+  const variable = variableVisible && !!(seriesVariable && seriesVariable.checked);
+  const color = !!(txEditSelectedBgColor && String(txEditSelectedBgColor).trim());
+  return !!(variable || color);
+}
+
+function setTxEditMoreOptionsOpen(open) {
+  const btn = document.getElementById("txEditMoreOptionsToggle");
+  const panel = document.getElementById("txEditMoreOptionsPanel");
+  if (!btn || !panel) return;
+  const isOpen = !!open;
+  panel.hidden = !isOpen;
+  btn.classList.toggle("is-open", isOpen);
+  btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function syncTxEditMoreOptionsReveal() {
+  if (txEditMoreOptionsHasValues()) setTxEditMoreOptionsOpen(true);
+}
+
+function bindTxEditMoreOptions() {
+  const btn = document.getElementById("txEditMoreOptionsToggle");
+  if (!btn || btn.dataset.bound === "1") return;
+  btn.dataset.bound = "1";
+  btn.addEventListener("click", () => {
+    const panel = document.getElementById("txEditMoreOptionsPanel");
+    setTxEditMoreOptionsOpen(!!(panel && panel.hidden));
+  });
+  seriesVariable?.addEventListener("change", syncTxEditMoreOptionsReveal);
+}
+
+function syncTxEditEndsRowVisibility() {
+  const endsRow = document.getElementById("txEditEndsRow");
+  if (!endsRow) return;
+  const show = transactionEditMode === "recurring" || txEditScheduleRecurrenceActive();
+  endsRow.hidden = !show;
+}
 
 function setTxAddSaveBusy(busy) {
   txAddSaveInFlight = !!busy;
@@ -2125,7 +2237,7 @@ function txAddFormValidationState() {
   const amountOk = amountVal !== "" && Number(amountVal) > 0;
   const categoryId = categoryIdFromCategoryField("txAddCategoryId");
   const categoryOk = categoryId != null && Number.isFinite(Number(categoryId));
-  const accountOk = !!(txAddAccountId?.value);
+  const accountOk = !!(txAddAccountId?.value || defaultCheckingAccountId());
   const dateOk = !!(txAddDate?.value);
   return { amountOk, categoryOk, accountOk, dateOk, valid: amountOk && categoryOk && accountOk && dateOk };
 }
@@ -2140,7 +2252,6 @@ function resetTxAddFormValidation() {
   txAddCategoryValidationShown = false;
   setTxAddFieldValidation(txAddAmountValidation, "");
   setTxAddFieldValidation(txAddCategoryValidation, "");
-  setTxAddFieldValidation(txAddAccountValidation, "");
   setTxAddFieldValidation(txAddDateValidation, "");
 }
 
@@ -2151,11 +2262,9 @@ function updateTxAddFormValidity(opts = {}) {
   if (forceShow && !st.categoryOk) txAddCategoryValidationShown = true;
   if (showHints) {
     setTxAddFieldValidation(txAddAmountValidation, !st.amountOk ? "Enter an amount greater than zero." : "");
-    setTxAddFieldValidation(txAddAccountValidation, !st.accountOk ? "Choose an account." : "");
     setTxAddFieldValidation(txAddDateValidation, !st.dateOk ? "Choose a date." : "");
   } else {
     setTxAddFieldValidation(txAddAmountValidation, "");
-    setTxAddFieldValidation(txAddAccountValidation, "");
     setTxAddFieldValidation(txAddDateValidation, "");
   }
   setTxAddFieldValidation(
@@ -2177,7 +2286,8 @@ function bindTxAddFormValidation() {
     syncTxAddSecondMonthlyDateDefault();
     syncTxAddSecondYearlyDateDefault();
   });
-  txAddAccountId?.addEventListener("change", markTouched);
+  bindTxAddMoreOptions();
+  bindTxEditMoreOptions();
 }
 
 function txAddRepeatsActive() {
@@ -2250,10 +2360,7 @@ function updateTxEditActualScheduleUi() {
   setTxEditEndsModeInteractive(on);
   if (instanceEndCount) instanceEndCount.disabled = !on;
   if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = !on;
-  if (instanceAccountId) {
-    instanceAccountId.disabled = !on;
-    instanceAccountId.title = on ? "" : "Choose an account when you set this transaction to repeat.";
-  }
+  if (on) syncTxEditHiddenAccount(instanceAccountId?.value);
   const varWrap = document.getElementById("txEditRecurringVariableWrap");
   if (varWrap) varWrap.style.display = on ? "block" : "none";
   const wrapSch = document.getElementById("txEditRecurringScheduleWrap");
@@ -2262,6 +2369,8 @@ function updateTxEditActualScheduleUi() {
     updateInstanceEndsDetailUi();
   } catch (_) {}
   updateInstanceTwiceMonthlyVisibility();
+  syncTxEditEndsRowVisibility();
+  if (on) syncTxEditMoreOptionsReveal();
 }
 
 function syncTxAddSecondMonthlyDateDefault() {
@@ -2590,7 +2699,7 @@ async function loadCashHealthRunUpItems(fid, mode, startIso, endIso) {
 function syncSidebarCashHealthCardVisibility() {
   if (!sidebarCashHealthCard) return;
   const v = document.body?.dataset?.bwView;
-  const showOnView = v === "calendar" || v === "transactions" || v === "reports" || v === "settings";
+  const showOnView = v === "calendar" || v === "transactions" || v === "reports" || v === "settings" || v === "reimbursements";
   sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
 }
 
@@ -3241,10 +3350,12 @@ const navCalendarView = document.getElementById("navCalendarView");
 const navTransactionView = document.getElementById("navTransactionView");
 const navSettingsView = document.getElementById("navSettingsView");
 const navReportsView = document.getElementById("navReportsView");
+const navReimbursementsView = document.getElementById("navReimbursementsView");
 const calendarViewPanel = document.getElementById("calendarViewPanel");
 const transactionViewPanel = document.getElementById("transactionViewPanel");
 const settingsViewPanel = document.getElementById("settingsViewPanel");
 const reportsViewPanel = document.getElementById("reportsViewPanel");
+const reimbursementsViewPanel = document.getElementById("reimbursementsViewPanel");
 function isChartCustomRangeActive() {
   return !!document.querySelector('.reports-horizon__btn[data-report-days="custom"].is-active');
 }
@@ -3400,6 +3511,17 @@ const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
 const sidebarPendingTitle = document.getElementById("sidebarPendingTitle");
 const sidebarPendingStatus = document.getElementById("sidebarPendingStatus");
+const reviewAmountModal = document.getElementById("reviewAmountModal");
+const reviewAmountName = document.getElementById("reviewAmountName");
+const reviewAmountDate = document.getElementById("reviewAmountDate");
+const reviewAmountEstimate = document.getElementById("reviewAmountEstimate");
+const reviewAmountInput = document.getElementById("reviewAmountInput");
+const reviewAmountErr = document.getElementById("reviewAmountErr");
+const reviewAmountCancelBtn = document.getElementById("reviewAmountCancelBtn");
+const reviewAmountConfirmBtn = document.getElementById("reviewAmountConfirmBtn");
+const reviewAmountEditBtn = document.getElementById("reviewAmountEditBtn");
+let reviewAmountContext = null;
+let reviewAmountSaving = false;
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
 
@@ -3771,9 +3893,10 @@ function setActiveTopView(view) {
   if (transactionViewPanel) transactionViewPanel.hidden = v !== "transactions";
   if (settingsViewPanel) settingsViewPanel.hidden = v !== "settings";
   if (reportsViewPanel) reportsViewPanel.hidden = v !== "reports";
+  if (reimbursementsViewPanel) reimbursementsViewPanel.hidden = v !== "reimbursements";
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
   syncSidebarCashHealthCardVisibility();
-  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions");
+  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions" || v === "reimbursements");
   if (v === "transactions" || v === "reports") {
     // Reports use the same upcoming actuals list to power the risk heatmap's
     // "triggered by" detail; load lazily on view entry so we don't fetch on
@@ -3808,6 +3931,10 @@ function setActiveTopView(view) {
   if (navReportsView) {
     navReportsView.classList.toggle("is-active", v === "reports");
     navReportsView.setAttribute("aria-selected", v === "reports" ? "true" : "false");
+  }
+  if (navReimbursementsView) {
+    navReimbursementsView.classList.toggle("is-active", v === "reimbursements");
+    navReimbursementsView.setAttribute("aria-selected", v === "reimbursements" ? "true" : "false");
   }
   if (v === "reports") {
     initReportsLeftNav();
@@ -3883,6 +4010,14 @@ if (navReportsView) {
     setActiveTopView("reports");
   });
 }
+if (navReimbursementsView) {
+  navReimbursementsView.addEventListener("click", (e) => {
+    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
+    e.preventDefault();
+    setActiveTopView("reimbursements");
+  });
+}
+
 document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
   btn.addEventListener("click", () => {
     const k = btn.dataset.settingsKey;
@@ -4085,21 +4220,21 @@ function settingsSectionFromLocation() {
 function getInitialTopViewFromUrlOrStorage() {
   try {
     const forced = window.__BW_FORCE_VIEW ? String(window.__BW_FORCE_VIEW).trim().toLowerCase() : "";
-    if (forced === "calendar" || forced === "transactions" || forced === "reports" || forced === "settings") {
+    if (forced === "calendar" || forced === "transactions" || forced === "reports" || forced === "settings" || forced === "reimbursements") {
       return forced;
     }
   } catch (_) {}
   try {
     const q = new URLSearchParams(window.location.search);
     const urlView = String(q.get("view") || "").trim().toLowerCase();
-    if (urlView === "calendar" || urlView === "transactions" || urlView === "reports" || urlView === "settings") {
+    if (urlView === "calendar" || urlView === "transactions" || urlView === "reports" || urlView === "settings" || urlView === "reimbursements") {
       return urlView;
     }
   } catch (_) {}
   try {
     const storedView = localStorage.getItem(ACTIVE_VIEW_KEY);
     const v = storedView ? String(storedView) : "";
-    if (v === "calendar" || v === "transactions" || v === "reports" || v === "settings") {
+    if (v === "calendar" || v === "transactions" || v === "reports" || v === "settings" || v === "reimbursements") {
       return v;
     }
   } catch (_) {}
@@ -4162,8 +4297,10 @@ if (calViewSimplified) calViewSimplified.addEventListener("click", () => setCale
 if (calViewDetailed) calViewDetailed.addEventListener("click", () => setCalendarDetailMode("detailed"));
 // Default month before first render so the grid is not cleared with an empty YYYY-MM.
 setDefaultMonth();
-// Apply initial toggle state
-setCalendarDetailMode(state.calendarDetailMode);
+// Apply initial toggle state. Keep script init going if the first paint throws.
+try {
+  setCalendarDetailMode(state.calendarDetailMode);
+} catch (_) {}
 
 // Calendar mode selector is intentionally hidden in the UI (defaults to "both"),
 // but keep the handler wired if it is re-enabled later.
@@ -4181,6 +4318,7 @@ if (calendarMode) {
 
 familySelect.addEventListener("change", async () => {
   state.activeFamilyId = Number(familySelect.value);
+  resetReconciledDateCache();
   invalidateBillingStatusCache();
   riskCalendarViewYm = "";
   lastRiskCalendarDaily = [];
@@ -4827,7 +4965,7 @@ if (txAddSave) {
 
       if (repeats) {
         const recurrenceVal = txAddRecurrence?.value || "monthly";
-        const accountIdVal = txAddAccountId?.value || "";
+        const accountIdVal = syncTxAddHiddenAccount(txAddAccountId?.value) || defaultCheckingAccountId();
         if (!accountIdVal) throw new Error("Account is required");
 
         const endCountRaw = txAddEndCount?.value != null ? String(txAddEndCount.value).trim() : "";
@@ -4979,7 +5117,7 @@ function renderTxEditCategoryOptions() {
 function syncTxEditDeleteLabel() {
   const btn = document.getElementById("txEditDelete");
   if (!btn) return;
-  btn.textContent = transactionEditMode === "recurring" ? "Skip or end" : "Delete";
+  btn.textContent = "Delete";
 }
 
 function applyTransactionEditMode(mode, opts = {}) {
@@ -4995,6 +5133,9 @@ function applyTransactionEditMode(mode, opts = {}) {
     if (txEditTopStrip) txEditTopStrip.style.display = "";
     if (instanceRecurrence) instanceRecurrence.disabled = false;
     if (instanceAccountId) instanceAccountId.disabled = false;
+    bindTxEditMoreOptions();
+    setTxEditMoreOptionsOpen(false);
+    syncTxEditEndsRowVisibility();
     if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
     if (instanceEndCount) instanceEndCount.disabled = false;
     if (instanceEndsMode) {
@@ -5065,7 +5206,11 @@ function applyTransactionEditMode(mode, opts = {}) {
     instanceRecurrence.title = "How often this repeats";
   }
   const acctCol = document.getElementById("txEditAccountCol");
-  if (acctCol) acctCol.style.display = "block";
+  if (acctCol) acctCol.style.display = "none";
+  if (instanceAccountId) {
+    instanceAccountId.disabled = false;
+    instanceAccountId.removeAttribute("title");
+  }
   if (recurring) {
     if (instanceSecondDayOfMonth) instanceSecondDayOfMonth.disabled = false;
     if (instanceEndCount) instanceEndCount.disabled = false;
@@ -5073,16 +5218,17 @@ function applyTransactionEditMode(mode, opts = {}) {
     try {
       updateInstanceEndsDetailUi();
     } catch (_) {}
-    if (instanceAccountId) {
-      instanceAccountId.disabled = false;
-      instanceAccountId.title = "";
-    }
+    syncTxEditHiddenAccount(instanceAccountId?.value);
     updateInstanceTwiceMonthlyVisibility();
     const varWrap = document.getElementById("txEditRecurringVariableWrap");
     if (varWrap) varWrap.style.display = "block";
   } else {
     updateTxEditActualScheduleUi();
   }
+  syncTxEditEndsRowVisibility();
+  bindTxEditMoreOptions();
+  setTxEditMoreOptionsOpen(false);
+  syncTxEditMoreOptionsReveal();
 
   const prim = document.getElementById("txEditRecurringPrimaryActions");
   if (prim) prim.style.display = "none";
@@ -5100,16 +5246,7 @@ function applyTransactionEditMode(mode, opts = {}) {
     txEditCancel.classList.toggle("tx-edit-dismiss--close", recurring);
   }
 
-  const varWrapEl = document.getElementById("txEditRecurringVariableWrap");
   const schWrap = document.getElementById("txEditRecurringScheduleWrap");
-  const panel = document.getElementById("expectedEditInstancePanel");
-  if (recurring) {
-    if (varWrapEl && schWrap && varWrapEl.parentNode !== schWrap) {
-      schWrap.appendChild(varWrapEl);
-    }
-  } else if (varWrapEl && panel && schWrap && varWrapEl.parentNode === schWrap) {
-    panel.appendChild(varWrapEl);
-  }
   if (schWrap) {
     schWrap.classList.toggle("tx-edit-recurring-group", recurring);
   }
@@ -5216,9 +5353,7 @@ async function openTxEditModalAsync(tx) {
   }
   txEditColorTouched = false;
   refreshTxCategoryColorPickers();
-  if (instanceAccountId && state.accounts && state.accounts.length > 0) {
-    instanceAccountId.value = String(state.accounts[0].id);
-  }
+  syncTxEditHiddenAccount(tx && tx.account_id != null ? tx.account_id : "");
   show(txEditErr, "");
   closeFavoriteNamePrompt();
   txEditLinkedFavoriteId = null;
@@ -5303,15 +5438,17 @@ function paintTxEditApplyScopeCopy() {
 function currentTxEditDeleteScopeCopy() {
   if (typeof formatTxEditDeleteScopeCopy !== "function") {
     return {
-      title: "Skip or end this series",
-      helper: "Choose whether to skip only this date, or stop later dates from here. Past dates stay.",
-      instanceTitle: "Skip this occurrence",
-      instanceHint: "Takes this date off the schedule. Later dates stay. The series continues.",
-      seriesTitle: "End recurring series from this date",
-      seriesHint: "Stops this date and every later occurrence. Earlier dates stay.",
-      instanceConfirm: "Skip",
-      seriesConfirm: "End series",
-      idleConfirm: "Continue",
+      title: "Delete this transaction?",
+      helper: "This date is one occurrence in a recurring series.",
+      instanceTitle: "Delete only this date",
+      instanceHint: "All other dates stay the same.",
+      seriesTitle: "Delete this date and future occurrences",
+      seriesHint: "Earlier dates stay the same.",
+      instanceConfirm: "Delete",
+      seriesConfirm: "Delete",
+      idleConfirm: "Delete",
+      recommended: "instance",
+      defaultChoice: "instance",
     };
   }
   return formatTxEditDeleteScopeCopy({
@@ -5331,6 +5468,10 @@ function paintTxEditDeleteScopeCopy() {
   setText("txEditDeleteScopeInstanceHint", copy.instanceHint);
   setText("txEditDeleteScopeFutureTitle", copy.seriesTitle);
   setText("txEditDeleteScopeFutureHint", copy.seriesHint);
+  const futureBtn = document.getElementById("txEditDeleteScopeFutureBtn");
+  const instanceBtn = document.getElementById("txEditDeleteScopeInstanceBtn");
+  if (futureBtn) futureBtn.classList.toggle("apply-scope-option--recommended", copy.recommended === "future");
+  if (instanceBtn) instanceBtn.classList.toggle("apply-scope-option--recommended", copy.recommended === "instance");
   const confirmBtn = document.getElementById("txEditDeleteScopeConfirmBtn");
   if (confirmBtn && !txEditDeleteScopeChoice) confirmBtn.textContent = copy.idleConfirm;
   return copy;
@@ -5384,7 +5525,8 @@ function syncBwTxEditVisualViewport() {
   const open =
     txEditModal?.classList.contains("modal-overlay--open") ||
     document.getElementById("txEditApplyScopeModal")?.classList.contains("modal-overlay--open") ||
-    document.getElementById("txEditDeleteScopeModal")?.classList.contains("modal-overlay--open");
+    document.getElementById("txEditDeleteScopeModal")?.classList.contains("modal-overlay--open") ||
+    reviewAmountModal?.classList.contains("modal-overlay--open");
   const root = document.documentElement;
   if (!root) return;
   if (!open || !window.visualViewport) {
@@ -5451,15 +5593,19 @@ function openTxEditDeleteScopeModal() {
   const m = document.getElementById("txEditDeleteScopeModal");
   if (!m) return;
   show(document.getElementById("txEditDeleteScopeErr"), "");
-  paintTxEditDeleteScopeCopy();
+  const copy = paintTxEditDeleteScopeCopy();
   resetTxEditDeleteScopeSelection();
+  setTxEditDeleteScopeChoice(copy.defaultChoice || "instance");
   try {
     m.style.display = "";
   } catch (_) {}
   m.classList.add("modal-overlay--open");
   m.setAttribute("aria-hidden", "false");
   syncBwTxEditVisualViewport();
-  const firstOpt = document.getElementById("txEditDeleteScopeFutureBtn");
+  const firstOpt =
+    copy.defaultChoice === "future"
+      ? document.getElementById("txEditDeleteScopeFutureBtn")
+      : document.getElementById("txEditDeleteScopeInstanceBtn");
   requestAnimationFrame(() => firstOpt?.focus?.());
 }
 
@@ -5768,13 +5914,14 @@ function ensureFavoriteStar(mode) {
     btn = document.createElement("button");
     btn.type = "button";
     btn.id = id;
-    btn.className = "secondary tx-fav-action";
+    btn.className = "tx-fav-action tx-fav-action--quiet";
     btn.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       openFavoriteNamePrompt(mode);
     });
   }
+  btn.className = "tx-fav-action tx-fav-action--quiet";
   if (mode === "edit") {
     if (!document.querySelector("#txEditModal .tx-edit-foot-leading, #txEditModal .modal-actions--tx-edit-foot")) return;
     placeEditFavoriteButton(btn);
@@ -5835,7 +5982,7 @@ function readFavoriteForm(mode) {
     amount: (edit ? txEditAmount : txAddAmount)?.value || "",
     categoryId: category ? category.id : categoryId,
     categoryName: category ? String(category.name || "") : "",
-    accountId: (edit ? instanceAccountId : txAddAccountId)?.value || "",
+    accountId: (edit ? instanceAccountId?.value : syncTxAddHiddenAccount(txAddAccountId?.value)) || "",
     notes: (edit ? txEditNotes : txAddNotes)?.value || "",
     description: edit ? txEditDescriptionSnapshot : "",
   };
@@ -5965,10 +6112,7 @@ function applyFavoriteToOpenAddForm(favorite) {
   if (txAddEndDate) txAddEndDate.value = "";
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
   if (txAddVariable) txAddVariable.checked = false;
-  if (txAddAccountId) {
-    if (plan.accountId) txAddAccountId.value = String(plan.accountId);
-    else if (plan.clearAccount) txAddAccountId.value = "";
-  }
+  syncTxAddHiddenAccount(plan.accountId || undefined);
   try {
     updateTxAddRepeatingUi();
   } catch (_) {}
@@ -5981,6 +6125,7 @@ function applyFavoriteToOpenAddForm(favorite) {
   syncFavoriteStar("add");
   show(txAddErr, plan.notices.join(" "));
   updateTxAddFormValidity();
+  syncTxAddMoreOptionsReveal();
 }
 
 async function loadFavoriteTransactions() {
@@ -6530,10 +6675,9 @@ async function openTxAddModalAsync(opts = {}) {
   if (txAddEndDate) txAddEndDate.value = "";
   if (txAddSecondDayOfMonth) txAddSecondDayOfMonth.value = "";
   if (txAddVariable) txAddVariable.checked = false;
-  if (txAddAccountId) {
-    renderAccountSelect(txAddAccountId, state.accounts || []);
-    if (state.accounts && state.accounts.length > 0) txAddAccountId.value = String(state.accounts[0].id);
-  }
+  syncTxAddHiddenAccount();
+  bindTxAddMoreOptions();
+  setTxAddMoreOptionsOpen(false);
   updateTxAddRepeatingUi();
   refreshTxCategoryColorPickers();
   resetTxAddFormValidation();
@@ -6556,6 +6700,7 @@ async function openTxAddModalAsync(opts = {}) {
     txAddLinkedFavoriteId = null;
     txAddLinkedFavorite = null;
     syncFavoriteStar("add");
+    setTxAddMoreOptionsOpen(false);
   }
   if (token !== txAddOpenToken) return;
   updateTxAddFormValidity();
@@ -6612,6 +6757,130 @@ function forecastBalanceForReconcileModal(iso) {
   if (row.verified && Number.isFinite(Number(row.projectedEnd))) return Number(row.projectedEnd);
   if (Number.isFinite(Number(row.end))) return Number(row.end);
   return null;
+}
+
+function ingestCalendarMonthDailyRows(days) {
+  if (!Array.isArray(days) || days.length === 0) return;
+  if (!state.monthDailyBalances) state.monthDailyBalances = new Map();
+  for (const row of days) {
+    const iso = normalizeIsoDate(row.date);
+    if (!iso || row.end == null) continue;
+    const start = Number(row.start);
+    const txNet = Number(row.tx_net);
+    const end = Number(row.end);
+    state.monthDailyBalances.set(iso, {
+      start: Number.isFinite(start) ? start : 0,
+      txNet: Number.isFinite(txNet) ? txNet : 0,
+      end: Number.isFinite(end) ? end : 0,
+      verified: !!row.verified,
+      verifiedAmount: row.verified_amount != null ? Number(row.verified_amount) : null,
+      projectedEnd: row.projected_end != null ? Number(row.projected_end) : null,
+    });
+  }
+}
+
+async function ensureForecastBalanceForIso(iso) {
+  const d = normalizeIsoDate(iso);
+  if (!d || !state.activeFamilyId) return;
+  if (Number.isFinite(Number(forecastBalanceForReconcileModal(d)))) return;
+  const ym = d.slice(0, 7);
+  const mode = calendarMode?.value || "both";
+  const cached = calendarMonthDailyCache.get(calendarMonthDailyKey(state.activeFamilyId, mode, ym));
+  if (cached?.days) {
+    ingestCalendarMonthDailyRows(cached.days);
+    if (Number.isFinite(Number(forecastBalanceForReconcileModal(d)))) return;
+  }
+  try {
+    const data = await requestCalendarMonthDaily(state.activeFamilyId, mode, ym);
+    ingestCalendarMonthDailyRows(data?.days);
+  } catch (_) {}
+}
+
+function resetReconciledDateCache() {
+  state.reconciledDatesByMonth = new Map();
+  state.lastReconciledIso = null;
+  state.reconciledCacheFamilyId = state.activeFamilyId || null;
+  state.reconciledLookbackDone = false;
+}
+
+function ensureReconciledDateCacheFamily() {
+  if (state.reconciledCacheFamilyId === state.activeFamilyId) return;
+  resetReconciledDateCache();
+}
+
+function recomputeLastReconciledIso() {
+  const sets = [];
+  if (state.reconciledDatesByMonth) {
+    for (const group of state.reconciledDatesByMonth.values()) sets.push(group);
+  }
+  state.lastReconciledIso = typeof latestIsoFromDateSets === "function" ? latestIsoFromDateSets(sets) : null;
+}
+
+function paintSidebarReconcileRow() {
+  if (!sidebarReconcileRow) return;
+  if (!state.activeFamilyId) {
+    sidebarReconcileRow.hidden = true;
+    return;
+  }
+  sidebarReconcileRow.hidden = false;
+  const lastIso = state.lastReconciledIso;
+  if (sidebarReconcileDetail) {
+    sidebarReconcileDetail.textContent = lastIso
+      ? typeof formatSidebarReconcileDate === "function"
+        ? formatSidebarReconcileDate(lastIso)
+        : lastIso
+      : "Not reconciled yet";
+  }
+  if (sidebarReconcileBtn) {
+    const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+    sidebarReconcileBtn.hidden = !canWrite;
+  }
+}
+
+function defaultSidebarReconcileIso() {
+  const todayIso = toISODate(new Date());
+  const startIso = getFamilyEarliestStartingBalanceIso();
+  if (typeof defaultReconcileIso === "function") return defaultReconcileIso(todayIso, startIso);
+  return todayIso;
+}
+
+function clampedReconcileIso(iso) {
+  const todayIso = toISODate(new Date());
+  const startIso = getFamilyEarliestStartingBalanceIso();
+  if (typeof clampReconcileIso === "function") return clampReconcileIso(iso, todayIso, startIso);
+  return normalizeIsoDate(iso) || todayIso;
+}
+
+function syncReconcileDateInputBounds() {
+  if (!reconcileDateInput) return;
+  const todayIso = toISODate(new Date());
+  const startIso = getFamilyEarliestStartingBalanceIso();
+  reconcileDateInput.max = todayIso;
+  if (startIso) reconcileDateInput.min = startIso;
+  else reconcileDateInput.removeAttribute("min");
+}
+
+async function applyReconcileModalDate(iso, { resetMode = true } = {}) {
+  const d = clampedReconcileIso(iso);
+  if (!d) return;
+  if (alertIfDateBeforeStartingBalance(d)) return;
+  reconcileActiveDate = d;
+  syncReconcileDateInputBounds();
+  if (reconcileDateInput) reconcileDateInput.value = d;
+  if (reconcileDateDisplay) reconcileDateDisplay.textContent = fmtDateLongDisplay(d);
+  if (resetMode) {
+    reconcileCheckInBusy = false;
+    setBalanceCheckInMode("confirm");
+    show(reconcileErr, "");
+    show(reconcileConfirmErr, "");
+  }
+  await ensureForecastBalanceForIso(d);
+  const forecast = paintBalanceCheckInForecast(d);
+  if (reconcileActualAmount) {
+    reconcileActualAmount.value = balanceCheckInPrefillAmount(d, forecast);
+  }
+  syncBalanceCheckInSaveBtn();
+  syncBalanceCheckInConfirmBtns(forecast);
 }
 
 function isReconciledOnDate(iso) {
@@ -6686,24 +6955,10 @@ function openReconcileModal(iso) {
 async function openReconcileModalAsync(iso) {
   if (await guardBillingWriteAsync()) return;
   if (!reconcileModal) return;
-  const d = normalizeIsoDate(iso) || iso;
+  const d = clampedReconcileIso(iso || defaultSidebarReconcileIso());
+  if (!d) return;
   if (alertIfDateBeforeStartingBalance(d)) return;
-  const todayIso = toISODate(new Date());
-  if (d > todayIso) return;
-  reconcileActiveDate = d;
-  reconcileCheckInBusy = false;
-  setBalanceCheckInMode("confirm");
-  if (reconcileDateDisplay) reconcileDateDisplay.textContent = fmtDateLongDisplay(d);
-
-  const forecast = paintBalanceCheckInForecast(d);
-  if (reconcileActualAmount) {
-    // Prefill for edit transition only — confirm state never shows the input.
-    reconcileActualAmount.value = balanceCheckInPrefillAmount(d, forecast);
-  }
-  show(reconcileErr, "");
-  show(reconcileConfirmErr, "");
-  syncBalanceCheckInSaveBtn();
-  syncBalanceCheckInConfirmBtns(forecast);
+  await applyReconcileModalDate(d, { resetMode: true });
   reconcileModal.classList.add("modal-overlay--open");
   reconcileModal.setAttribute("aria-hidden", "false");
   requestAnimationFrame(() => {
@@ -6782,7 +7037,7 @@ async function confirmBalanceMatchesForecast() {
     date: iso,
     reconciled: true,
   });
-  await loadReconciledDays(month);
+  await loadReconciledDays(month, iso);
   if (typeof showBwToast === "function") showBwToast("✓ Reconciled");
   bwDispatchMilestone("first-reconcile");
   await afterBalanceCheckInSaved();
@@ -6816,7 +7071,7 @@ async function saveBalanceCheckIn() {
   await loadVerifiedBalances(month);
   invalidateLowBalanceAlertCache();
   await loadCalendarMonthDaily();
-  await loadReconciledDays(month);
+  await loadReconciledDays(month, iso);
   if (typeof showBwToast === "function") showBwToast("↺ Adjusted");
 
   await afterBalanceCheckInSaved();
@@ -6827,7 +7082,7 @@ async function refreshAfterBalanceRecordChange(iso) {
   await loadVerifiedBalances(month);
   invalidateLowBalanceAlertCache();
   await loadCalendarMonthDaily();
-  await loadReconciledDays(month);
+  await loadReconciledDays(month, iso);
   renderCalendar();
   await refreshLowBalanceAlert();
   await refreshForecastConfidence();
@@ -7137,6 +7392,33 @@ function buildAdjustedBalanceTipHtml(dayBal, iso) {
   return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
 }
 
+function buildReconcileThisDateTipHtml(dayBal, iso) {
+  const d = normalizeIsoDate(iso) || "";
+  if (!d) return "";
+  const endNum = Number(dayBal?.end);
+  const parts = [
+    '<div class="cal-confirmed-tip cal-confirmed-tip--reconcile" data-bw-balance-record="reconcile">',
+    '<div class="cal-confirmed-tip__head">Projected end-of-day</div>',
+  ];
+  parts.push(`<p class="cal-confirmed-tip__date">${escapeHtml(fmtDateLongDisplay(d))}</p>`);
+  if (Number.isFinite(endNum)) {
+    parts.push('<dl class="cal-confirmed-tip__rows">');
+    parts.push(
+      `<div class="cal-confirmed-tip__row"><dt>Balance</dt><dd>$${escapeHtml(fmtMoney(endNum))}</dd></div>`,
+    );
+    parts.push("</dl>");
+  }
+  if (!state.viewOnly && state.activeFamilyAccessMode !== "view") {
+    parts.push('<div class="cal-confirmed-tip__actions cal-confirmed-tip__actions--edit">');
+    parts.push(
+      `<button type="button" class="cal-confirmed-tip__edit-btn" data-bw-write data-bw-bal-action="reconcile-this-date" data-iso="${escapeHtml(d)}">Reconcile this date</button>`,
+    );
+    parts.push("</div>");
+  }
+  parts.push("</div>");
+  return `<div class="reports-risk-tip__inner">${parts.join("")}</div>`;
+}
+
 function buildStartingPointTipHtml(_accountName) {
   const parts = [
     '<div class="cal-confirmed-tip">',
@@ -7239,67 +7521,17 @@ function renderLastBalanceCheckDetail(days, confirmedDateIso) {
   forecastConfidenceDetail.append(wrap);
 }
 
-function applyForecastConfidenceUi(data) {
-  const canWrite = !state.viewOnly;
-  if (!forecastConfidenceCard || !state.activeFamilyId) {
-    if (forecastConfidenceCard) forecastConfidenceCard.hidden = true;
-    return;
-  }
-  const level = String(data?.confidence_level || "unknown");
-  if (level === "unknown") {
-    forecastConfidenceCard.hidden = true;
-    return;
-  }
-
-  const days = data?.days_since_confirmed;
-  const confirmedDate = data?.last_confirmed_balance_date;
-  const tier = lastBalanceCheckTier(days);
-
-  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
-  if (tier === "fresh") {
-    forecastConfidenceCard.hidden = true;
-    if (forecastConfidenceLabel) forecastConfidenceLabel.hidden = true;
-    if (forecastConfidenceHelper) {
-      forecastConfidenceHelper.textContent = "";
-      forecastConfidenceHelper.hidden = true;
-    }
-    if (forecastConfidenceVerifyBtn) forecastConfidenceVerifyBtn.hidden = true;
-    if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = "";
-    return;
-  }
-
-  forecastConfidenceCard.hidden = false;
-  forecastConfidenceCard.className = `cash-health-status cash-health-status--balance cash-health-status--${tier}`;
-
-  let helper = "";
-  let showLabel = false;
-  let showCta = false;
-  const balanceCheckHelper = "Confirming your checking balance keeps future forecasts accurate.";
-
-  if (tier === "none") {
-    showLabel = true;
-    helper = balanceCheckHelper;
-    showCta = canWrite;
-  } else if (tier === "stale") {
-    showLabel = true;
-    helper = balanceCheckHelper;
-    showCta = !!data?.show_verify_cta && canWrite;
-  }
-
-  if (forecastConfidenceLabel) {
-    forecastConfidenceLabel.hidden = !showLabel;
-    if (showLabel) forecastConfidenceLabel.textContent = "Balance check recommended";
-  }
-  if (tier === "fresh" || tier === "stale") renderLastBalanceCheckDetail(days, confirmedDate);
-  else if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = "";
+function applyForecastConfidenceUi(_data) {
+  if (forecastConfidenceCard) forecastConfidenceCard.hidden = true;
+  if (forecastConfidenceVerifyBtn) forecastConfidenceVerifyBtn.hidden = true;
+  if (forecastConfidenceLabel) forecastConfidenceLabel.hidden = true;
   if (forecastConfidenceHelper) {
-    forecastConfidenceHelper.textContent = helper;
-    forecastConfidenceHelper.hidden = !helper;
+    forecastConfidenceHelper.textContent = "";
+    forecastConfidenceHelper.hidden = true;
   }
-  if (forecastConfidenceVerifyBtn) {
-    forecastConfidenceVerifyBtn.hidden = !showCta;
-    forecastConfidenceVerifyBtn.textContent = "Reconcile balance";
-  }
+  if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = "";
+  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
+  paintSidebarReconcileRow();
 }
 
 async function refreshForecastConfidence() {
@@ -7470,7 +7702,7 @@ if (txEditModal) {
   if (!txEditModal || !txEditInner) return;
   const handle = txEditModal.querySelector(".tx-edit-top");
   if (!handle) return;
-  handle.title = "Drag to move";
+  handle.removeAttribute("title");
 
   let pointerId = null;
   let startX = 0;
@@ -7578,6 +7810,10 @@ document.addEventListener("keydown", (e) => {
   const scope = document.getElementById("txEditApplyScopeModal");
   if (scope?.classList.contains("modal-overlay--open")) {
     closeTxEditApplyScopeModal();
+    return;
+  }
+  if (reviewAmountModal?.classList.contains("modal-overlay--open")) {
+    closeReviewAmountModal();
     return;
   }
   if (txEditModal?.classList.contains("modal-overlay--open")) closeTxEditModal();
@@ -7730,7 +7966,21 @@ if (removeAdjustmentModal) {
 }
 
 if (forecastConfidenceVerifyBtn) {
-  forecastConfidenceVerifyBtn.addEventListener("click", () => openReconcileModal(toISODate(new Date())));
+  forecastConfidenceVerifyBtn.addEventListener("click", () => openReconcileModal(defaultSidebarReconcileIso()));
+}
+if (sidebarReconcileBtn) {
+  sidebarReconcileBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openReconcileModal(defaultSidebarReconcileIso());
+  });
+}
+if (reconcileDateInput) {
+  reconcileDateInput.addEventListener("change", () => {
+    const next = clampedReconcileIso(reconcileDateInput.value);
+    if (!next) return;
+    void applyReconcileModalDate(next, { resetMode: true });
+  });
 }
 
 function findExpectedCalendarItem(expectedId, occurrenceIso) {
@@ -7858,15 +8108,13 @@ async function openCalendarExpectedFromLine(expectedLine) {
   return true;
 }
 
-const CAL_STARTING_POINT_FLAG_SVG =
-  '<svg class="cal-starting-point-flag" viewBox="0 0 12 14" width="10" height="12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.25v11.5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><path d="M2 2.75 9.5 6.25 2 9.75V2.75Z" fill="currentColor"/></svg>';
+function buildCalBalanceReconciledMark() {
+  return `<span class="cal-balance-reconciled-mark" title="Reconciled" role="img" aria-label="Reconciled">${CAL_RECONCILED_CHECK_SVG}</span>`;
+}
 
 function buildCalBalanceStatusPill(type, opts = {}) {
   if (type === "adjusted") {
     return '<span class="cal-balance-status-pill cal-balance-status-pill--adjusted"><span class="cal-balance-status-pill__icon" aria-hidden="true">↺</span> Adjusted</span>';
-  }
-  if (type === "reconciled") {
-    return '<span class="cal-balance-status-pill cal-balance-status-pill--reconciled"><span class="cal-balance-status-pill__icon" aria-hidden="true">✓</span> Reconciled</span>';
   }
   if (type === "starting") {
     const accountId = opts.accountId != null ? String(opts.accountId) : "";
@@ -7904,6 +8152,36 @@ function appendCalendarDayStartBalanceLine(row, parentEl, iso) {
   const tipHtml = buildStartingPointTipHtml(acctLabel);
   if (tipHtml) bindRiskPressureCellHover(line, line, tipHtml);
   parentEl.appendChild(line);
+}
+
+function activateCalendarBalanceHit(target, cell) {
+  if (!target || !cell) return false;
+  const iso = cell.dataset.iso;
+  if (!iso) return false;
+  const metricsEl = target.closest(".cal-ledger-metrics.cal-day-balance-hit");
+  if (!metricsEl) return false;
+  if (shouldShowBalanceRecordTipFromCalendarClick(target, cell)) {
+    const dayBal = state.monthDailyBalances?.get(iso);
+    const html = existingVerifiedBalanceOnDate(iso)
+      ? buildAdjustedBalanceTipHtml(dayBal, iso)
+      : buildReconciledBalanceTipHtml(dayBal, iso);
+    if (metricsEl && html) showPinnedBalanceRecordTip(metricsEl, html);
+    return true;
+  }
+  if (shouldOpenReconcileFromCalendarClick(target, cell)) {
+    const dayBal = state.monthDailyBalances?.get(iso);
+    const html = buildReconcileThisDateTipHtml(dayBal, iso);
+    if (metricsEl && html) {
+      showPinnedBalanceRecordTip(metricsEl, html);
+      requestAnimationFrame(() => {
+        try {
+          document.querySelector(".reports-risk-tip [data-bw-bal-action='reconcile-this-date']")?.focus();
+        } catch (_) {}
+      });
+    }
+    return true;
+  }
+  return false;
 }
 
 function shouldOpenReconcileFromCalendarClick(target, cell) {
@@ -7974,16 +8252,19 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     metricsEl.classList.remove("cal-day-balance-hit", "cal-day-balance-hit--today-update");
     metricsEl.removeAttribute("aria-label");
     metricsEl.removeAttribute("title");
+    metricsEl.removeAttribute("role");
+    metricsEl.removeAttribute("tabindex");
+    metricsEl.removeAttribute("aria-haspopup");
     return;
   }
   metricsEl.classList.add("cal-day-balance-hit");
-  metricsEl.classList.toggle(
-    "cal-day-balance-hit--today-update",
-    iso === todayIso && !dayBalVerified && !isReconciled && !existingVerifiedBalanceOnDate(iso) && !isReconciledOnDate(iso)
-  );
+  metricsEl.classList.remove("cal-day-balance-hit--today-update");
   metricsEl.removeAttribute("title");
+  metricsEl.setAttribute("role", "button");
+  metricsEl.tabIndex = 0;
+  metricsEl.setAttribute("aria-haspopup", "dialog");
   const label = fmtDateMDY(iso);
-  metricsEl.setAttribute("aria-label", label ? `Reconcile balance for ${label}` : "Reconcile balance");
+  metricsEl.setAttribute("aria-label", label ? `End-of-day balance for ${label}` : "End-of-day balance");
 
   if (dayBalVerified && dayBal) {
     const html = buildAdjustedBalanceTipHtml(dayBal, iso);
@@ -8005,7 +8286,11 @@ function bindCalendarDayBalanceHit(metricsEl, iso, { isReconciled, dayBalVerifie
     return;
   }
 
-  metricsEl.title = "Reconcile balance";
+  metricsEl.title = "Reconcile this date";
+  metricsEl.setAttribute(
+    "aria-label",
+    label ? `End-of-day balance for ${label}. Reconcile this date.` : "Reconcile this date"
+  );
 }
 
 function bindCalendarCellAddTxClick(cell, iso) {
@@ -8019,8 +8304,13 @@ function bindCalendarCellAddTxClick(cell, iso) {
   }
   const onKeyActivate = (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
-    e.preventDefault();
+    if (activateCalendarBalanceHit(e.target, cell)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (!shouldOpenAddTxFromCalendarClick(e.target, cell)) return;
+    e.preventDefault();
     openCalendarDayAddTransaction(iso, e);
   };
   cell.addEventListener("keydown", onKeyActivate);
@@ -8117,23 +8407,9 @@ function handleCalendarPanelClick(e) {
   const iso = cell.dataset.iso;
   if (!iso) return;
 
-  if (shouldShowBalanceRecordTipFromCalendarClick(e.target, cell)) {
+  if (activateCalendarBalanceHit(e.target, cell)) {
     e.preventDefault();
     e.stopPropagation();
-    const iso = cell.dataset.iso;
-    const dayBal = state.monthDailyBalances?.get(iso);
-    const metricsEl = e.target.closest(".cal-ledger-metrics.cal-day-balance-hit") || cell.querySelector(".cal-ledger-metrics");
-    const html = existingVerifiedBalanceOnDate(iso)
-      ? buildAdjustedBalanceTipHtml(dayBal, iso)
-      : buildReconciledBalanceTipHtml(dayBal, iso);
-    if (metricsEl && html) showPinnedBalanceRecordTip(metricsEl, html);
-    return;
-  }
-
-  if (shouldOpenReconcileFromCalendarClick(e.target, cell)) {
-    e.preventDefault();
-    e.stopPropagation();
-    openReconcileModal(iso);
     return;
   }
 
@@ -9701,16 +9977,27 @@ function openBillingUpgradeModal() {
 const BILLING_WRITE_LOCK_SELECTOR = [
   "#tmPrimaryAction",
   "#forecastConfidenceVerifyBtn",
+  "#sidebarReconcileBtn",
+  "#reconcileDateInput",
   "#openAccountModalBtn",
   "#addAccountBtn",
   "#saveAccountEditBtn",
   "#balanceThresholdSaveBtn",
   "#addCategoryGroupBtn",
   "#addFirstGroupBtn",
+  "#reimbAddBtn",
+  "#reimbEmptyAddBtn",
+  "#reimbBulkAddBtn",
+  "#reimbScreenshotImportBtn",
+  "#reimbPasteImportBtn",
   "#txAddSave",
   "#txEditSave",
   "#txEditDelete",
   "#txEditRecurringUpdateBtn",
+  "#reviewAmountConfirmBtn",
+  "#reviewAmountEditBtn",
+  ".reimb-edit-btn",
+  ".reimb-quick-btn",
   ".cats-pane__action",
   "[data-bw-write]",
 ].join(",");
@@ -13439,8 +13726,10 @@ async function loadMe() {
   }
   const tv = document.getElementById("navTransactionView");
   const rv = document.getElementById("navReportsView");
+  const reimbv = document.getElementById("navReimbursementsView");
   if (tv) tv.hidden = false;
   if (rv) rv.hidden = false;
+  if (reimbv) reimbv.hidden = false;
 }
 
 function syncActiveFamilyFlags() {
@@ -13712,6 +14001,7 @@ async function loadFamilies() {
   }
   if (familyChanged) {
     invalidateBillingStatusCache();
+    resetReconciledDateCache();
     state.needsReviewExpectedByKey = new Map();
     state.needsReviewActualByKey = new Map();
   }
@@ -14313,6 +14603,7 @@ const txAddCategoryColorPicker = renderCategoryColorPicker({
   setBg: (v) => {
     txAddColorTouched = true;
     txAddSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
+    syncTxAddMoreOptionsReveal();
   },
 });
 const txEditCategoryColorPicker = renderCategoryColorPicker({
@@ -14325,6 +14616,7 @@ const txEditCategoryColorPicker = renderCategoryColorPicker({
   setBg: (v) => {
     txEditColorTouched = true;
     txEditSelectedBgColor = v && String(v).trim() ? String(v).trim() : null;
+    syncTxEditMoreOptionsReveal();
   },
 });
 
@@ -16063,14 +16355,23 @@ function pillStyleForTransaction(txOrItem) {
   return null;
 }
 
+/** Calendar fill only: mix toward white. Does not change stored category colors. */
+function mixCssColorWithWhite(bgCss, whiteShare) {
+  const rgb = parseCssColorToRgb(bgCss);
+  if (!rgb) return String(bgCss || "").trim();
+  const t = Math.min(1, Math.max(0, Number(whiteShare) || 0));
+  return `rgb(${Math.round(rgb.r + (255 - rgb.r) * t)}, ${Math.round(rgb.g + (255 - rgb.g) * t)}, ${Math.round(rgb.b + (255 - rgb.b) * t)})`;
+}
+
 /** Category background on the label column only; amounts keep income/expense colors. */
 function applyCalendarDayTxCategoryFill(labelWrap, row) {
   if (!labelWrap || !row || row._type === "start_balance") return;
   const pill = pillStyleForTransaction(row);
   if (!pill || !pill.bg) return;
-  const fg = pill.fg || accessibleTextOnBackground(pill.bg);
+  const displayBg = mixCssColorWithWhite(pill.bg, 0.4);
+  const fg = resolvedPillForeground(displayBg, pill.fg) || accessibleTextOnBackground(displayBg);
   labelWrap.classList.add("cal-tx-label-wrap--category-fill");
-  labelWrap.style.setProperty("--cal-tx-fill-bg", pill.bg);
+  labelWrap.style.setProperty("--cal-tx-fill-bg", displayBg);
   labelWrap.style.setProperty("--cal-tx-fill-fg", fg);
 }
 
@@ -16328,8 +16629,8 @@ async function loadAccounts() {
   const expectedAccountIdEl = document.getElementById("expectedAccountId");
   if (expectedAccountIdEl) renderAccountSelect(expectedAccountIdEl, state.accounts);
   if (expectedEditAccountId) renderAccountSelect(expectedEditAccountId, state.accounts);
-  if (txAddAccountId) renderAccountSelect(txAddAccountId, state.accounts);
-  if (instanceAccountId) renderAccountSelect(instanceAccountId, state.accounts);
+  if (txAddAccountId) syncTxAddHiddenAccount(txAddAccountId.value);
+  if (instanceAccountId) syncTxEditHiddenAccount(instanceAccountId.value);
   renderAccountDetailsPanel();
   if (expectedAccountIdEl && state.accounts.length > 0 && !expectedAccountIdEl.value) {
     expectedAccountIdEl.value = String(state.accounts[0].id);
@@ -16432,7 +16733,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
         if (radio) radio.checked = true;
       }
       if (txEditAmount) txEditAmount.value = String(tx.amount ?? "");
-      if (instanceAccountId) instanceAccountId.value = tx.account_id != null ? String(tx.account_id) : "";
+      syncTxEditHiddenAccount(tx.account_id != null ? tx.account_id : "");
       setCategoryFieldValue("txEditCategoryId", tx.category_id);
       {
         const bg = tx && tx.bg_color ? String(tx.bg_color).trim() : "";
@@ -18209,30 +18510,89 @@ function applyMinDateToTxEditDateInput() {
   else txEditDate.removeAttribute("min");
 }
 
-async function loadReconciledDays(month) {
+async function loadReconciledDays(month, extraIso) {
   if (!state.activeFamilyId) return;
   if (!month) return;
+  ensureReconciledDateCacheFamily();
   const cur = String(month).trim();
   const prev = shiftMonthStr(cur, -1);
   const next = shiftMonthStr(cur, 1);
-  const months = [cur, prev, next].filter(Boolean);
+  const extraYm = extraIso ? String(normalizeIsoDate(extraIso) || extraIso).slice(0, 7) : "";
+  const months = [];
+  for (const ym of [cur, prev, next, extraYm]) {
+    if (ym && !months.includes(ym)) months.push(ym);
+  }
   const merged = new Set();
   try {
     const results = await Promise.all(
       months.map((m) => api(`/api/families/${state.activeFamilyId}/reconciled-days?month=${encodeURIComponent(m)}`, "GET"))
     );
-    for (const data of results) {
+    for (let i = 0; i < results.length; i++) {
+      const data = results[i];
+      const ym = months[i];
+      const monthSet = new Set();
       const ds = data?.dates || [];
       for (const d of ds) {
         const iso = normalizeIsoDate(d);
-        if (iso) merged.add(iso);
+        if (!iso) continue;
+        monthSet.add(iso);
+        merged.add(iso);
       }
+      if (ym) state.reconciledDatesByMonth.set(ym, monthSet);
     }
     state.reconciledDates = merged;
   } catch (_) {
     state.reconciledDates = new Set();
   }
+  recomputeLastReconciledIso();
+  paintSidebarReconcileRow();
+  void lookbackReconciledDays();
   refreshCalendarCashInsights();
+}
+
+async function lookbackReconciledDays() {
+  if (!state.activeFamilyId || state.reconciledLookbackDone) return;
+  const familyId = state.activeFamilyId;
+  const todayIso = toISODate(new Date());
+  const todayYm = todayIso.slice(0, 7);
+  const startIso = getFamilyEarliestStartingBalanceIso();
+  let startYm = shiftMonthStr(todayYm, -11);
+  if (startIso) {
+    const startMonth = startIso.slice(0, 7);
+    if (startMonth && startMonth > startYm) startYm = startMonth;
+  }
+  const months = [];
+  for (let ym = startYm; ym && ym <= todayYm; ym = shiftMonthStr(ym, 1)) {
+    if (!state.reconciledDatesByMonth.has(ym)) months.push(ym);
+    if (months.length >= 12) break;
+  }
+  if (!months.length) {
+    state.reconciledLookbackDone = true;
+    recomputeLastReconciledIso();
+    paintSidebarReconcileRow();
+    return;
+  }
+  try {
+    const results = await Promise.all(
+      months.map((m) => api(`/api/families/${familyId}/reconciled-days?month=${encodeURIComponent(m)}`, "GET"))
+    );
+    if (state.activeFamilyId !== familyId) return;
+    for (let i = 0; i < results.length; i++) {
+      const ym = months[i];
+      const monthSet = new Set();
+      for (const d of results[i]?.dates || []) {
+        const iso = normalizeIsoDate(d);
+        if (iso) monthSet.add(iso);
+      }
+      if (ym) state.reconciledDatesByMonth.set(ym, monthSet);
+    }
+    state.reconciledLookbackDone = true;
+    recomputeLastReconciledIso();
+    paintSidebarReconcileRow();
+  } catch (_) {
+    recomputeLastReconciledIso();
+    paintSidebarReconcileRow();
+  }
 }
 
 function monthStartEndIso(ym) {
@@ -18270,6 +18630,173 @@ function syncNeedsReviewLoadedSources() {
     needsReviewActualKey,
     needsReviewItemMonth
   );
+}
+
+function closeReviewAmountModal() {
+  if (!reviewAmountModal) return;
+  reviewAmountModal.classList.remove("modal-overlay--open");
+  reviewAmountModal.setAttribute("aria-hidden", "true");
+  try {
+    reviewAmountModal.style.display = "none";
+  } catch (_) {}
+  if (!reviewAmountSaving) reviewAmountContext = null;
+  show(reviewAmountErr, "");
+  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = false;
+  syncBwTxEditVisualViewport();
+}
+
+function openReviewAmountModal(item, series) {
+  if (!reviewAmountModal || !item) return;
+  reviewAmountContext = { item, series: series || null };
+  const iso = normalizeIsoDate(item.date) || normalizeIsoDate(item.occurrence_date) || "";
+  const name = forecastTransactionPrimaryLabel(item);
+  if (reviewAmountName) reviewAmountName.textContent = name;
+  if (reviewAmountDate) {
+    reviewAmountDate.textContent =
+      typeof needsReviewMonthDay === "function" ? needsReviewMonthDay(iso) || iso : iso;
+  }
+  const amt = Number(item.amount);
+  if (reviewAmountEstimate) {
+    reviewAmountEstimate.textContent = Number.isFinite(amt) ? `$${fmtMoney(amt)}` : "—";
+  }
+  if (reviewAmountInput) {
+    reviewAmountInput.value = Number.isFinite(amt) && amt > 0 ? String(amt) : "";
+  }
+  show(reviewAmountErr, "");
+  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = false;
+  try {
+    reviewAmountModal.style.display = "";
+  } catch (_) {}
+  reviewAmountModal.classList.add("modal-overlay--open");
+  reviewAmountModal.setAttribute("aria-hidden", "false");
+  syncBwTxEditVisualViewport();
+  requestAnimationFrame(() => {
+    try {
+      reviewAmountInput?.focus();
+      reviewAmountInput?.select();
+    } catch (_) {}
+  });
+}
+
+async function openNeedsReviewAmount(item) {
+  if (await guardBillingWriteAsync()) return;
+  if (!item) return;
+  const eid = item.expected_transaction_id;
+  const series = (await resolveExpectedSeriesMeta(eid, item)) || getExpectedSeriesMeta(eid) || null;
+  openReviewAmountModal(item, series);
+}
+
+function reviewAmountTypedOrOriginal() {
+  const typed =
+    typeof parseNeedsReviewAmount === "function" ? parseNeedsReviewAmount(reviewAmountInput?.value) : Number(reviewAmountInput?.value);
+  if (Number.isFinite(typed) && typed > 0) return typed;
+  const orig = Number(reviewAmountContext?.item?.amount);
+  return Number.isFinite(orig) && orig > 0 ? orig : null;
+}
+
+async function confirmReviewAmount() {
+  if (reviewAmountSaving) return;
+  const item = reviewAmountContext?.item;
+  if (!item) return;
+  show(reviewAmountErr, "");
+  const amount =
+    typeof parseNeedsReviewAmount === "function"
+      ? parseNeedsReviewAmount(reviewAmountInput?.value)
+      : Number(reviewAmountInput?.value);
+  if (!amount) {
+    show(reviewAmountErr, "Amount must be > 0");
+    return;
+  }
+  if (!state.activeFamilyId) {
+    show(reviewAmountErr, "Your account isn't ready yet");
+    return;
+  }
+  const series = reviewAmountContext?.series || getExpectedSeriesMeta(item.expected_transaction_id);
+  const payload =
+    typeof buildNeedsReviewConfirmPayload === "function"
+      ? buildNeedsReviewConfirmPayload(item, amount, series)
+      : {
+          action: "update",
+          account_id: Number(item.account_id ?? series?.account_id),
+          kind: item.kind || series?.kind || "expense",
+          amount,
+          description: String(item.description || series?.description || "").trim().slice(0, 500),
+          category_id: item.category_id ?? series?.category_id ?? null,
+          moved_to_date: null,
+          variable: false,
+        };
+  if (!Number.isFinite(payload.account_id) || payload.account_id <= 0) {
+    show(reviewAmountErr, "Account is required");
+    return;
+  }
+  Object.assign(payload, txColorFieldsForSave(item.bg_color || series?.bg_color));
+  const occ = normalizeIsoDate(item.occurrence_date || item.date);
+  if (!occ) {
+    show(reviewAmountErr, "Invalid occurrence date");
+    return;
+  }
+  reviewAmountSaving = true;
+  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = true;
+  try {
+    await api(
+      `/api/families/${state.activeFamilyId}/expected-transactions/${item.expected_transaction_id}/instances/${occ}`,
+      "POST",
+      payload
+    );
+    closeReviewAmountModal();
+    reviewAmountContext = null;
+    await navigateCalendarToIsoMonthIfNeeded(normalizeIsoDate(item.date) || occ);
+  } catch (e) {
+    show(reviewAmountErr, e.message || "Could not confirm this amount.");
+  } finally {
+    reviewAmountSaving = false;
+    if (reviewAmountConfirmBtn && reviewAmountModal?.classList.contains("modal-overlay--open")) {
+      reviewAmountConfirmBtn.disabled = false;
+    }
+  }
+}
+
+async function openReviewAmountFullEditor() {
+  const item = reviewAmountContext?.item;
+  if (!item) return;
+  if (await guardBillingWriteAsync()) return;
+  let series = reviewAmountContext?.series || getExpectedSeriesMeta(item.expected_transaction_id);
+  if (!series) series = await resolveExpectedSeriesMeta(item.expected_transaction_id, item);
+  const typed = reviewAmountTypedOrOriginal();
+  const calendarItem = typed != null ? { ...item, amount: typed } : item;
+  closeReviewAmountModal();
+  if (!series) {
+    window.alert("Could not open this recurring item. Try refreshing the page.");
+    return;
+  }
+  openExpectedEditModal(series, { calendarItem });
+}
+
+if (reviewAmountCancelBtn) {
+  reviewAmountCancelBtn.addEventListener("click", () => closeReviewAmountModal());
+}
+if (reviewAmountConfirmBtn) {
+  reviewAmountConfirmBtn.addEventListener("click", () => {
+    void confirmReviewAmount();
+  });
+}
+if (reviewAmountEditBtn) {
+  reviewAmountEditBtn.addEventListener("click", () => {
+    void openReviewAmountFullEditor();
+  });
+}
+if (reviewAmountModal) {
+  reviewAmountModal.addEventListener("click", (e) => {
+    if (e.target === reviewAmountModal) closeReviewAmountModal();
+  });
+}
+if (reviewAmountInput) {
+  reviewAmountInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void confirmReviewAmount();
+    }
+  });
 }
 
 function renderSidebarPendingTransactionsForMonth() {
@@ -18324,8 +18851,7 @@ function renderSidebarPendingTransactionsForMonth() {
     const r = reviewRows[idx];
     const it = r.item;
     const open = () => {
-      const meta = getExpectedSeriesMeta(it?.expected_transaction_id);
-      if (meta) openExpectedEditModal(meta, { calendarItem: it, confirmOccurrence: true });
+      void openNeedsReviewAmount(it);
     };
 
     const el = document.createElement("button");
@@ -19209,6 +19735,10 @@ async function handleBalanceRecordTipAction(action, iso) {
       await removeReconciliationForDate(iso);
       return;
     }
+    if (action === "reconcile-this-date") {
+      openReconcileModal(iso);
+      return;
+    }
   } catch (e) {
     if (typeof showBwToast === "function") showBwToast(e.message || "Something went wrong");
     else window.alert(e.message || "Something went wrong");
@@ -19515,7 +20045,7 @@ function selectExpectedInstance(item) {
   }
   if (txEditAmount) txEditAmount.value = Number(item.amount);
   if (txEditNotes) txEditNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
-  if (instanceAccountId) instanceAccountId.value = String(item.account_id);
+  syncTxEditHiddenAccount(item.account_id != null ? item.account_id : "");
   setCategoryFieldValue("txEditCategoryId", item.category_id);
   {
     const bg = item && item.bg_color ? String(item.bg_color).trim() : "";
@@ -19548,6 +20078,8 @@ function selectExpectedInstance(item) {
     }
   }
 
+  syncTxEditEndsRowVisibility();
+  syncTxEditMoreOptionsReveal();
   show(txEditErr, "");
 }
 
@@ -19587,24 +20119,11 @@ function dedupeCalendarDayTransactions(expectedItems, actualTxs) {
   return { actuals, expected };
 }
 
-function ensureCalendarBalanceCaption() {
-  const dow = document.getElementById("calendarDow");
-  if (!dow || !dow.parentNode) return;
-  let cap = document.getElementById("calendarBalanceCaption");
-  if (!cap) {
-    cap = document.createElement("p");
-    cap.id = "calendarBalanceCaption";
-    cap.className = "calendar-balance-caption";
-    dow.parentNode.insertBefore(cap, dow);
-  }
-  cap.textContent = "Each day's amount is your projected checking balance at the end of that day.";
-}
-
 function renderCalendar() {
   if (!calendarGrid) return;
   calendarGrid.innerHTML = "";
   const calendarDow = document.getElementById("calendarDow");
-  ensureCalendarBalanceCaption();
+  document.getElementById("calendarBalanceCaption")?.remove();
   if (calendarDow) calendarDow.innerHTML = "";
   const isMobileCalendarLayout =
     typeof window !== "undefined" && typeof window.matchMedia === "function"
@@ -20172,15 +20691,14 @@ function renderCalendar() {
         belowFloor && !negativeBal && !dayBalVerified
           ? `<span class="cal-balance-warn-icon" aria-hidden="true" title="Below your minimum balance"><svg viewBox="0 0 16 16" width="9" height="9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.25L14 13.75H2L8 2.25z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M8 6.25v3M8 11.1v.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>`
           : "";
+      const reconciledMark = !dayBalVerified && isReconciled ? buildCalBalanceReconciledMark() : "";
       const statusPill = dayBalVerified
         ? buildCalBalanceStatusPill("adjusted")
-        : isReconciled
-          ? buildCalBalanceStatusPill("reconciled")
-          : hasStartingPoint
-            ? buildCalBalanceStatusPill("starting", { accountId: startingAccountRow?.account_id })
-            : "";
+        : hasStartingPoint && !isReconciled
+          ? buildCalBalanceStatusPill("starting", { accountId: startingAccountRow?.account_id })
+          : "";
       const stripStatusClass = statusPill ? " cal-balance-strip--has-status" : "";
-      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="${escapeHtml(balanceTitle)}" aria-label="${escapeHtml(balanceAria)}">${balanceMoney}</span></span>${statusPill}</div></div>`;
+      metricsEl.innerHTML = `<div class="cal-balance-strip${stripStatusClass}${stripCue ? ` ${stripCue}` : ""}"><div class="cal-balance-strip__row"><span class="cal-balance-strip__amt">${riskIcon}${warnIcon}<span class="${balanceClass}" title="${escapeHtml(balanceTitle)}" aria-label="${escapeHtml(balanceAria)}">${balanceMoney}</span>${reconciledMark}</span>${statusPill}</div></div>`;
       bindCalendarDayBalanceHit(metricsEl, iso, {
         isReconciled,
         dayBalVerified,

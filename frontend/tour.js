@@ -124,7 +124,7 @@
       ctaLabel: "Finish Tour",
       placement: ["right", "left", "above", "below"],
       retryable: true,
-      targetExtraClass: "bw-tour-target--reconcile-head",
+      targetExtraClass: "bw-tour-target--sidebar-reconcile",
     },
   ];
 
@@ -211,6 +211,10 @@
   }
 
   function findExpectedCalendarConfirmAnchor() {
+    const sidebarRow = document.getElementById("sidebarReconcileRow");
+    if (isVisible(sidebarRow)) return sidebarRow;
+    const sidebarBtn = document.getElementById("sidebarReconcileBtn");
+    if (isVisible(sidebarBtn)) return sidebarBtn;
     const today = new Date();
     const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     const balanceHit =

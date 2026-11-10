@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=895" />
+    <link rel="stylesheet" href="../styles.css?v=918" />
   </head>
   <body>
     <h1 class="sr-only">Settings</h1>
@@ -117,6 +117,14 @@
                   </div>
                   <div class="cash-health-status__detail list" id="sidebarPendingTxList"></div>
                 </div>
+
+                <div id="sidebarReconcileRow" class="sidebar-reconcile" hidden>
+                  <div class="sidebar-reconcile__status">
+                    <span class="sidebar-reconcile__label">Last reconciled</span>
+                    <span id="sidebarReconcileDetail" class="sidebar-reconcile__date">Not reconciled yet</span>
+                  </div>
+                  <button type="button" id="sidebarReconcileBtn" class="secondary sidebar-reconcile__action">Reconcile balance</button>
+                </div>
               </div>
             </section>
 
@@ -147,16 +155,7 @@
             <div id="txAddFormRoot" class="tx-add-form">
               <div id="txAddErr" class="error"></div>
               <div class="tx-add-form__body">
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label>Type</label></div>
-                <div class="form-row-h__field">
-                  <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
-                    <label class="kind-opt"><input type="radio" name="txAddKind" value="income" checked /> Income</label>
-                    <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" /> Expense</label>
-                  </div>
-                </div>
-              </div>
-              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+              <select id="txAddAccountId" hidden tabindex="-1" aria-hidden="true"></select>
               <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddAmount">Amount</label></div>
                 <div class="form-row-h__field">
@@ -169,20 +168,28 @@
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div class="form-row-h">
+                <div class="form-row-h__label"><label>Type</label></div>
+                <div class="form-row-h__field">
+                  <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                    <label class="kind-opt"><input type="radio" name="txAddKind" value="income" checked /> Income</label>
+                    <label class="kind-opt"><input type="radio" name="txAddKind" value="expense" /> Expense</label>
+                  </div>
+                </div>
+              </div>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+              <div class="form-row-h">
                 <div class="form-row-h__label"><label for="txAddCategoryId">Category</label></div>
                 <div class="form-row-h__field tx-add-category-field">
-                  <p class="tx-add-category-hint">Common categories</p>
                   <div id="txAddQuickChips" class="tx-quick-chips is-empty" role="group" aria-label="Suggested categories" aria-hidden="true"></div>
                   <select id="txAddCategoryId"></select>
                   <p id="txAddCategoryValidation" class="tx-add-field-validation" aria-live="polite"></p>
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
-              <div class="form-row-h">
-                <div class="form-row-h__label"><label for="txAddAccountId">Account</label></div>
+              <div class="form-row-h tx-add-notes-row">
+                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
                 <div class="form-row-h__field">
-                  <select id="txAddAccountId"></select>
-                  <p id="txAddAccountValidation" class="tx-add-field-validation" aria-live="polite"></p>
+                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
@@ -193,7 +200,7 @@
                   <p id="txAddDateValidation" class="tx-add-field-validation" aria-live="polite"></p>
                 </div>
               </div>
-              <div class="tx-add-vspace tx-add-vspace--sm" aria-hidden="true"></div>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div id="txAddScheduleCompact" class="tx-add-schedule-compact" aria-label="Repeat and schedule">
                 <div class="form-row-h">
                   <div class="form-row-h__label"><label for="txAddRecurrence">Repeat</label></div>
@@ -237,7 +244,6 @@
                   </div>
                 </div>
               </div>
-              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
               <div id="txAddRecurringBlock" style="display: none">
                 <div id="txAddTwiceMonthlyFields" class="form-row-h tx-add-second-monthly-row" style="display: none">
                   <div class="form-row-h__label"><label for="txAddSecondDayOfMonth">Second monthly date</label></div>
@@ -251,28 +257,33 @@
                   </div>
                 </div>
               </div>
-              <div class="form-row-h tx-add-notes-row">
-                <div class="form-row-h__label"><label for="txAddNotes">Notes</label></div>
-                <div class="form-row-h__field">
-                  <input id="txAddNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-                </div>
-              </div>
-              <div class="tx-add-variable-block">
-                <div class="form-row-h tx-add-variable-form-row">
-                  <div class="form-row-h__label">
-                    <label for="txAddVariable">Amount varies</label>
+              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+              <div class="tx-add-advanced" id="txAddMoreOptions">
+                <button type="button" id="txAddMoreOptionsToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txAddMoreOptionsPanel">
+                  <span class="tx-add-advanced__expander-chev" aria-hidden="true">
+                    <svg viewBox="0 0 8 8" width="8" height="8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 1.5 6 4 2 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                  <span class="tx-add-advanced__expander-label">More options</span>
+                </button>
+                <div id="txAddMoreOptionsPanel" class="tx-add-advanced__panel" hidden>
+                  <div class="tx-add-variable-block">
+                    <div class="form-row-h tx-add-variable-form-row">
+                      <div class="form-row-h__label">
+                        <label for="txAddVariable">Amount varies</label>
+                      </div>
+                      <div class="form-row-h__field tx-add-variable-field-wrap">
+                        <input id="txAddVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
+                        <p class="tx-add-variable-block__caption">Helpful for utilities, credit cards, and fluctuating bills.</p>
+                      </div>
+                    </div>
                   </div>
-                  <div class="form-row-h__field tx-add-variable-field-wrap">
-                    <input id="txAddVariable" type="checkbox" title="Amount is an estimate that may change month to month" />
+                  <div id="txAddCategoryColorRow" class="form-row-h tx-add-cat-color-row">
+                    <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
+                    <div class="form-row-h__field tx-add-cat-color-field tx-add-cat-color-panel">
+                      <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
+                      <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
+                    </div>
                   </div>
-                </div>
-                <p class="tx-add-variable-block__caption">Helpful for utilities, credit cards, and fluctuating bills.</p>
-              </div>
-              <div id="txAddCategoryColorRow" class="form-row-h tx-add-cat-color-row">
-                <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
-                <div class="form-row-h__field tx-add-cat-color-field tx-add-cat-color-panel">
-                  <div class="cat-color-row__swatches" id="txAddCategoryColorSwatches"></div>
-                  <button type="button" class="cat-color-row__clear secondary" id="txAddCategoryColorClear" hidden>Clear color</button>
                 </div>
               </div>
               </div>
@@ -287,14 +298,14 @@
 
           <div class="card sidebar-section" data-sidebar-key="month">
             <div class="sidebar-section-head sidebar-forecast-head">
-              <h2>FORECAST SNAPSHOT</h2>
+              <h2>MONTHLY CASH FLOW</h2>
               <div class="sidebar-forecast-head__actions">
                 <button
                   type="button"
                   class="sidebar-collapse-btn"
                   aria-expanded="true"
                   aria-controls="sidebarBodyMonth"
-                  title="Collapse Forecast snapshot"
+                  title="Collapse Monthly cash flow"
                 >
                   <svg class="sidebar-collapse-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M6 9l6 6 6-6" />
@@ -1309,16 +1320,7 @@
         <div id="expectedEditInstancePanel" class="expected-edit-panel">
           <div class="tx-edit-divider" aria-hidden="true"></div>
 
-          <div class="form-row-h">
-            <div class="form-row-h__label"><label>Type</label></div>
-            <div class="form-row-h__field">
-              <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
-                <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
-                <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
-              </div>
-            </div>
-          </div>
-          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <select id="instanceAccountId" hidden tabindex="-1" aria-hidden="true"></select>
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditAmount">Amount</label></div>
             <div class="form-row-h__field">
@@ -1331,17 +1333,34 @@
               </p>
             </div>
           </div>
-          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+          <div class="form-row-h">
+            <div class="form-row-h__label"><label>Type</label></div>
+            <div class="form-row-h__field">
+              <div class="kind-toggle" role="radiogroup" aria-label="Transaction type">
+                <label class="kind-opt"><input type="radio" name="txEditKind" value="income" /> Income</label>
+                <label class="kind-opt"><input type="radio" name="txEditKind" value="expense" checked /> Expense</label>
+              </div>
+            </div>
+          </div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditCategoryId">Category</label></div>
             <div class="form-row-h__field"><select id="txEditCategoryId"></select></div>
           </div>
-          <div class="tx-add-vspace" aria-hidden="true"></div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+          <div id="txEditNotesRow" class="form-row-h tx-edit-notes-row">
+            <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
+            <div class="form-row-h__field">
+              <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
+            </div>
+          </div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
           <div class="form-row-h">
             <div class="form-row-h__label"><label for="txEditDate" id="txEditDateLabel">Date</label></div>
             <div class="form-row-h__field"><input id="txEditDate" type="date" /></div>
           </div>
-
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
           <div id="txEditRecurringScheduleWrap" style="display: none">
             <div class="tx-edit-recurrence-ends-row">
               <div class="form-row-h tx-edit-recurrence-field">
@@ -1359,7 +1378,7 @@
                   </select>
                 </div>
               </div>
-              <div class="form-row-h tx-edit-ends-field">
+              <div class="form-row-h tx-edit-ends-field" id="txEditEndsRow" hidden>
                 <div class="form-row-h__label">
                   <label for="instanceEndsMode" title="When the recurring series stops.">Ends <span class="tx-edit-series-mark">Series</span></label>
                 </div>
@@ -1368,6 +1387,17 @@
                     <option value="never" selected>Never</option>
                     <option value="after_count">After number of times</option>
                   </select>
+                </div>
+              </div>
+            </div>
+            <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
+              <div class="form-row-h__label">
+                <label for="instanceEndCount">Occurrences</label>
+              </div>
+              <div class="form-row-h__field">
+                <div class="tx-edit-ends-after-row">
+                  <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Total number of occurrences." />
+                  <span class="tx-add-field-hint">total</span>
                 </div>
               </div>
             </div>
@@ -1384,57 +1414,40 @@
                 <p class="expected-second-day-row__hint">Choose a different day of the month than the start date.</p>
               </div>
             </div>
-            <div class="form-row-h tx-edit-ends-detail" id="txEditEndCountRow" hidden>
-              <div class="form-row-h__label">
-                <label for="instanceEndCount">Occurrences</label>
+          </div>
+          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
+          <div class="tx-add-advanced" id="txEditMoreOptions">
+            <button type="button" id="txEditMoreOptionsToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txEditMoreOptionsPanel">
+              <span class="tx-add-advanced__expander-chev" aria-hidden="true">
+                <svg viewBox="0 0 8 8" width="8" height="8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 1.5 6 4 2 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="tx-add-advanced__expander-label">More options</span>
+            </button>
+            <div id="txEditMoreOptionsPanel" class="tx-add-advanced__panel" hidden>
+              <div id="txEditRecurringVariableWrap" class="tx-edit-variable-form-row" style="display: none">
+                <label class="tx-edit-variable-toggle" for="seriesVariable">
+                  <span class="tx-edit-variable-toggle__head">
+                    <input
+                      id="seriesVariable"
+                      type="checkbox"
+                      class="tx-edit-variable-row__input"
+                      title="Amount is an estimate that may change month to month"
+                    />
+                    <span class="tx-edit-variable-toggle__label">Amount varies</span>
+                  </span>
+                  <span class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</span>
+                </label>
               </div>
-              <div class="form-row-h__field">
-                <div class="tx-edit-ends-after-row">
-                  <input id="instanceEndCount" type="number" min="1" step="1" placeholder="e.g. 12" title="Total number of occurrences." />
-                  <span class="tx-add-field-hint">total</span>
+              <div id="txEditCategoryColorRow" class="form-row-h tx-edit-cat-color-row">
+                <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
+                <div class="form-row-h__field tx-edit-cat-color-field">
+                  <div class="cat-color-row tx-edit-cat-color-panel">
+                    <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
+                    <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div class="tx-add-vspace" aria-hidden="true"></div>
-          <div id="txEditAccountCol" style="display: none">
-            <div class="form-row-h">
-              <div class="form-row-h__label"><label for="instanceAccountId">Account</label></div>
-              <div class="form-row-h__field"><select id="instanceAccountId"></select></div>
-            </div>
-            <div class="tx-add-vspace" aria-hidden="true"></div>
-          </div>
-          <div id="txEditNotesRow" class="form-row-h tx-edit-notes-row">
-            <div class="form-row-h__label"><label for="txEditNotes" id="txEditNotesLabel">Notes</label></div>
-            <div class="form-row-h__field">
-              <input id="txEditNotes" type="text" maxlength="500" class="input-notes-flex" placeholder="Optional" />
-            </div>
-          </div>
-          <div class="tx-add-vspace" aria-hidden="true"></div>
-          <div id="txEditCategoryColorRow" class="form-row-h tx-edit-cat-color-row">
-            <div class="form-row-h__label"><label>Select Color <span class="tx-add-optional-mark">(optional)</span></label></div>
-            <div class="form-row-h__field tx-edit-cat-color-field">
-              <div class="cat-color-row tx-edit-cat-color-panel">
-                <div class="cat-color-row__swatches" id="txEditCategoryColorSwatches"></div>
-                <button type="button" class="cat-color-row__clear tx-edit-cat-color-clear" id="txEditCategoryColorClear" hidden>Clear</button>
-              </div>
-            </div>
-          </div>
-
-          <div id="txEditRecurringVariableWrap" class="tx-edit-variable-form-row" style="display: none">
-            <label class="tx-edit-variable-toggle" for="seriesVariable">
-              <span class="tx-edit-variable-toggle__head">
-                <input
-                  id="seriesVariable"
-                  type="checkbox"
-                  class="tx-edit-variable-row__input"
-                  title="Amount is an estimate that may change month to month"
-                />
-                <span class="tx-edit-variable-toggle__label">Amount varies month to month</span>
-              </span>
-              <span class="tx-edit-variable-row__hint">Helpful for utilities and fluctuating bills.</span>
-            </label>
           </div>
 
           <div id="txEditRecurringPrimaryActions" class="tx-edit-recurring-update-row" style="display: none"></div>
@@ -1513,34 +1526,15 @@
 
     <div id="txEditDeleteScopeModal" class="modal-overlay modal-overlay--nested" aria-hidden="true">
       <div class="modal modal--choice modal--apply-scope" role="dialog" aria-labelledby="txEditDeleteScopeTitle" aria-describedby="txEditDeleteScopeDesc" aria-modal="true">
-        <h3 id="txEditDeleteScopeTitle">Skip or end this series</h3>
+        <h3 id="txEditDeleteScopeTitle">Delete this transaction?</h3>
         <div class="modal--apply-scope__body">
           <div id="txEditDeleteScopeDesc" class="modal--apply-scope__intro">
-            <p class="modal--apply-scope__lede">This transaction is part of a recurring series.</p>
-            <p id="txEditDeleteScopeHelper" class="modal--apply-scope__helper">Choose whether to skip only this date, or stop later dates from here. Past dates stay.</p>
+            <p class="modal--apply-scope__lede">This date is one occurrence in a recurring series.</p>
+            <p id="txEditDeleteScopeHelper" class="modal--apply-scope__helper">This date is one occurrence in a recurring series.</p>
           </div>
           <div id="txEditDeleteScopeErr" class="error"></div>
-          <div class="apply-scope-actions" role="radiogroup" aria-label="Skip this date or end later dates">
-            <button type="button" id="txEditDeleteScopeFutureBtn" class="apply-scope-option apply-scope-option--recommended" role="radio" aria-pressed="false" data-delete-scope="future">
-              <span class="apply-scope-option__row">
-                <span class="apply-scope-option__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M4 12a8 8 0 0 1 13.5-5.7"></path>
-                    <path d="M17.5 6.3V10h-3.6"></path>
-                    <path d="M20 12a8 8 0 0 1-13.5 5.7"></path>
-                    <path d="M6.5 17.7V14h3.6"></path>
-                  </svg>
-                </span>
-                <span class="apply-scope-option__copy">
-                  <span class="apply-scope-option__title-row">
-                    <span class="apply-scope-option__title" id="txEditDeleteScopeFutureTitle">End recurring series from this date</span>
-                    <span class="apply-scope-option__badge">Recommended</span>
-                  </span>
-                  <span class="apply-scope-option__hint" id="txEditDeleteScopeFutureHint">Stops this date and every later occurrence. Earlier dates stay.</span>
-                </span>
-              </span>
-            </button>
-            <button type="button" id="txEditDeleteScopeInstanceBtn" class="apply-scope-option" role="radio" aria-pressed="false" data-delete-scope="instance">
+          <div class="apply-scope-actions" role="radiogroup" aria-label="How much to delete">
+            <button type="button" id="txEditDeleteScopeInstanceBtn" class="apply-scope-option apply-scope-option--recommended" role="radio" aria-pressed="false" data-delete-scope="instance">
               <span class="apply-scope-option__row">
                 <span class="apply-scope-option__icon apply-scope-option__icon--single" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -1551,15 +1545,34 @@
                   </svg>
                 </span>
                 <span class="apply-scope-option__copy">
-                  <span class="apply-scope-option__title" id="txEditDeleteScopeInstanceTitle">Skip this occurrence</span>
-                  <span class="apply-scope-option__hint" id="txEditDeleteScopeInstanceHint">Takes this date off the schedule. Later dates stay. The series continues.</span>
+                  <span class="apply-scope-option__title-row">
+                    <span class="apply-scope-option__title" id="txEditDeleteScopeInstanceTitle">Delete only this date</span>
+                    <span class="apply-scope-option__badge">Recommended</span>
+                  </span>
+                  <span class="apply-scope-option__hint" id="txEditDeleteScopeInstanceHint">All other dates stay the same.</span>
+                </span>
+              </span>
+            </button>
+            <button type="button" id="txEditDeleteScopeFutureBtn" class="apply-scope-option" role="radio" aria-pressed="false" data-delete-scope="future">
+              <span class="apply-scope-option__row">
+                <span class="apply-scope-option__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 12a8 8 0 0 1 13.5-5.7"></path>
+                    <path d="M17.5 6.3V10h-3.6"></path>
+                    <path d="M20 12a8 8 0 0 1-13.5 5.7"></path>
+                    <path d="M6.5 17.7V14h3.6"></path>
+                  </svg>
+                </span>
+                <span class="apply-scope-option__copy">
+                  <span class="apply-scope-option__title" id="txEditDeleteScopeFutureTitle">Delete this date and future occurrences</span>
+                  <span class="apply-scope-option__hint" id="txEditDeleteScopeFutureHint">Earlier dates stay the same.</span>
                 </span>
               </span>
             </button>
           </div>
           <div class="modal-actions modal-actions--apply-scope-foot">
             <button type="button" id="txEditDeleteScopeCancelBtn" class="secondary apply-scope-foot__cancel">Cancel</button>
-            <button type="button" id="txEditDeleteScopeConfirmBtn" class="apply-scope-foot__delete" disabled>Continue</button>
+            <button type="button" id="txEditDeleteScopeConfirmBtn" class="apply-scope-foot__delete" disabled>Delete</button>
           </div>
         </div>
       </div>
@@ -1570,6 +1583,31 @@
     
     
     
+    <div id="reviewAmountModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal modal--review-amount" role="dialog" aria-labelledby="reviewAmountTitle" aria-modal="true">
+        <h3 id="reviewAmountTitle">Review amount</h3>
+        <p id="reviewAmountName" class="review-amount__name"></p>
+        <p id="reviewAmountDate" class="review-amount__date"></p>
+        <div class="review-amount__estimate">
+          <span class="review-amount__estimate-k">Estimated amount</span>
+          <span id="reviewAmountEstimate" class="review-amount__estimate-v"></span>
+        </div>
+        <label class="review-amount__actual" for="reviewAmountInput">
+          <span class="review-amount__actual-label">Actual amount</span>
+          <div class="money-input">
+            <span class="money-input__prefix" aria-hidden="true">$</span>
+            <input id="reviewAmountInput" type="number" min="0" step="0.01" inputmode="decimal" autocomplete="off" />
+          </div>
+        </label>
+        <div id="reviewAmountErr" class="error"></div>
+        <div class="modal-actions review-amount__actions">
+          <button type="button" id="reviewAmountCancelBtn" class="secondary">Cancel</button>
+          <button type="button" id="reviewAmountConfirmBtn">Confirm amount</button>
+        </div>
+        <button type="button" id="reviewAmountEditBtn" class="review-amount__edit-link">Edit transaction</button>
+      </div>
+    </div>
+
     <div id="txAddModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--tx-add" role="dialog" aria-labelledby="txAddTitle">
         <h3 id="txAddTitle">Add transaction</h3>
@@ -1600,7 +1638,11 @@
       <div class="modal modal--reconcile modal--balance-check-in" role="dialog" aria-labelledby="reconcileTitle" aria-modal="true" data-balance-check-in-mode="confirm">
         <div class="balance-check-in__header">
           <h3 id="reconcileTitle" class="balance-check-in__title">Check your balance</h3>
-          <p id="reconcileDateDisplay" class="balance-check-in__date"></p>
+          <label class="balance-check-in__date-field">
+            <span class="sr-only">Reconciliation date</span>
+            <input type="date" id="reconcileDateInput" class="balance-check-in__date-input" />
+          </label>
+          <p id="reconcileDateDisplay" class="balance-check-in__date" hidden></p>
         </div>
         <div id="reconcileBalanceBlock" class="balance-check-in__forecast-card">
           <span class="balance-check-in__forecast-k">Projected end-of-day balance</span>
@@ -1773,11 +1815,12 @@
     <script src="../category-list-state.js?v=2"></script>
     <script src="../category-create-state.js?v=3"></script>
     <script src="../favorite-transactions.js?v=2"></script>
-    <script src="../cash-health-summary.js?v=3"></script>
-    <script src="../needs-review.js?v=1"></script>
-    <script src="../tx-edit-scope.js?v=2"></script>
-    <script src="../app.js?v=569"></script>
+    <script src="../cash-health-summary.js?v=6"></script>
+    <script src="../needs-review.js?v=2"></script>
+    <script src="../sidebar-reconcile.js?v=1"></script>
+    <script src="../tx-edit-scope.js?v=3"></script>
+    <script src="../app.js?v=589"></script>
     <script src="../feedback.js?v=6" defer></script>
-    <script src="../tour.js?v=25" defer></script>
+    <script src="../tour.js?v=27" defer></script>
   </body>
 </html>
