@@ -20,6 +20,13 @@ from support import assert_route_ok, login, money, open_add_on_day, show_month
 PASSWORD = "SmokeOnly1!"
 
 
+def _shift_month(day: date, months: int) -> date:
+    month_index = day.month - 1 + months
+    year = day.year + month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, min(day.day, 28))
+
+
 def _request(method, path, token=None, body=None):
     data = None if body is None else json.dumps(body).encode()
     headers = {"Accept": "application/json"}
@@ -219,7 +226,8 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
         "Add your upcoming bills and income to see where your balance is headed."
     )
     expect(page.get_by_text("Stays above your")).to_have_count(0)
-    expect(page.get_by_text("Nothing to review")).to_have_count(0)
+    expect(page.get_by_text("All caught up.")).to_have_count(0)
+    expect(page.get_by_text("No estimates to review.")).to_have_count(0)
     expect(page.locator(".cal-day-tx-line", has_text="Mortgage")).to_have_count(0)
     assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')")
     page.set_viewport_size({"width": 390, "height": 800})
@@ -230,7 +238,7 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     _add_planned_item(page, today, "40", kind="expense")
     expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Stays above your")
     expect(page.locator("#sidebarLowBalanceBanner")).not_to_contain_text("Your forecast is getting started")
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Nothing to review")
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("No estimates to review.")
 
     page.goto("/settings/")
     page.locator('[data-settings-key="preferences"]').click()
@@ -323,13 +331,18 @@ def test_variable_bill_repeats_and_needs_review(page, guard):
     label = _add_planned_item(page, today.isoformat(), "80", kind="expense", repeat="monthly", variable=True)
     expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"]')).to_contain_text(label)
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Needs Review")
+    expect(page.locator("#sidebarPendingMonth")).to_contain_text(today.strftime("%B %Y"))
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text(label)
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Est. $80")
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text("due today")
     page.locator("#calendarNextMonth").click()
     expect(page.locator(f'.cal-cell[data-iso="{next_month.isoformat()}"]')).to_contain_text(label)
+    expect(page.locator("#sidebarPendingMonth")).to_contain_text(next_month.strftime("%B %Y"))
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text(label)
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("due today")
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text(
+        f"due {('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')[next_month.month - 1]} {next_month.day}"
+    )
+    expect(page.locator("#sidebarPendingTxCard")).not_to_contain_text("due today")
     page.reload()
     page.locator("#calendarNextMonth").click()
     expect(page.locator(f'.cal-cell[data-iso="{next_month.isoformat()}"]')).to_contain_text(label)
@@ -350,6 +363,9 @@ def test_needs_review_confirm_this_amount(page, guard):
     page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
     modal = page.locator("#reviewAmountModal.modal-overlay--open")
     expect(modal).to_be_visible()
+    expect(page.locator("#reviewAmountTitle")).to_contain_text(label)
+    expect(modal).not_to_contain_text("Estimated amount")
+    expect(modal).not_to_contain_text("Actual amount")
     expect(page.locator("#reviewAmountConfirmBtn")).to_have_text("Confirm amount")
     expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
     expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
@@ -357,16 +373,27 @@ def test_needs_review_confirm_this_amount(page, guard):
     page.locator("#reviewAmountConfirmBtn").click()
     expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
     expect(modal).to_have_count(0)
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Nothing to review")
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("All caught up.")
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("108")
     expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
+    expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"] .cal-balance')).to_have_text(money("1892.00"))
+
+    page.reload()
+    show_month(page, start.strftime("%Y-%m"), today.isoformat())
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("All caught up.")
+    today_line = _day_line(page, today.isoformat(), label)
+    expect(today_line).to_contain_text("108")
+    expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
+    expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"] .cal-balance')).to_have_text(money("1892.00"))
 
     show_month(page, next_month.strftime("%Y-%m"), next_month.isoformat())
     next_line = _day_line(page, next_month.isoformat(), label)
     expect(next_line).to_be_visible()
     expect(next_line).to_contain_text("95")
     expect(next_line).to_have_class(re.compile(r"cal-expected-variable"))
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text(label)
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Est. $95")
     guard.assert_clean()
 
 
@@ -405,18 +432,20 @@ def test_needs_review_confirm_unchanged_amount(page, guard):
     label = _add_planned_item(page, today.isoformat(), "95", kind="expense", repeat="monthly", variable=True)
     page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
     expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_be_visible()
-    expect(page.locator("#reviewAmountInput")).to_have_value("95")
+    expect(page.locator("#reviewAmountInput")).to_have_value("95.00")
     page.locator("#reviewAmountConfirmBtn").click()
     expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
     expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Nothing to review")
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("All caught up.")
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("95")
     expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
+    expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"] .cal-balance')).to_have_text(money("1905.00"))
     show_month(page, next_month.strftime("%Y-%m"), next_month.isoformat())
     next_line = _day_line(page, next_month.isoformat(), label)
     expect(next_line).to_contain_text("95")
     expect(next_line).to_have_class(re.compile(r"cal-expected-variable"))
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text(label)
     guard.assert_clean()
 
 
@@ -460,6 +489,123 @@ def test_needs_review_cancel_leaves_estimate(page, guard):
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("95")
     expect(today_line).to_have_class(re.compile(r"cal-expected-variable"))
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Needs Review confirm double click")
+def test_needs_review_confirm_ignores_second_click(page, guard):
+    today = date.today()
+    start = date(today.year, today.month, 1)
+    email = _register_checking("2000.00", start.isoformat())
+    login(page, email, PASSWORD)
+    show_month(page, start.strftime("%Y-%m"), today.isoformat())
+    _add_planned_item(page, today.isoformat(), "95", kind="expense", repeat="monthly", variable=True)
+    page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
+    expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_be_visible()
+    posts = {"n": 0}
+
+    def count_post(route):
+        if route.request.method == "POST":
+            posts["n"] += 1
+        route.continue_()
+
+    page.route(re.compile(r"/expected-transactions/.+/instances/"), count_post)
+    page.locator("#reviewAmountConfirmBtn").evaluate("el => { el.click(); el.click(); }")
+    expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("All caught up.")
+    assert posts["n"] == 1
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Needs Review follows viewed month")
+def test_needs_review_follows_viewed_calendar_month(page, guard):
+    today = date.today()
+    nov = date(today.year, today.month, 1)
+    overdue = nov - timedelta(days=1)
+    dec = (nov.replace(day=28) + timedelta(days=4)).replace(day=1)
+    dec_11 = date(dec.year, dec.month, 11)
+    start = date(overdue.year, overdue.month, 1)
+    email = _register_checking("2000.00", start.isoformat())
+    login(page, email, PASSWORD)
+    show_month(page, overdue.strftime("%Y-%m"), overdue.isoformat())
+    overdue_label = _add_planned_item(page, overdue.isoformat(), "40", kind="expense", variable=True)
+    show_month(page, nov.strftime("%Y-%m"), today.isoformat())
+    nov_label = _add_planned_item(page, today.isoformat(), "80", kind="expense", variable=True)
+    show_month(page, dec.strftime("%Y-%m"), dec_11.isoformat())
+    card_label = _add_planned_item(
+        page, dec_11.isoformat(), "90", kind="expense", variable=True, name="Credit Card Payment"
+    )
+    card = page.locator("#sidebarPendingTxCard")
+
+    show_month(page, nov.strftime("%Y-%m"), today.isoformat())
+    expect(card).to_contain_text("Needs Review")
+    expect(page.locator("#sidebarPendingMonth")).to_contain_text(nov.strftime("%B %Y"))
+    expect(card).to_contain_text(nov_label)
+    expect(card).not_to_contain_text(overdue_label)
+    expect(card).not_to_contain_text(card_label)
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(1)
+
+    show_month(page, dec.strftime("%Y-%m"), dec_11.isoformat())
+    expect(page.locator("#sidebarPendingMonth")).to_contain_text(dec.strftime("%B %Y"))
+    expect(card).to_contain_text(card_label)
+    expect(card).to_contain_text("Est. $90")
+    expect(card).not_to_contain_text(nov_label)
+    expect(card).not_to_contain_text(overdue_label)
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(1)
+
+    page.locator("#calendarPrevMonth").click()
+    page.locator("#calendarNextMonth").click()
+    _wait_calendar_idle(page)
+    _expect_visible_month(page, dec.strftime("%Y-%m"))
+    expect(card).to_contain_text(card_label)
+    expect(card).not_to_contain_text(nov_label)
+
+    page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
+    page.locator("#reviewAmountConfirmBtn").click()
+    expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
+    expect(card).to_contain_text("All caught up.")
+    dec_line = _day_line(page, dec_11.isoformat(), card_label)
+    expect(dec_line).to_contain_text("90")
+    expect(dec_line).not_to_have_class(re.compile(r"cal-expected-variable"))
+
+    show_month(page, nov.strftime("%Y-%m"), today.isoformat())
+    expect(card).to_contain_text(nov_label)
+    expect(card).not_to_contain_text("All caught up.")
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Needs Review show all")
+def test_needs_review_show_all_and_show_less(page, guard):
+    today = date.today()
+    start = date(today.year, today.month, 1)
+    days = [date(today.year, today.month, d) for d in range(1, 7)]
+    email = _register_checking("2000.00", start.isoformat())
+    login(page, email, PASSWORD)
+    show_month(page, start.strftime("%Y-%m"), today.isoformat())
+    labels = []
+    for idx, day in enumerate(days):
+        labels.append(_add_planned_item(page, day.isoformat(), str(20 + idx), kind="expense", variable=True))
+    card = page.locator("#sidebarPendingTxCard")
+    expect(page.locator("#sidebarPendingStatus")).to_contain_text("(6)")
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(5)
+    more = page.locator("#sidebarPendingTxList .sidebar-pending-more")
+    expect(more).to_have_text("Show all")
+    more.click()
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(6)
+    expect(more).to_have_text("Show less")
+    for label in labels:
+        expect(card).to_contain_text(label)
+    more.click()
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(5)
+    expect(more).to_have_text("Show all")
+    page.set_viewport_size({"width": 390, "height": 800})
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(5)
+    more.click()
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(6)
+    more.click()
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(5)
+    page.set_viewport_size({"width": 1280, "height": 720})
     guard.assert_clean()
 
 

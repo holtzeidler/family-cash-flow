@@ -1,16 +1,39 @@
 /**
- * Needs Review lists variable expected occurrences that are overdue, due today,
- * or due within a few days — not every estimate on the calendar month.
+ * Needs Review lists unconfirmed variable expected occurrences in the
+ * currently viewed calendar month — not overdue items from other months.
  */
 
-const NEEDS_REVIEW_UPCOMING_DAYS = 3;
+const NEEDS_REVIEW_INITIAL_LIMIT = 5;
+const NEEDS_REVIEW_EMPTY_TITLE = "All caught up.";
+const NEEDS_REVIEW_EMPTY_NONE_TITLE = "No estimates to review.";
 const NEEDS_REVIEW_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const NEEDS_REVIEW_MONTHS_LONG = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 function needsReviewNormalizeIso(raw) {
   if (raw == null || raw === "") return "";
   const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(raw));
   if (!m) return "";
   return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+}
+
+function needsReviewYm(raw) {
+  const s = String(raw || "").trim();
+  const fromYm = /^(\d{4})-(\d{1,2})$/.exec(s);
+  if (fromYm) return `${fromYm[1]}-${fromYm[2].padStart(2, "0")}`;
+  return needsReviewNormalizeIso(s).slice(0, 7);
 }
 
 function needsReviewAddDays(iso, days) {
@@ -29,10 +52,16 @@ function needsReviewDaysUntil(iso, todayIso) {
   return Math.round((a - b) / 86400000);
 }
 
-function isNeedsReviewDateEligible(iso, todayIso, upcomingDays = NEEDS_REVIEW_UPCOMING_DAYS) {
-  const days = needsReviewDaysUntil(iso, todayIso);
-  if (days == null || !Number.isFinite(days)) return false;
-  return days <= Number(upcomingDays);
+function isNeedsReviewMonthEligible(iso, monthYm) {
+  const ym = needsReviewYm(monthYm);
+  if (!ym) return false;
+  return needsReviewYm(iso) === ym;
+}
+
+function needsReviewTodayChanged(previousTodayIso, nowTodayIso) {
+  const now = needsReviewNormalizeIso(nowTodayIso);
+  if (!now) return false;
+  return now !== needsReviewNormalizeIso(previousTodayIso);
 }
 
 function needsReviewMonthDay(iso) {
@@ -42,6 +71,14 @@ function needsReviewMonthDay(iso) {
   const d = Number(due.slice(8, 10));
   if (!Number.isFinite(m) || m < 1 || m > 12 || !Number.isFinite(d)) return due;
   return `${NEEDS_REVIEW_MONTHS[m - 1]} ${d}`;
+}
+
+function needsReviewMonthLabel(ym) {
+  const key = needsReviewYm(ym);
+  if (!key) return "";
+  const m = Number(key.slice(5, 7));
+  if (!Number.isFinite(m) || m < 1 || m > 12) return "";
+  return `${NEEDS_REVIEW_MONTHS_LONG[m - 1]} ${key.slice(0, 4)}`;
 }
 
 function needsReviewFlowKey(row) {
@@ -57,32 +94,19 @@ function needsReviewOccurrenceKey(item) {
   return `${id}|${occ}`;
 }
 
-function needsReviewItemMonth(item) {
-  return (needsReviewNormalizeIso(item?.date) || "").slice(0, 7);
+function needsReviewSeriesLookup(seriesById, expectedId) {
+  if (expectedId == null || expectedId === "" || !seriesById) return null;
+  const num = Number(expectedId);
+  if (seriesById instanceof Map) {
+    return seriesById.get(expectedId) || (Number.isFinite(num) ? seriesById.get(num) : null) || null;
+  }
+  return seriesById[expectedId] || (Number.isFinite(num) ? seriesById[num] : null) || null;
 }
 
-function needsReviewActualKey(tx) {
-  const id = Number(tx && tx.id);
-  if (Number.isFinite(id) && id > 0) return `id:${id}`;
-  return `flow:${needsReviewFlowKey(tx)}`;
-}
-
-/** Keep items from months the calendar has not reloaded this navigation. */
-function syncNeedsReviewItemCache(cache, items, loadedMonths, keyFn, monthOf) {
-  const next = cache instanceof Map ? new Map(cache) : new Map();
-  const monthSet = new Set((loadedMonths || []).filter(Boolean));
-  if (monthSet.size) {
-    for (const [key, it] of next) {
-      const ym = monthOf(it);
-      if (ym && monthSet.has(ym)) next.delete(key);
-    }
-  }
-  for (const it of items || []) {
-    const key = keyFn(it);
-    if (!key) continue;
-    next.set(key, it);
-  }
-  return next;
+function needsReviewItemFromVariableSeries(item, seriesById) {
+  if (item?.variable) return true;
+  const series = needsReviewSeriesLookup(seriesById, item?.expected_transaction_id);
+  return !!(series && series.variable);
 }
 
 function formatNeedsReviewDueLabel(daysUntil, iso) {
@@ -112,6 +136,32 @@ function parseNeedsReviewAmount(raw) {
   return Math.round(n * 100) / 100;
 }
 
+function formatNeedsReviewAmountInput(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function applyNeedsReviewConfirmLocally(item, amount, expectedLists) {
+  const key = needsReviewOccurrenceKey(item);
+  const amt = Number(amount);
+  const confirmItem = (it) => {
+    if (!it) return;
+    it.variable = false;
+    if (Number.isFinite(amt) && amt > 0) it.amount = amt;
+  };
+  confirmItem(item);
+  const lists = Array.isArray(expectedLists) ? expectedLists : [expectedLists];
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const it of list) {
+      if (!it || it === item) continue;
+      if (key && needsReviewOccurrenceKey(it) === key) confirmItem(it);
+    }
+  }
+  return item;
+}
+
 function buildNeedsReviewConfirmPayload(item, amount, series) {
   const accountId = item?.account_id ?? series?.account_id;
   const categoryRaw = item?.category_id ?? series?.category_id;
@@ -129,26 +179,28 @@ function buildNeedsReviewConfirmPayload(item, amount, series) {
 }
 
 function compareNeedsReviewRows(a, b) {
-  const aOver = a.daysUntil < 0;
-  const bOver = b.daysUntil < 0;
-  if (aOver !== bOver) return aOver ? -1 : 1;
-  if (a.iso !== b.iso) {
-    if (aOver && bOver) return a.iso.localeCompare(b.iso);
-    return a.iso.localeCompare(b.iso);
-  }
+  if (a.iso !== b.iso) return String(a.iso || "").localeCompare(String(b.iso || ""));
   const aa = Math.abs(Number(a.item?.amount) || 0);
   const bb = Math.abs(Number(b.item?.amount) || 0);
-  if (bb !== aa) return bb - aa;
+  if (aa !== bb) return aa - bb;
   const an = String(a.item?.description || a.item?.category || "");
   const bn = String(b.item?.description || b.item?.category || "");
   return an.localeCompare(bn);
+}
+
+function visibleNeedsReviewRows(rows, { expanded = false, limit = NEEDS_REVIEW_INITIAL_LIMIT } = {}) {
+  const list = Array.isArray(rows) ? rows : [];
+  const cap = Number(limit);
+  if (expanded || !Number.isFinite(cap) || cap < 1 || list.length <= cap) return list;
+  return list.slice(0, cap);
 }
 
 function collectNeedsReviewRows({
   expectedItems,
   actualItems,
   todayIso,
-  upcomingDays = NEEDS_REVIEW_UPCOMING_DAYS,
+  monthYm,
+  seriesById,
 } = {}) {
   const actualKeys = new Set();
   for (const tx of actualItems || []) {
@@ -156,12 +208,16 @@ function collectNeedsReviewRows({
   }
   const seenOcc = new Set();
   const rows = [];
+  let hadVariableEstimates = false;
+  const ym = needsReviewYm(monthYm);
   for (const it of expectedItems || []) {
     if (!it || it.cancelled) continue;
-    if (!it.variable) continue;
     const iso = needsReviewNormalizeIso(it.date) || "";
     if (!iso) continue;
-    if (!isNeedsReviewDateEligible(iso, todayIso, upcomingDays)) continue;
+    if (ym && !isNeedsReviewMonthEligible(iso, ym)) continue;
+    const fromVariableSeries = needsReviewItemFromVariableSeries(it, seriesById);
+    if (fromVariableSeries) hadVariableEstimates = true;
+    if (!it.variable) continue;
     const occKey = needsReviewOccurrenceKey(it);
     if (!occKey || seenOcc.has(occKey)) continue;
     const flow = needsReviewFlowKey({
@@ -179,25 +235,31 @@ function collectNeedsReviewRows({
     });
   }
   rows.sort(compareNeedsReviewRows);
-  return rows;
+  return { rows, hadVariableEstimates };
 }
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    NEEDS_REVIEW_UPCOMING_DAYS,
+    NEEDS_REVIEW_INITIAL_LIMIT,
+    NEEDS_REVIEW_EMPTY_TITLE,
+    NEEDS_REVIEW_EMPTY_NONE_TITLE,
     needsReviewAddDays,
     needsReviewDaysUntil,
-    isNeedsReviewDateEligible,
+    needsReviewYm,
+    isNeedsReviewMonthEligible,
+    needsReviewTodayChanged,
     needsReviewMonthDay,
+    needsReviewMonthLabel,
     needsReviewFlowKey,
     needsReviewOccurrenceKey,
-    needsReviewItemMonth,
-    needsReviewActualKey,
-    syncNeedsReviewItemCache,
+    needsReviewItemFromVariableSeries,
     formatNeedsReviewDueLabel,
     formatNeedsReviewMeta,
     parseNeedsReviewAmount,
+    formatNeedsReviewAmountInput,
+    applyNeedsReviewConfirmLocally,
     buildNeedsReviewConfirmPayload,
+    visibleNeedsReviewRows,
     collectNeedsReviewRows,
   };
 }

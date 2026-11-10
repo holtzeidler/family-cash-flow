@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=924" />
+    <link rel="stylesheet" href="../styles.css?v=926" />
   </head>
   <body>
     <h1 class="sr-only">Transactions</h1>
@@ -112,7 +112,10 @@
 
                 <div id="sidebarPendingTxCard" class="cash-health-status cash-health-status--review" aria-label="Needs review">
                   <div class="cash-health-status__row">
-                    <span class="cash-health-status__label" id="sidebarPendingTitle">Needs review</span>
+                    <span class="cash-health-status__heading">
+                      <span class="cash-health-status__label" id="sidebarPendingTitle">Needs review</span>
+                      <span class="cash-health-status__label cash-health-status__label--subtle" id="sidebarPendingMonth" hidden></span>
+                    </span>
                     <span id="sidebarPendingStatus" class="cash-health-status__value" hidden></span>
                   </div>
                   <div class="cash-health-status__detail list" id="sidebarPendingTxList"></div>
@@ -1695,18 +1698,13 @@
     
     <div id="reviewAmountModal" class="modal-overlay" aria-hidden="true">
       <div class="modal modal--review-amount" role="dialog" aria-labelledby="reviewAmountTitle" aria-modal="true">
-        <h3 id="reviewAmountTitle">Review amount</h3>
-        <p id="reviewAmountName" class="review-amount__name"></p>
+        <h3 id="reviewAmountTitle">Confirm amount</h3>
         <p id="reviewAmountDate" class="review-amount__date"></p>
-        <div class="review-amount__estimate">
-          <span class="review-amount__estimate-k">Estimated amount</span>
-          <span id="reviewAmountEstimate" class="review-amount__estimate-v"></span>
-        </div>
         <label class="review-amount__actual" for="reviewAmountInput">
-          <span class="review-amount__actual-label">Actual amount</span>
+          <span class="sr-only">Amount</span>
           <div class="money-input">
             <span class="money-input__prefix" aria-hidden="true">$</span>
-            <input id="reviewAmountInput" type="number" min="0" step="0.01" inputmode="decimal" autocomplete="off" />
+            <input id="reviewAmountInput" type="text" inputmode="decimal" autocomplete="off" aria-label="Amount" />
           </div>
         </label>
         <div id="reviewAmountErr" class="error"></div>
@@ -1930,11 +1928,11 @@
     <script src="../category-create-state.js?v=3"></script>
     <script src="../favorite-transactions.js?v=2"></script>
     <script src="../cash-health-summary.js?v=6"></script>
-    <script src="../needs-review.js?v=2"></script>
+    <script src="../needs-review.js?v=6"></script>
     <script src="../sidebar-reconcile.js?v=4"></script>
     <script src="../tx-edit-scope.js?v=3"></script>
     <script src="../reconcile-record-tip.js?v=5"></script>
-    <script src="../app.js?v=596"></script>
+    <script src="../app.js?v=600"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=27" defer></script>
   </body>
