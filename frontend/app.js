@@ -7570,10 +7570,13 @@ function balanceMatchesForecast(entered, forecast) {
   return Number.isFinite(amt) && Number.isFinite(proj) && Math.abs(amt - proj) < 0.005;
 }
 
-function buildReconcileRecordStatusHtml(kind) {
+function buildReconcileRecordStatusHtml(kind, iso) {
   const label = kind === "adjusted" ? "Adjusted" : "Reconciled";
   const cls = kind === "adjusted" ? "cal-confirmed-tip__head--adjusted" : "cal-confirmed-tip__head--reconciled";
-  return `<div class="cal-confirmed-tip__head ${cls}">${label}</div>`;
+  const d = normalizeIsoDate(iso) || "";
+  const dateLabel = d ? fmtDateMedDisplay(d) : "";
+  const when = dateLabel ? ` · <span class="cal-confirmed-tip__when">${escapeHtml(dateLabel)}</span>` : "";
+  return `<div class="cal-confirmed-tip__head ${cls}">${label}${when}</div>`;
 }
 
 function buildReconcileRecordDateHtml(iso) {
@@ -7596,8 +7599,7 @@ function buildReconciledBalanceTipHtml(dayBal, iso, { chrome = "tip" } = {}) {
 
   const parts = ['<div class="cal-confirmed-tip" data-bw-balance-record="reconciled">'];
   if (chrome !== "modal") {
-    parts.push(buildReconcileRecordStatusHtml("reconciled"));
-    parts.push(buildReconcileRecordDateHtml(d));
+    parts.push(buildReconcileRecordStatusHtml("reconciled", d));
   }
   if (balance != null) {
     parts.push(`<p class="cal-confirmed-tip__amount">$${escapeHtml(fmtMoney(balance))}</p>`);
@@ -7634,8 +7636,7 @@ function buildAdjustedBalanceTipHtml(dayBal, iso, { chrome = "tip" } = {}) {
 
   const parts = ['<div class="cal-confirmed-tip cal-confirmed-tip--adjusted" data-bw-balance-record="adjusted">'];
   if (chrome !== "modal") {
-    parts.push(buildReconcileRecordStatusHtml("adjusted"));
-    parts.push(buildReconcileRecordDateHtml(d));
+    parts.push(buildReconcileRecordStatusHtml("adjusted", d));
   }
   parts.push(`<p class="cal-confirmed-tip__amount">$${escapeHtml(fmtMoney(bank))}</p>`);
   parts.push(`<p class="cal-confirmed-tip__match">${escapeHtml(caption)}</p>`);
