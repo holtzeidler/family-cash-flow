@@ -331,13 +331,13 @@ def test_variable_bill_repeats_and_needs_review(page, guard):
     label = _add_planned_item(page, today.isoformat(), "80", kind="expense", repeat="monthly", variable=True)
     expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"]')).to_contain_text(label)
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Needs Review")
-    expect(page.locator("#sidebarPendingMonth")).to_contain_text(today.strftime("%B %Y"))
+    expect(page.locator("#sidebarPendingStatus")).to_contain_text("(1)")
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text(label)
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Est. $80")
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text("due today")
     page.locator("#calendarNextMonth").click()
     expect(page.locator(f'.cal-cell[data-iso="{next_month.isoformat()}"]')).to_contain_text(label)
-    expect(page.locator("#sidebarPendingMonth")).to_contain_text(next_month.strftime("%B %Y"))
+    expect(page.locator("#sidebarPendingStatus")).to_contain_text("(1)")
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text(label)
     expect(page.locator("#sidebarPendingTxCard")).to_contain_text(
         f"due {('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')[next_month.month - 1]} {next_month.day}"
@@ -540,14 +540,14 @@ def test_needs_review_follows_viewed_calendar_month(page, guard):
 
     show_month(page, nov.strftime("%Y-%m"), today.isoformat())
     expect(card).to_contain_text("Needs Review")
-    expect(page.locator("#sidebarPendingMonth")).to_contain_text(nov.strftime("%B %Y"))
+    expect(page.locator("#sidebarPendingStatus")).to_contain_text("(1)")
     expect(card).to_contain_text(nov_label)
     expect(card).not_to_contain_text(overdue_label)
     expect(card).not_to_contain_text(card_label)
     expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_have_count(1)
 
     show_month(page, dec.strftime("%Y-%m"), dec_11.isoformat())
-    expect(page.locator("#sidebarPendingMonth")).to_contain_text(dec.strftime("%B %Y"))
+    expect(page.locator("#sidebarPendingStatus")).to_contain_text("(1)")
     expect(card).to_contain_text(card_label)
     expect(card).to_contain_text("Est. $90")
     expect(card).not_to_contain_text(nov_label)

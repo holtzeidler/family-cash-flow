@@ -33975,16 +33975,30 @@ body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__he
   align-items: baseline;
   gap: 6px;
   min-width: 0;
-  flex: 1 1 auto;
-}
-body[data-bw-view="calendar"] .cash-health-status--review #sidebarPendingMonth,
-body[data-bw-view="transactions"] .cash-health-status--review #sidebarPendingMonth,
-body[data-bw-view="settings"] .cash-health-status--review #sidebarPendingMonth,
-body[data-bw-view="reports"] .cash-health-status--review #sidebarPendingMonth{
   flex: 0 1 auto;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--empty .cash-health-status__heading,
+body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--empty .cash-health-status__heading,
+body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--empty .cash-health-status__heading,
+body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--empty .cash-health-status__heading{
+  white-space: normal;
+}
+body[data-bw-view="calendar"] .cash-health-status--review #sidebarPendingStatus,
+body[data-bw-view="transactions"] .cash-health-status--review #sidebarPendingStatus,
+body[data-bw-view="settings"] .cash-health-status--review #sidebarPendingStatus,
+body[data-bw-view="reports"] .cash-health-status--review #sidebarPendingStatus{
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: var(--sb-support-size);
+  font-weight: var(--sb-heading-weight);
+  letter-spacing: 0;
+  line-height: 1.2;
+  color: var(--sb-heading-color);
+  text-align: left;
+  white-space: nowrap;
 }
 body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--empty:not(.sidebar-pending--success) .cash-health-status__label,
 body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--empty:not(.sidebar-pending--success) .cash-health-status__label,

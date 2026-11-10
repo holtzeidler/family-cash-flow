@@ -3535,7 +3535,6 @@ const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
 const sidebarPendingTitle = document.getElementById("sidebarPendingTitle");
 const sidebarPendingStatus = document.getElementById("sidebarPendingStatus");
-const sidebarPendingMonth = document.getElementById("sidebarPendingMonth");
 const reviewAmountModal = document.getElementById("reviewAmountModal");
 const reviewAmountTitle = document.getElementById("reviewAmountTitle");
 const reviewAmountName = document.getElementById("reviewAmountName");
@@ -19335,8 +19334,6 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.hidden = true;
   }
   const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
-  const monthLabel =
-    typeof needsReviewMonthLabel === "function" ? needsReviewMonthLabel(viewedYm) : viewedYm;
   const caughtUpTitle =
     typeof NEEDS_REVIEW_EMPTY_TITLE === "string" ? NEEDS_REVIEW_EMPTY_TITLE : "All caught up.";
   const noneTitle =
@@ -19347,11 +19344,6 @@ function renderSidebarPendingTransactionsForMonth() {
     if (!sidebarPendingTitle) return;
     sidebarPendingTitle.textContent = "Needs Review";
   };
-  const setMonthLabel = (visible) => {
-    if (!sidebarPendingMonth) return;
-    sidebarPendingMonth.textContent = visible ? monthLabel : "";
-    sidebarPendingMonth.hidden = !visible || !monthLabel;
-  };
   const setPendingStatus = (text) => {
     if (!sidebarPendingStatus) return;
     sidebarPendingStatus.textContent = text || "";
@@ -19359,7 +19351,6 @@ function renderSidebarPendingTransactionsForMonth() {
   };
   const showEmpty = (title, { success = false } = {}) => {
     if (sidebarPendingTitle) sidebarPendingTitle.textContent = title;
-    setMonthLabel(false);
     setPendingStatus("");
     if (sidebarPendingTxCard) {
       sidebarPendingTxCard.classList.add("sidebar-pending--empty");
@@ -19382,12 +19373,10 @@ function renderSidebarPendingTransactionsForMonth() {
         sidebarPendingTxCard.classList.add("sidebar-pending--empty");
       }
       setTitle();
-      setMonthLabel(false);
       return;
     }
     if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
     setTitle();
-    setMonthLabel(true);
     setPendingStatus("");
     return;
   }
@@ -19422,7 +19411,6 @@ function renderSidebarPendingTransactionsForMonth() {
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
 
   setTitle();
-  setMonthLabel(true);
   setPendingStatus(`(${reviewRows.length})`);
   const visibleRows =
     typeof visibleNeedsReviewRows === "function"
