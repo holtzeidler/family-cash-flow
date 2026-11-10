@@ -5,6 +5,8 @@ const {
   adjustedConfirmedBalance,
   adjustedForecastBalance,
   reconcileRecordCaption,
+  dropReconciledIso,
+  addReconciledIso,
 } = require("./reconcile-record-tip.js");
 
 function money(n) {
@@ -39,5 +41,17 @@ assert.strictEqual(reconcileRecordCaption({ matched: false, diff: 68.25, fmtMone
 assert.strictEqual(reconcileRecordCaption({ matched: false, diff: -12, fmtMoney: money }), "Your balance was $12.00 lower than forecast.");
 assert.strictEqual(reconcileRecordCaption({ matched: false, diff: 0 }), "Did not match forecast");
 assert.notStrictEqual(reconcileRecordCaption({ matched: false, diff: 10, fmtMoney: money }), "Matched bank balance");
+
+{
+  const merged = new Set(["2026-09-01", "2026-09-08"]);
+  const byMonth = new Map([["2026-09", new Set(["2026-09-01", "2026-09-08"])]]);
+  assert.strictEqual(dropReconciledIso("2026-09-08", merged, byMonth), "2026-09-08");
+  assert.strictEqual(merged.has("2026-09-08"), false);
+  assert.strictEqual(merged.has("2026-09-01"), true);
+  assert.strictEqual(byMonth.get("2026-09").has("2026-09-08"), false);
+  addReconciledIso("2026-09-08", merged, byMonth);
+  assert.strictEqual(merged.has("2026-09-08"), true);
+  assert.strictEqual(byMonth.get("2026-09").has("2026-09-08"), true);
+}
 
 console.log("reconcile-record-tip.test.js: ok");

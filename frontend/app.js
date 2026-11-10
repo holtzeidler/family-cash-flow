@@ -401,8 +401,17 @@ function show(el, msg) {
 }
 
 let bwToastHideTimer = null;
+
+function positionBwToastNearCalendar(el) {
+  const sticky = document.getElementById("calendarStickyHeader");
+  const panel = document.getElementById("calendarPanel");
+  const rect = (sticky || panel)?.getBoundingClientRect();
+  const top = rect ? Math.max(12, Math.round((sticky ? rect.bottom : rect.top) + 10)) : 16;
+  el.style.setProperty("--bw-toast-top", `${top}px`);
+}
+
 /** Lightweight toast for settings and other saves (non-blocking). */
-function showBwToast(message, { durationMs = 2800 } = {}) {
+function showBwToast(message, { durationMs = 2800, placement = "bottom" } = {}) {
   const text = String(message || "").trim();
   if (!text) return;
   let el = document.getElementById("bwToast");
@@ -414,6 +423,10 @@ function showBwToast(message, { durationMs = 2800 } = {}) {
     el.setAttribute("aria-live", "polite");
     document.body.appendChild(el);
   }
+  const nearCalendar = placement === "calendar";
+  el.classList.toggle("bw-toast--calendar", nearCalendar);
+  if (nearCalendar) positionBwToastNearCalendar(el);
+  else el.style.removeProperty("--bw-toast-top");
   el.textContent = text;
   el.classList.add("bw-toast--visible");
   if (bwToastHideTimer) clearTimeout(bwToastHideTimer);
@@ -7081,6 +7094,66 @@ async function saveBalanceCheckIn() {
   await afterBalanceCheckInSaved();
 }
 
+function invalidateCalendarMonthDaily() {
+  calendarMonthDailyCache.clear();
+  calendarMonthDailyInflight.clear();
+}
+
+function applyClientDailyBalancesNow() {
+  if (!state.monthDailyBalances) state.monthDailyBalances = new Map();
+  try {
+    const client = computeCalendarVisibleDailyBalancesClient();
+    for (const [iso, row] of client) state.monthDailyBalances.set(iso, row);
+    repairOutOfMonthBalanceContinuity();
+  } catch (_) {}
+}
+
+function dropReconciledDateLocally(iso) {
+  if (typeof dropReconciledIso === "function") {
+    dropReconciledIso(iso, state.reconciledDates, state.reconciledDatesByMonth);
+  } else {
+    const d = normalizeIsoDate(iso);
+    if (d && state.reconciledDates) state.reconciledDates.delete(d);
+  }
+  recomputeLastReconciledIso();
+  paintSidebarReconcileRow();
+}
+
+function restoreReconciledDateLocally(iso) {
+  if (typeof addReconciledIso === "function") {
+    if (!state.reconciledDates) state.reconciledDates = new Set();
+    if (!state.reconciledDatesByMonth) state.reconciledDatesByMonth = new Map();
+    addReconciledIso(iso, state.reconciledDates, state.reconciledDatesByMonth);
+  }
+  recomputeLastReconciledIso();
+  paintSidebarReconcileRow();
+}
+
+function markCalendarReconcileBusy(iso, busy) {
+  const d = normalizeIsoDate(iso);
+  if (!d || !calendarGrid) return;
+  calendarGrid.querySelector(`.cal-cell[data-iso="${d}"]`)?.classList.toggle("cal-cell--recon-busy", !!busy);
+}
+
+function setBalanceRecordTipBusy(busy, label) {
+  const tip = riskPressureTipEl;
+  if (!tip) return;
+  tip.classList.toggle("is-busy", !!busy);
+  tip.setAttribute("aria-busy", busy ? "true" : "false");
+  const btn = tip.querySelector("[data-bw-bal-action='remove-reconciliation']");
+  tip.querySelectorAll("[data-bw-bal-action]").forEach((el) => {
+    el.disabled = !!busy;
+  });
+  if (!btn) return;
+  if (busy) {
+    if (!btn.dataset.bwIdleLabel) btn.dataset.bwIdleLabel = btn.textContent;
+    btn.textContent = label || "Removing…";
+  } else if (btn.dataset.bwIdleLabel) {
+    btn.textContent = btn.dataset.bwIdleLabel;
+    delete btn.dataset.bwIdleLabel;
+  }
+}
+
 async function refreshAfterBalanceRecordChange(iso) {
   const month = (calendarMonth?.value || monthInput?.value) || String(iso || "").slice(0, 7);
   await loadVerifiedBalances(month);
@@ -7205,7 +7278,10 @@ function openRemoveAdjustmentConfirm(iso) {
   removeAdjustmentActiveDate = d;
   removeAdjustmentBusy = false;
   show(removeAdjustmentErr, "");
-  if (removeAdjustmentConfirmBtn) removeAdjustmentConfirmBtn.disabled = false;
+  if (removeAdjustmentConfirmBtn) {
+    removeAdjustmentConfirmBtn.disabled = false;
+    removeAdjustmentConfirmBtn.textContent = "Remove Adjustment";
+  }
   removeAdjustmentModal.classList.add("modal-overlay--open");
   removeAdjustmentModal.setAttribute("aria-hidden", "false");
   requestAnimationFrame(() => removeAdjustmentConfirmBtn?.focus());
@@ -7265,23 +7341,59 @@ async function confirmRemoveAdjustment() {
   if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(removeAdjustmentActiveDate);
   if (!iso) throw new Error("Invalid date");
-  await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
-  closeRemoveAdjustmentModal();
-  await refreshAfterBalanceRecordChange(iso);
-  if (typeof showBwToast === "function") showBwToast("Adjustment removed");
+  const prev = state.verifiedBalances?.get(iso) || null;
+  if (removeAdjustmentConfirmBtn) {
+    removeAdjustmentConfirmBtn.disabled = true;
+    removeAdjustmentConfirmBtn.textContent = "Removing…";
+  }
+  try {
+    await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+    closeRemoveAdjustmentModal();
+    if (state.verifiedBalances) state.verifiedBalances.delete(iso);
+    invalidateCalendarMonthDaily();
+    applyClientDailyBalancesNow();
+    renderCalendar();
+    if (typeof showBwToast === "function") showBwToast("Adjustment removed.", { placement: "calendar" });
+    void refreshAfterBalanceRecordChange(iso);
+  } catch (e) {
+    if (prev && state.verifiedBalances) state.verifiedBalances.set(iso, prev);
+    if (removeAdjustmentConfirmBtn) {
+      removeAdjustmentConfirmBtn.disabled = false;
+      removeAdjustmentConfirmBtn.textContent = "Remove Adjustment";
+    }
+    throw e;
+  }
 }
 
+let balanceRecordActionBusy = false;
+
 async function removeReconciliationForDate(iso) {
+  if (balanceRecordActionBusy) return;
   if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const d = normalizeIsoDate(iso);
   if (!d) throw new Error("Invalid date");
-  hidePinnedBalanceRecordTip();
-  await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
-    date: d,
-    reconciled: false,
-  });
-  await refreshAfterBalanceRecordChange(d);
-  if (typeof showBwToast === "function") showBwToast("Reconciliation removed");
+  balanceRecordActionBusy = true;
+  setBalanceRecordTipBusy(true, "Removing…");
+  markCalendarReconcileBusy(d, true);
+  try {
+    await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
+      date: d,
+      reconciled: false,
+    });
+    hidePinnedBalanceRecordTip();
+    dropReconciledDateLocally(d);
+    renderCalendar();
+    if (typeof showBwToast === "function") showBwToast("Reconciliation removed.", { placement: "calendar" });
+    void refreshAfterBalanceRecordChange(d);
+  } catch (e) {
+    setBalanceRecordTipBusy(false);
+    markCalendarReconcileBusy(d, false);
+    restoreReconciledDateLocally(d);
+    renderCalendar();
+    throw e;
+  } finally {
+    balanceRecordActionBusy = false;
+  }
 }
 
 function fmtSignedMoneyDiff(n) {
@@ -7942,9 +8054,12 @@ if (removeAdjustmentConfirmBtn) {
     try {
       await confirmRemoveAdjustment();
     } catch (e) {
-      show(removeAdjustmentErr, e.message || "Failed to remove adjustment");
+      show(removeAdjustmentErr, e.message || "Could not remove this adjustment.");
       removeAdjustmentBusy = false;
-      if (removeAdjustmentConfirmBtn) removeAdjustmentConfirmBtn.disabled = false;
+      if (removeAdjustmentConfirmBtn) {
+        removeAdjustmentConfirmBtn.disabled = false;
+        removeAdjustmentConfirmBtn.textContent = "Remove Adjustment";
+      }
     }
   });
 }
@@ -19640,6 +19755,7 @@ function ensureRiskPressureTipEl() {
       if (!btn || !riskPressureTipEl.contains(btn)) return;
       e.preventDefault();
       e.stopPropagation();
+      if (btn.disabled || balanceRecordActionBusy) return;
       const action = btn.getAttribute("data-bw-bal-action");
       const iso = normalizeIsoDate(btn.getAttribute("data-iso") || "");
       if (!action || !iso) return;
@@ -19652,6 +19768,7 @@ function ensureRiskPressureTipEl() {
       "pointerdown",
       (e) => {
         if (!riskPressureTipPinned || !riskPressureTipEl) return;
+        if (balanceRecordActionBusy) return;
         if (riskPressureTipEl.contains(e.target)) return;
         if (e.target.closest?.(".cal-ledger-metrics.cal-day-balance-hit")) return;
         hidePinnedBalanceRecordTip();
@@ -19710,6 +19827,16 @@ function showPinnedBalanceRecordTip(anchorEl, html) {
 }
 
 async function handleBalanceRecordTipAction(action, iso) {
+  if (action === "remove-reconciliation") {
+    try {
+      await removeReconciliationForDate(iso);
+    } catch (e) {
+      if (typeof showBwToast === "function") {
+        showBwToast(e.message || "Could not remove reconciliation.", { placement: "calendar" });
+      } else window.alert(e.message || "Could not remove reconciliation.");
+    }
+    return;
+  }
   hidePinnedBalanceRecordTip();
   try {
     if (action === "edit-adjustment") {
@@ -19718,10 +19845,6 @@ async function handleBalanceRecordTipAction(action, iso) {
     }
     if (action === "enter-different-balance") {
       openEditAdjustmentModal(iso, { mode: "convert-reconcile" });
-      return;
-    }
-    if (action === "remove-reconciliation") {
-      await removeReconciliationForDate(iso);
       return;
     }
     if (action === "reconcile-this-date") {

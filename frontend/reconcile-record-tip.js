@@ -41,6 +41,34 @@ function reconcileRecordCaption({ matched, diff, fmtMoney } = {}) {
   return `Your balance was $${amt} lower than forecast.`;
 }
 
+function normalizeReconciledIso(raw) {
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(raw || ""));
+  if (!m) return "";
+  return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+}
+
+function dropReconciledIso(iso, merged, byMonth) {
+  const d = normalizeReconciledIso(iso);
+  if (!d) return "";
+  if (merged && typeof merged.delete === "function") merged.delete(d);
+  const monthSet = byMonth && typeof byMonth.get === "function" ? byMonth.get(d.slice(0, 7)) : null;
+  if (monthSet && typeof monthSet.delete === "function") monthSet.delete(d);
+  return d;
+}
+
+function addReconciledIso(iso, merged, byMonth) {
+  const d = normalizeReconciledIso(iso);
+  if (!d) return "";
+  if (merged && typeof merged.add === "function") merged.add(d);
+  if (byMonth && typeof byMonth.get === "function" && typeof byMonth.set === "function") {
+    const ym = d.slice(0, 7);
+    const monthSet = byMonth.get(ym) || new Set();
+    monthSet.add(d);
+    byMonth.set(ym, monthSet);
+  }
+  return d;
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     finiteMoney,
@@ -48,5 +76,8 @@ if (typeof module !== "undefined" && module.exports) {
     adjustedConfirmedBalance,
     adjustedForecastBalance,
     reconcileRecordCaption,
+    normalizeReconciledIso,
+    dropReconciledIso,
+    addReconciledIso,
   };
 }

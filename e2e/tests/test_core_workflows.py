@@ -522,6 +522,12 @@ def test_updating_the_balance_resets_later_days(page, guard):
     page.reload()
     show_month(page, start[:7], later.isoformat())
     expect(later_balance).to_have_text(money("5000.00"))
+    page.locator(f'.cal-cell[data-iso="{expected_iso}"] .cal-ledger-metrics.cal-day-balance-hit').click()
+    page.locator(".reports-risk-tip.reports-risk-tip--visible [data-bw-bal-action='edit-adjustment']").click()
+    page.locator("#editAdjustmentRemoveBtn").click()
+    page.locator("#removeAdjustmentConfirmBtn").click()
+    expect(page.locator("#bwToast")).to_contain_text("Adjustment removed.")
+    expect(later_balance).to_have_text(money("2000.00"))
     guard.assert_clean()
 
 
@@ -788,6 +794,13 @@ def test_balance_record_does_not_block_transactions(page, guard):
     expect(tip.locator("[data-bw-bal-action='remove-reconciliation']")).to_be_visible()
     expect(page.locator("[data-bw-bal-action='reconcile-this-date']")).to_have_count(0)
     expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
+    tip.locator("[data-bw-bal-action='remove-reconciliation']").click()
+    expect(page.locator("#bwToast")).to_contain_text("Reconciliation removed.")
+    expect(page.locator("#bwToast")).to_have_class(re.compile(r"bw-toast--calendar"))
+    expect(reconciled_mark).to_have_count(0)
+    expect(page.locator("#sidebarReconcileDetail")).to_have_text("Not reconciled yet")
+    expect(_balance(page, reconciled_day)).to_have_text(money("2050.00"))
+    expect(page.locator(".reports-risk-tip.reports-risk-tip--visible")).to_have_count(0)
     guard.assert_clean()
 
 

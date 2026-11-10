@@ -29927,6 +29927,27 @@ body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pend
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
 }
+.bw-toast--calendar{
+  bottom: auto;
+  top: var(--bw-toast-top, 16px);
+  transform: translateX(-50%) translateY(-8px);
+  z-index: 13000;
+}
+.bw-toast--calendar.bw-toast--visible{
+  transform: translateX(-50%) translateY(0);
+}
+.reports-risk-tip.is-busy{
+  cursor: wait;
+}
+.reports-risk-tip.is-busy [data-bw-bal-action],
+.cal-confirmed-tip__action:disabled{
+  opacity: 0.55;
+  cursor: wait;
+  pointer-events: none;
+}
+.cal-cell--recon-busy .cal-balance-reconciled-mark{
+  opacity: 0.4;
+}
 
 /* Settings → Household: sectioned layout */
 .settings-house-section{
