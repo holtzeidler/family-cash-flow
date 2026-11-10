@@ -2,6 +2,8 @@ const assert = require("assert");
 const {
   NEEDS_REVIEW_UPCOMING_DAYS,
   needsReviewAddDays,
+  needsReviewWindowRange,
+  needsReviewTodayChanged,
   isNeedsReviewDateEligible,
   formatNeedsReviewDueLabel,
   formatNeedsReviewMeta,
@@ -38,6 +40,15 @@ function exp(extra) {
   assert.strictEqual(isNeedsReviewDateEligible("2026-11-13", TODAY), false);
   assert.strictEqual(isNeedsReviewDateEligible("2026-11-30", TODAY), false);
   assert.strictEqual(isNeedsReviewDateEligible("2026-11-07", TODAY), true);
+  assert.strictEqual(isNeedsReviewDateEligible("2026-10-15", TODAY), true);
+  const windowFromStart = needsReviewWindowRange(TODAY, "2026-10-01");
+  assert.deepStrictEqual(windowFromStart, { startIso: "2026-10-01", endIso: "2026-11-12" });
+  const windowCapped = needsReviewWindowRange(TODAY, "2020-01-01");
+  assert.strictEqual(windowCapped.startIso, "2023-11-09");
+  assert.strictEqual(windowCapped.endIso, "2026-11-12");
+  assert.strictEqual(needsReviewTodayChanged("2026-11-09", "2026-11-09"), false);
+  assert.strictEqual(needsReviewTodayChanged("2026-11-09", "2026-11-10"), true);
+  assert.strictEqual(needsReviewTodayChanged("", "2026-11-10"), true);
 }
 
 {

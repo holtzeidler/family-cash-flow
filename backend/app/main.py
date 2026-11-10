@@ -8903,18 +8903,7 @@ def _dedupe_expected_calendar_items(items: list[ExpectedCalendarItemOut]) -> lis
     return unique
 
 
-@app.get("/api/families/{family_id}/expected-calendar", response_model=ExpectedCalendarOut)
-def expected_calendar(
-    family_id: int,
-    month: str,
-    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-
-    start_date, end_date = _month_range(month)
-
+def _expected_calendar_for_range(db, family_id: int, range_start: date, range_end_exclusive: date) -> list[ExpectedCalendarItemOut]:
     account_rows = db.execute(select(Account).where(Account.family_id == family_id)).scalars().all()
     accounts_by_id: dict[int, Account] = {a.id: a for a in account_rows}
 
@@ -8930,11 +8919,11 @@ def expected_calendar(
         ).where(
             ExpectedTransaction.family_id == family_id,
             or_(
-                (ExpectedTransactionOverride.occurrence_date >= start_date)
-                & (ExpectedTransactionOverride.occurrence_date < end_date),
+                (ExpectedTransactionOverride.occurrence_date >= range_start)
+                & (ExpectedTransactionOverride.occurrence_date < range_end_exclusive),
                 (ExpectedTransactionOverride.moved_to_date.is_not(None))
-                & (ExpectedTransactionOverride.moved_to_date >= start_date)
-                & (ExpectedTransactionOverride.moved_to_date < end_date),
+                & (ExpectedTransactionOverride.moved_to_date >= range_start)
+                & (ExpectedTransactionOverride.moved_to_date < range_end_exclusive),
             ),
         )
     ).scalars().all()
@@ -8948,8 +8937,8 @@ def expected_calendar(
         accounts_by_id=accounts_by_id,
         categories_by_id=categories_by_id,
         override_map=override_map,
-        range_start=start_date,
-        range_end_exclusive=end_date,
+        range_start=range_start,
+        range_end_exclusive=range_end_exclusive,
     )
 
     # If an override moved an occurrence from a different month into this one, the base
@@ -8961,11 +8950,11 @@ def expected_calendar(
             continue
         if ovr.cancelled:
             continue
-        if not (start_date <= ovr.moved_to_date < end_date):
+        if not (range_start <= ovr.moved_to_date < range_end_exclusive):
             continue
         # If the original occurrence is within this range, it is already handled by the
         # normal recurrence iteration above.
-        if start_date <= ovr.occurrence_date < end_date:
+        if range_start <= ovr.occurrence_date < range_end_exclusive:
             continue
 
         tx = expected_by_id.get(ovr.expected_transaction_id)
@@ -9015,7 +9004,45 @@ def expected_calendar(
 
     items = _dedupe_expected_calendar_items(items)
     items.sort(key=lambda it: (it.date, int(it.expected_transaction_id), it.occurrence_date))
-    return ExpectedCalendarOut(month=month, items=items)
+    return items
+
+
+@app.get("/api/families/{family_id}/expected-calendar", response_model=ExpectedCalendarOut)
+def expected_calendar(
+    family_id: int,
+    month: Annotated[Optional[str], Query(description="Calendar month (YYYY-MM).")] = None,
+    start_date: Annotated[Optional[date], Query(description="Inclusive range start (YYYY-MM-DD).")] = None,
+    end_date: Annotated[Optional[date], Query(description="Inclusive range end (YYYY-MM-DD).")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    if start_date is not None or end_date is not None:
+        if start_date is None or end_date is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="start_date and end_date are required together",
+            )
+        if end_date < start_date:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_date cannot be before start_date")
+        if (end_date - start_date).days + 1 > 1100:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date range cannot exceed 36 months")
+        range_start = start_date
+        range_end_exclusive = end_date + timedelta(days=1)
+        month_out = start_date.strftime("%Y-%m")
+    elif month:
+        range_start, range_end_exclusive = _month_range(month)
+        month_out = month
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="month or start_date and end_date is required",
+        )
+
+    items = _expected_calendar_for_range(db, family_id, range_start, range_end_exclusive)
+    return ExpectedCalendarOut(month=month_out, items=items)
 
 
 @app.get("/api/families/{family_id}/reports/category-totals", response_model=CategoryTotalsReportOut)

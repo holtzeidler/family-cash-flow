@@ -664,6 +664,8 @@ let state = {
   calendarExtraExpectedItems: [],
   needsReviewExpectedByKey: new Map(),
   needsReviewActualByKey: new Map(),
+  needsReviewWindowExpected: [],
+  needsReviewWindowActual: [],
   reconciledDates: new Set(),
   reconciledDatesByMonth: new Map(),
   lastReconciledIso: null,
@@ -3539,6 +3541,9 @@ const reviewAmountConfirmBtn = document.getElementById("reviewAmountConfirmBtn")
 const reviewAmountEditBtn = document.getElementById("reviewAmountEditBtn");
 let reviewAmountContext = null;
 let reviewAmountSaving = false;
+let needsReviewWindowKey = "";
+let needsReviewWindowGen = 0;
+let needsReviewRenderedTodayIso = "";
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
 
@@ -14311,6 +14316,9 @@ async function loadFamilies() {
     resetReconciledDateCache();
     state.needsReviewExpectedByKey = new Map();
     state.needsReviewActualByKey = new Map();
+    state.needsReviewWindowExpected = [];
+    state.needsReviewWindowActual = [];
+    needsReviewWindowKey = "";
   }
   syncActiveFamilyFlags();
   void refreshBillingWriteLock();
@@ -18975,6 +18983,69 @@ function monthStartEndIso(ym) {
   return { start, end };
 }
 
+async function loadNeedsReviewWindow() {
+  if (!state.activeFamilyId) {
+    state.needsReviewWindowExpected = [];
+    state.needsReviewWindowActual = [];
+    needsReviewWindowKey = "";
+    return;
+  }
+  const todayIso = toISODate(new Date());
+  const startBal = typeof getFamilyEarliestStartingBalanceIso === "function" ? getFamilyEarliestStartingBalanceIso() : "";
+  const range =
+    typeof needsReviewWindowRange === "function"
+      ? needsReviewWindowRange(todayIso, startBal)
+      : { startIso: startBal || todayIso, endIso: todayIso };
+  if (!range.startIso || !range.endIso) return;
+  const key = `${state.activeFamilyId}|${range.startIso}|${range.endIso}`;
+  if (key === needsReviewWindowKey) return;
+  const gen = ++needsReviewWindowGen;
+  const fid = state.activeFamilyId;
+  const [expRes, actRes] = await Promise.all([
+    api(
+      `/api/families/${fid}/expected-calendar?start_date=${encodeURIComponent(range.startIso)}&end_date=${encodeURIComponent(range.endIso)}`,
+      "GET"
+    ),
+    api(
+      `/api/families/${fid}/transactions?start_date=${encodeURIComponent(range.startIso)}&end_date=${encodeURIComponent(range.endIso)}`,
+      "GET"
+    ),
+  ]);
+  if (gen !== needsReviewWindowGen) return;
+  state.needsReviewWindowExpected = expRes?.items || [];
+  state.needsReviewWindowActual = actRes?.items || [];
+  needsReviewWindowKey = key;
+}
+
+function mergeNeedsReviewItems(calendarMap, windowItems, keyFn) {
+  const next = calendarMap instanceof Map ? new Map(calendarMap) : new Map();
+  for (const it of windowItems || []) {
+    const key = keyFn(it);
+    if (!key) continue;
+    next.set(key, it);
+  }
+  return next;
+}
+
+function maybeRefreshNeedsReviewForToday() {
+  const todayIso = toISODate(new Date());
+  if (!needsReviewRenderedTodayIso) return;
+  if (typeof needsReviewTodayChanged === "function") {
+    if (!needsReviewTodayChanged(needsReviewRenderedTodayIso, todayIso)) return;
+  } else if (todayIso === needsReviewRenderedTodayIso) {
+    return;
+  }
+  needsReviewRenderedTodayIso = todayIso;
+  void (async () => {
+    try {
+      await loadNeedsReviewWindow();
+    } catch (_) {}
+    try {
+      renderSidebarPendingTransactionsForMonth();
+    } catch (_) {}
+  })();
+}
+
 function syncNeedsReviewLoadedSources() {
   const viewed = calendarMonth?.value || monthInput?.value || "";
   const loadedMonths = viewed
@@ -19139,6 +19210,7 @@ async function confirmReviewAmount() {
       applyNeedsReviewConfirmLocally(item, amount, [
         state.monthExpectedItems,
         state.calendarExtraExpectedItems,
+        state.needsReviewWindowExpected,
       ]);
     } else {
       item.variable = false;
@@ -19204,6 +19276,12 @@ if (reviewAmountInput) {
   });
 }
 
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") maybeRefreshNeedsReviewForToday();
+});
+window.addEventListener("pageshow", () => maybeRefreshNeedsReviewForToday());
+window.addEventListener("focus", () => maybeRefreshNeedsReviewForToday());
+
 function renderSidebarPendingTransactionsForMonth() {
   if (!sidebarPendingTxList) return;
   releaseForecastIntroIfSetupIsComplete();
@@ -19227,9 +19305,20 @@ function renderSidebarPendingTransactionsForMonth() {
 
   syncNeedsReviewLoadedSources();
   const todayIso = toISODate(new Date());
+  needsReviewRenderedTodayIso = todayIso;
+  const expectedByKey = mergeNeedsReviewItems(
+    state.needsReviewExpectedByKey,
+    state.needsReviewWindowExpected,
+    needsReviewOccurrenceKey
+  );
+  const actualByKey = mergeNeedsReviewItems(
+    state.needsReviewActualByKey,
+    state.needsReviewWindowActual,
+    needsReviewActualKey
+  );
   const reviewRows = collectNeedsReviewRows({
-    expectedItems: [...(state.needsReviewExpectedByKey || new Map()).values()],
-    actualItems: [...(state.needsReviewActualByKey || new Map()).values()],
+    expectedItems: [...expectedByKey.values()],
+    actualItems: [...actualByKey.values()],
     todayIso,
   });
 
@@ -19244,7 +19333,7 @@ function renderSidebarPendingTransactionsForMonth() {
     }
     if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty", "sidebar-pending--success");
-    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "Nothing to review";
+    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "All caught up.";
     setPendingStatus("");
     return;
   }
@@ -19692,6 +19781,7 @@ async function loadMonthAndCalendar() {
       runStep("extras", () => loadCalendarExtras()),
       runStep("reconciled", () => loadReconciledDays(getCalendarViewYm())),
       runStep("verified", () => loadVerifiedBalances(getCalendarViewYm())),
+      runStep("needs-review-window", () => loadNeedsReviewWindow()),
     ]);
     try {
       repairOutOfMonthBalanceContinuity();

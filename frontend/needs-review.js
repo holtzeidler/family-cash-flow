@@ -4,6 +4,8 @@
  */
 
 const NEEDS_REVIEW_UPCOMING_DAYS = 3;
+const NEEDS_REVIEW_MAX_LOOKBACK_MONTHS = 36;
+const NEEDS_REVIEW_FALLBACK_LOOKBACK_MONTHS = 12;
 const NEEDS_REVIEW_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function needsReviewNormalizeIso(raw) {
@@ -33,6 +35,39 @@ function isNeedsReviewDateEligible(iso, todayIso, upcomingDays = NEEDS_REVIEW_UP
   const days = needsReviewDaysUntil(iso, todayIso);
   if (days == null || !Number.isFinite(days)) return false;
   return days <= Number(upcomingDays);
+}
+
+function needsReviewAddMonths(iso, months) {
+  const due = needsReviewNormalizeIso(iso);
+  if (!due) return "";
+  const y = Number(due.slice(0, 4));
+  const m = Number(due.slice(5, 7));
+  const d = Number(due.slice(8, 10));
+  if (!y || !m || !d) return "";
+  const dt = new Date(Date.UTC(y, m - 1 + Number(months || 0), d));
+  return dt.toISOString().slice(0, 10);
+}
+
+function needsReviewWindowRange(
+  todayIso,
+  startingBalanceIso,
+  upcomingDays = NEEDS_REVIEW_UPCOMING_DAYS
+) {
+  const today = needsReviewNormalizeIso(todayIso);
+  if (!today) return { startIso: "", endIso: "" };
+  const endIso = needsReviewAddDays(today, upcomingDays) || today;
+  const capStart = needsReviewAddMonths(today, -NEEDS_REVIEW_MAX_LOOKBACK_MONTHS) || today;
+  const fallbackStart = needsReviewAddMonths(today, -NEEDS_REVIEW_FALLBACK_LOOKBACK_MONTHS) || capStart;
+  let startIso = needsReviewNormalizeIso(startingBalanceIso) || fallbackStart;
+  if (startIso > today) startIso = today;
+  if (startIso < capStart) startIso = capStart;
+  return { startIso, endIso };
+}
+
+function needsReviewTodayChanged(previousTodayIso, nowTodayIso) {
+  const now = needsReviewNormalizeIso(nowTodayIso);
+  if (!now) return false;
+  return now !== needsReviewNormalizeIso(previousTodayIso);
 }
 
 function needsReviewMonthDay(iso) {
@@ -211,7 +246,11 @@ function collectNeedsReviewRows({
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     NEEDS_REVIEW_UPCOMING_DAYS,
+    NEEDS_REVIEW_MAX_LOOKBACK_MONTHS,
     needsReviewAddDays,
+    needsReviewAddMonths,
+    needsReviewWindowRange,
+    needsReviewTodayChanged,
     needsReviewDaysUntil,
     isNeedsReviewDateEligible,
     needsReviewMonthDay,

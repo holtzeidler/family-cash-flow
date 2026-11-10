@@ -476,3 +476,35 @@ def test_this_occurrence_only_and_unchanged_save_do_not_rewrite_the_rule():
             "2026-03-15",
             "2026-03-31",
         ]
+
+
+def test_expected_calendar_accepts_an_inclusive_date_range():
+    with TestClient(app) as client:
+        family_id, account_id = _family(client)
+        series = _create(client, family_id, account_id, "2026-01-11", 15, "Range Bill")
+        spanned = client.get(
+            f"/api/families/{family_id}/expected-calendar",
+            params={"start_date": "2026-10-01", "end_date": "2026-12-14"},
+        )
+        assert spanned.status_code == 200, spanned.text
+        dates = sorted(
+            item["date"]
+            for item in spanned.json()["items"]
+            if item["expected_transaction_id"] == series["id"]
+        )
+        assert "2026-10-11" in dates
+        assert "2026-10-15" in dates
+        assert "2026-11-11" in dates
+        assert "2026-12-11" in dates
+        month_only = client.get(
+            f"/api/families/{family_id}/expected-calendar",
+            params={"month": "2026-11"},
+        )
+        assert month_only.status_code == 200, month_only.text
+        missing = client.get(f"/api/families/{family_id}/expected-calendar")
+        assert missing.status_code == 400
+        too_wide = client.get(
+            f"/api/families/{family_id}/expected-calendar",
+            params={"start_date": "2020-01-01", "end_date": "2024-01-01"},
+        )
+        assert too_wide.status_code == 400

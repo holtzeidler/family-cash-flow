@@ -254,7 +254,7 @@
 
   function findNeedsReviewTarget() {
     // A variable bill that already needs a review is the real control.
-    // Otherwise point at a bill on the calendar. The empty "Nothing to review"
+    // Otherwise point at a bill on the calendar. The empty "All caught up."
     // card is not where Amount varies is set.
     const pending = findFirstPendingReviewItem();
     if (pending) return pending;
