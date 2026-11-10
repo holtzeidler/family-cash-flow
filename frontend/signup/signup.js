@@ -1150,7 +1150,10 @@ function accountSetupStep3MoreGuidance(txs) {
 }
 
 function buildAccountSetupStep3SavedItem(tx) {
-  const name = String((tx && tx.category) || "").trim() || "Uncategorized";
+  const name =
+    typeof transactionDisplayName === "function"
+      ? transactionDisplayName(tx, tx && tx.category)
+      : String((tx && tx.description) || (tx && tx.category) || "").trim() || "Uncategorized";
   const scheduleParts = [accountSetupSavedRecurrenceLabel(tx), accountSetupSavedDateLabel(tx && tx.date)].filter(Boolean);
   const item = document.createElement("li");
   item.className = "account-setup-step3-saved__item";
@@ -2735,6 +2738,7 @@ function readAccountSetupTransactionFromInputs() {
   const txCategory = (txCategoryEl?.value || "").trim();
   const txDate = String(document.getElementById("asTxDate")?.value || "").trim();
   const txNotes = (document.getElementById("asTxNotes")?.value || "").trim();
+  const txDescription = (document.getElementById("asTxDescription")?.value || "").trim().slice(0, 500);
   const txVariable = !!document.getElementById("asTxVariable")?.checked;
   const recurrence = normalizeAccountSetupRecurrenceSelection(document.getElementById("asTxRecurrence")?.value || "");
   const repeats = !!recurrence;
@@ -2744,6 +2748,7 @@ function readAccountSetupTransactionFromInputs() {
     !!txCategory ||
     !!txDate ||
     !!txNotes ||
+    !!txDescription ||
     repeats ||
     !!txBgColor;
   if (!anyTx) return { ok: false, empty: true, tx: null, message: "" };
@@ -2767,6 +2772,7 @@ function readAccountSetupTransactionFromInputs() {
       kind: txKind,
       amount: txAmount,
       category: txCategory,
+      description: txDescription,
       date: txDate,
       notes: txNotes,
       variable: repeats ? txVariable : false,
@@ -2800,6 +2806,7 @@ function resetAccountSetupTransactionForm(forKind) {
   const amountEl = document.getElementById("asTxAmount");
   const dateEl = document.getElementById("asTxDate");
   const notesEl = document.getElementById("asTxNotes");
+  const nameEl = document.getElementById("asTxDescription");
   const varEl = document.getElementById("asTxVariable");
   const recSel = document.getElementById("asTxRecurrence");
   const endsModeEl = document.getElementById("asTxEndsMode");
@@ -2810,6 +2817,7 @@ function resetAccountSetupTransactionForm(forKind) {
   if (amountEl) amountEl.value = "";
   clearAccountSetupCategoryCombobox("asTxCategory");
   if (notesEl) notesEl.value = "";
+  if (nameEl) nameEl.value = "";
   if (varEl) varEl.checked = false;
   if (recSel) recSel.value = "";
   if (endsModeEl) endsModeEl.value = "never";
@@ -3405,6 +3413,7 @@ function fillAccountSetupTransactionForm(tx) {
   const txCategoryEl = document.getElementById("asTxCategory");
   const txDateEl = document.getElementById("asTxDate");
   const txNotesEl = document.getElementById("asTxNotes");
+  const txNameEl = document.getElementById("asTxDescription");
   const txRecSelEl = document.getElementById("asTxRecurrence");
   const txEndDateEl = document.getElementById("asTxEndDate");
   const txEndCountEl = document.getElementById("asTxEndCount");
@@ -3423,6 +3432,13 @@ function fillAccountSetupTransactionForm(tx) {
   }
   if (txDateEl && tx.date) txDateEl.value = String(tx.date);
   if (txNotesEl && tx.notes) txNotesEl.value = String(tx.notes);
+  if (txNameEl) {
+    const custom =
+      typeof transactionCustomName === "function"
+        ? transactionCustomName(tx, tx.category)
+        : String(tx.description || "").trim();
+    txNameEl.value = custom;
+  }
   const txSecondDayEl = document.getElementById("asTxSecondDayOfMonth");
   const txEndsModeEl = document.getElementById("asTxEndsMode");
   const on = !!tx.recurring && !!tx.recurrence;
@@ -3819,7 +3835,7 @@ async function maybeCreateFirstTransactionFromDraft(draft, createdAccountId, kno
   const categoryLookup = await signupCategoryIdByKey(familyId);
 
   for (const t of list) {
-    const description = (t.category || "").trim() || "Transaction";
+    const description = String(t.description || "").trim().slice(0, 500);
     const amount = Number(t.amount);
     if (!Number.isFinite(amount) || amount <= 0) continue;
     totalApplicable += 1;
@@ -5540,6 +5556,8 @@ function initAccountSetupQuickChips() {
       if (amountEl) amountEl.value = "";
       const notesEl = document.getElementById("asTxNotes");
       if (notesEl) notesEl.value = "";
+      const nameEl = document.getElementById("asTxDescription");
+      if (nameEl) nameEl.value = "";
       clearAccountSetupCategoryCombobox("asTxCategory");
       const recSel = document.getElementById("asTxRecurrence");
       if (recSel) recSel.value = "";

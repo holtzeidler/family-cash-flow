@@ -58,6 +58,11 @@ jobs:
           node --check frontend/tx-edit-scope.js
           node frontend/tx-edit-scope.test.js
 
+      - name: Transaction display names
+        run: |
+          node --check frontend/tx-display-name.js
+          node frontend/tx-display-name.test.js
+
       - name: Build staging frontend
         env:
           API_BASE: ${{ secrets.API_BASE_STAGING }}

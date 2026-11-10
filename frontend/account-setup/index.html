@@ -37,7 +37,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=885" />
+    <link rel="stylesheet" href="../styles.css?v=930" />
   </head>
   <body class="login-page signup-page account-setup-page">
     <div class="container">
@@ -460,6 +460,13 @@
                     </div>
                   </div>
                   </div>
+                  <div class="form-row-h account-setup-tx-name-row">
+                    <div class="form-row-h__label"><label for="asTxDescription">Transaction name</label></div>
+                    <div class="form-row-h__field">
+                      <input id="asTxDescription" type="text" maxlength="500" class="input-notes-flex" placeholder="e.g. ComEd" autocomplete="off" />
+                      <p class="account-setup-field-hint account-setup-field-hint--tight">Optional — helps distinguish transactions in the same category.</p>
+                    </div>
+                  </div>
                   <label class="reimbursable-field account-setup-tx-variable-inline" for="asTxVariable" title="Useful for credit cards, utilities, and other changing bills.">
                     <span class="reimbursable-field__lead">
                       <span class="reimbursable-field__label">Amount varies</span>
@@ -844,6 +851,7 @@
 
     <script src="../signup/account-setup-finish-decision.js?v=3"></script>
     <script src="../signup/account-setup-category.js?v=2"></script>
-    <script src="../signup/signup.js?v=165"></script>
+    <script src="../tx-display-name.js?v=1"></script>
+    <script src="../signup/signup.js?v=166"></script>
   </body>
 </html>
