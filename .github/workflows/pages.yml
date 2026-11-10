@@ -35,6 +35,11 @@ jobs:
           node --check frontend/sidebar-reconcile.js
           node frontend/sidebar-reconcile.test.js
 
+      - name: Reconcile record tip
+        run: |
+          node --check frontend/reconcile-record-tip.js
+          node frontend/reconcile-record-tip.test.js
+
       - name: Transaction edit scope
         run: |
           node --check frontend/tx-edit-scope.js

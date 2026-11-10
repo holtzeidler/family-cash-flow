@@ -22502,6 +22502,9 @@ body.plans-page--polished .plans-quote{
   display: block;
   margin: 6px 0 0;
 }
+.modal--balance-check-in[data-balance-check-in-mode="record"] .balance-check-in__date-field{
+  display: none;
+}
 .balance-check-in__date-input{
   display: block;
   width: 100%;
@@ -22578,6 +22581,16 @@ body.plans-page--polished .plans-quote{
   align-items: stretch;
   gap: 8px;
   margin-top: 2px;
+}
+.balance-check-in__record{
+  margin-top: 2px;
+}
+.balance-check-in__record .cal-confirmed-tip{
+  min-width: 0;
+  max-width: none;
+}
+.balance-check-in__record .cal-confirmed-tip__actions{
+  margin-top: 10px;
 }
 .balance-check-in__primary--full{
   width: 100%;
@@ -24873,6 +24886,14 @@ body[data-bw-view="transactions"] .tm__field label{
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.reports-risk-tip:has([data-bw-balance-record="reconciled"]),
+.reports-risk-tip:has([data-bw-balance-record="adjusted"]){
+  padding: 10px 12px;
+}
+.reports-risk-tip:has([data-bw-balance-record="reconciled"]) .reports-risk-tip__inner,
+.reports-risk-tip:has([data-bw-balance-record="adjusted"]) .reports-risk-tip__inner{
+  gap: 0;
 }
 .reports-risk-tip__date{
   font-size: 0.66rem;
@@ -29927,6 +29948,27 @@ body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pend
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
 }
+.bw-toast--calendar{
+  bottom: auto;
+  top: var(--bw-toast-top, 16px);
+  transform: translateX(-50%) translateY(-8px);
+  z-index: 13000;
+}
+.bw-toast--calendar.bw-toast--visible{
+  transform: translateX(-50%) translateY(0);
+}
+.reports-risk-tip.is-busy{
+  cursor: wait;
+}
+.reports-risk-tip.is-busy [data-bw-bal-action],
+.cal-confirmed-tip__action:disabled{
+  opacity: 0.55;
+  cursor: wait;
+  pointer-events: none;
+}
+.cal-cell--recon-busy .cal-balance-reconciled-mark{
+  opacity: 0.4;
+}
 
 /* Settings → Household: sectioned layout */
 .settings-house-section{
@@ -32825,11 +32867,15 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   font-weight: 650;
   letter-spacing: 0.02em;
 }
-.cal-confirmed-tip__head--reconciled{
-  color: rgba(22, 101, 52, 0.95);
+.cal-confirmed-tip__head{
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: rgba(15, 23, 42, 0.88);
 }
+.cal-confirmed-tip__head--reconciled,
 .cal-confirmed-tip__head--adjusted{
-  color: rgba(130, 112, 94, 0.92);
+  color: rgba(22, 101, 52, 0.88);
 }
 .cal-confirmed-tip__head--starting{
   color: rgba(71, 85, 105, 0.95);
@@ -32858,21 +32904,29 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-confirmed-tip{
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 190px;
-  max-width: 240px;
+  gap: 4px;
+  min-width: 196px;
+  max-width: 248px;
 }
-.cal-confirmed-tip__head{
-  font-size: 0.82rem;
+.cal-confirmed-tip__when{
+  font-weight: 500;
+  color: rgba(71, 85, 105, 0.78);
+}
+.cal-confirmed-tip__amount{
+  margin: 0;
+  font-size: 0.98rem;
   font-weight: 700;
-  color: rgba(22, 101, 52, 0.95);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(15, 23, 42, 0.94);
 }
 .cal-confirmed-tip__match,
 .cal-confirmed-tip__note{
   margin: 0;
-  font-size: 0.76rem;
-  line-height: 1.4;
-  color: rgba(51, 65, 85, 0.88);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(71, 85, 105, 0.86);
 }
 .cal-confirmed-tip__emph{
   margin: 0;
@@ -32951,14 +33005,22 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 }
 .cal-confirmed-tip__actions{
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  margin-top: 4px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 6px;
 }
 .cal-confirmed-tip__actions--edit{
-  margin-top: 18px;
+  margin-top: 10px;
   gap: 0;
+}
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__actions--edit{
+  margin-top: 8px;
+}
+.cal-confirmed-tip[data-bw-balance-record="reconciled"] .cal-confirmed-tip__actions,
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__actions{
+  margin-top: 6px;
 }
 .cal-confirmed-tip__action{
   border: none;
@@ -32978,6 +33040,23 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   color: rgba(15, 23, 42, 0.92);
   text-decoration-color: rgba(100, 116, 139, 0.7);
 }
+@media (max-width: 820px){
+  .cal-confirmed-tip{
+    min-width: 196px;
+    max-width: min(260px, calc(100vw - 32px));
+  }
+  .cal-confirmed-tip[data-bw-balance-record="reconciled"] .cal-confirmed-tip__actions,
+  .cal-confirmed-tip--adjusted .cal-confirmed-tip__actions{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .cal-confirmed-tip__action{
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
 .cal-confirmed-tip__action--danger{
   color: rgba(127, 29, 29, 0.78);
   text-decoration-color: rgba(185, 28, 28, 0.35);
@@ -32989,18 +33068,18 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 5px;
   width: auto;
   max-width: 100%;
-  min-height: 40px;
+  min-height: 28px;
   margin: 0;
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 4px 8px;
+  border-radius: 8px;
   border: 1px solid rgba(15, 23, 42, 0.16);
   background: #fff;
   color: rgba(30, 41, 59, 0.92);
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -33025,6 +33104,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-confirmed-tip--reconcile .cal-confirmed-tip__edit-btn{
   width: 100%;
   justify-content: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
   color: #fff;
   background: var(--accent);
   border-color: rgba(11, 61, 46, 0.22);
@@ -33053,8 +33136,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   color: rgba(71, 85, 105, 0.92);
 }
 .cal-confirmed-tip__edit-btn-icon svg{
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   display: block;
 }
 .cal-confirmed-tip__edit-btn:hover .cal-confirmed-tip__edit-btn-icon{
@@ -33062,8 +33145,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 }
 @media (max-width: 640px){
   .cal-confirmed-tip__edit-btn{
-    min-height: 42px;
-    padding: 9px 13px;
+    min-height: 40px;
+    padding: 8px 11px;
   }
 }
 .reports-risk-tip.reports-risk-tip--interactive{

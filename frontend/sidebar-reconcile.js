@@ -1,6 +1,7 @@
 /**
  * Compact sidebar reconciliation helpers.
- * Last reconciled comes from ReconciledDay rows, never adjusted or starting-balance dates.
+ * Last reconciled is the latest completed balance check: matching ReconciledDay
+ * dates and verified-balance (Adjusted) dates. Starting-balance dates are not included.
  */
 
 const SIDEBAR_RECONCILE_STALE_DAYS = 7;
@@ -34,9 +35,8 @@ function defaultReconcileIso(todayIso, startIso) {
   const today = sidebarReconcileNormalizeIso(todayIso);
   if (!today) return "";
   const start = sidebarReconcileNormalizeIso(startIso);
-  const yesterday = sidebarReconcileAddDays(today, -1);
-  if (start && yesterday && yesterday < start) return start <= today ? start : today;
-  return yesterday || today;
+  if (start && today < start) return start;
+  return today;
 }
 
 function clampReconcileIso(iso, todayIso, startIso) {
@@ -70,17 +70,40 @@ function formatSidebarReconcileElapsed(daysSince) {
   return `${n} days ago`;
 }
 
+function datesFromBalanceCheckGroup(group) {
+  if (!group) return [];
+  if (group instanceof Map) return [...group.keys()];
+  if (group instanceof Set) return group;
+  if (Array.isArray(group)) return group;
+  if (typeof group[Symbol.iterator] === "function") return [...group];
+  return [];
+}
+
 function latestIsoFromDateSets(sets) {
   let latest = "";
   for (const group of sets || []) {
     if (!group) continue;
-    const values = group instanceof Set ? group : Array.isArray(group) ? group : [];
-    for (const raw of values) {
+    for (const raw of datesFromBalanceCheckGroup(group)) {
       const iso = sidebarReconcileNormalizeIso(raw);
       if (iso && (!latest || iso > latest)) latest = iso;
     }
   }
   return latest || null;
+}
+
+function latestBalanceCheckIso(reconciledSets, verifiedDates) {
+  const sets = [...(reconciledSets || [])];
+  if (verifiedDates) sets.push(verifiedDates);
+  return latestIsoFromDateSets(sets);
+}
+
+function verifiedCheckIsosFromDaily(dailyByIso) {
+  const out = [];
+  if (!dailyByIso || typeof dailyByIso.entries !== "function") return out;
+  for (const [iso, row] of dailyByIso.entries()) {
+    if (row && row.verified) out.push(iso);
+  }
+  return out;
 }
 
 if (typeof module !== "undefined" && module.exports) {
@@ -95,5 +118,7 @@ if (typeof module !== "undefined" && module.exports) {
     formatSidebarReconcileDate,
     formatSidebarReconcileElapsed,
     latestIsoFromDateSets,
+    latestBalanceCheckIso,
+    verifiedCheckIsosFromDaily,
   };
 }
