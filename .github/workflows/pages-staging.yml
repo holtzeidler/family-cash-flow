@@ -67,6 +67,11 @@ jobs:
       - name: Onboarding mobile UX
         run: node frontend/onboarding-mobile-ux.test.js
 
+      - name: Guided tour targeting
+        run: |
+          node --check frontend/tour.js
+          node frontend/tour-guidance.test.js
+
       - name: Build staging frontend
         env:
           API_BASE: ${{ secrets.API_BASE_STAGING }}

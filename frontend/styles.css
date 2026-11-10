@@ -29117,17 +29117,16 @@ body.account-setup-page
   .bw-tour-support-highlight{ transition: none; }
 }
 
-/* Step 2 "Cash Outlook" treatment: brighter background + softer green
-   outline + a subtle outer glow so the warning system reads as the
-   primary focus on the page. Used on top of `.bw-tour-target`. */
+/* Cash Health step: ring the status + lowest projected figure, not the
+   whole sidebar card. Keep the glow tight so a small target stays readable. */
 .bw-tour-target--cash-outlook{
+  overflow: visible !important;
   background-color: color-mix(in srgb, var(--accent) 5%, #ffffff) !important;
   box-shadow:
-    0 0 0 1.5px color-mix(in srgb, var(--accent) 42%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent),
     0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent),
-    0 0 28px 6px color-mix(in srgb, var(--accent) 16%, transparent),
-    0 14px 40px -18px rgba(11, 61, 46, 0.32) !important;
-  border-radius: 14px;
+    0 8px 18px -10px rgba(11, 61, 46, 0.28) !important;
+  border-radius: 12px;
 }
 
 /* Step 2 sidebar dimming. We slightly fade non-target sidebar cards so
@@ -29158,6 +29157,7 @@ body.account-setup-page
 
 .bw-tour-tooltip{
   position: fixed;
+  overflow: visible;
   width: min(420px, calc(100vw - 28px));
   background: #ffffff;
   color: #1f2937;
@@ -29184,29 +29184,41 @@ body.account-setup-page
 
 .bw-tour-tooltip__arrow{
   position: absolute;
+  z-index: 1;
   width: 14px;
   height: 14px;
+  pointer-events: none;
   background: #ffffff;
-  border-left: 1px solid rgba(11, 61, 46, 0.10);
-  border-top: 1px solid rgba(11, 61, 46, 0.10);
+  border-left: 1px solid rgba(11, 61, 46, 0.16);
+  border-top: 1px solid rgba(11, 61, 46, 0.16);
+  box-shadow: -1px -1px 0 rgba(11, 61, 46, 0.04);
   transform: rotate(45deg);
 }
 .bw-tour-tooltip__arrow[data-side="top"]{
-  top: -8px;
+  top: -7px;
   transform: rotate(45deg);
 }
 .bw-tour-tooltip__arrow[data-side="bottom"]{
-  bottom: -8px;
+  bottom: -7px;
   transform: rotate(225deg);
 }
-/* Side arrows for tooltips placed beside their target (Step 2). */
 .bw-tour-tooltip__arrow[data-side="left"]{
-  left: -8px;
+  left: -7px;
   transform: rotate(-45deg);
 }
 .bw-tour-tooltip__arrow[data-side="right"]{
-  right: -8px;
+  right: -7px;
   transform: rotate(135deg);
+}
+@media (max-width: 800px){
+  .bw-tour-tooltip__arrow{
+    width: 16px;
+    height: 16px;
+  }
+  .bw-tour-tooltip__arrow[data-side="top"]{ top: -8px; }
+  .bw-tour-tooltip__arrow[data-side="bottom"]{ bottom: -8px; }
+  .bw-tour-tooltip__arrow[data-side="left"]{ left: -8px; }
+  .bw-tour-tooltip__arrow[data-side="right"]{ right: -8px; }
 }
 
 .bw-tour-tooltip__head{
@@ -29803,6 +29815,11 @@ body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pend
   background: color-mix(in srgb, var(--accent) 6%, #ffffff);
   border-color: color-mix(in srgb, var(--accent) 22%, rgba(17, 24, 39, 0.08));
   animation: bw-tour-soft-pulse 2200ms ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce){
+  body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pending-item{
+    animation: none;
+  }
 }
 body[data-bw-view="calendar"] .pending-attn-item.bw-tour-support-highlight--pending-item::after{
   content: "Variable amount";

@@ -40,6 +40,7 @@
   let currentStepIdx = -1;
   let resizeHandler = null;
   let scrollHandler = null;
+  let viewportHandler = null;
   let onAfterStepEnd = null;
   let repaintObserver = null;
 
@@ -94,11 +95,12 @@
       findTarget: findCashHealthTarget,
       title: "Know before your balance gets too low",
       body:
-        "BalanceWhiz will alert you if a future projected balance falls below the minimum you chose.\n\nThat can happen later, even when your balance is healthy today.",
+        "Cash Health shows the status of your forecast and the lowest projected balance in the next stretch of days.\n\nIf a future projected balance would fall below the minimum you chose, BalanceWhiz will flag it here. That can happen later even when things look healthy today.",
       helperExample: readTourMinimumBalanceExample,
       note: "You can change this anytime.",
       ctaLabel: "Next",
       placement: ["right", "left", "below", "above"],
+      retryable: true,
       targetExtraClass: "bw-tour-target--cash-outlook",
       dimSelector: ".sidebar",
     },
@@ -135,7 +137,8 @@
   /**
    * Step 1 prefers a visible day that already has a planned item (today or
    * later first), then today, then the next future day.
-   * Step 3 prefers the Cash Health card, then the low-balance flag inside it.
+   * Step 3 prefers the Cash Health status + lowest projected figure, not the
+   * whole sidebar card that also holds Needs Review and Last Reconciled.
    */
   function isVisible(el) {
     if (!el) return false;
@@ -146,8 +149,14 @@
   }
 
   function findCashHealthTarget() {
-    const card = document.getElementById("sidebarCashHealthCard");
-    if (isVisible(card)) return card;
+    const card = document.querySelector(
+      "#sidebarLowBalanceBanner .cash-health-card, #sidebarLowBalanceBanner .cash-outlook-card"
+    );
+    if (isVisible(card)) {
+      const body = card.querySelector(".cash-health-card__body");
+      if (isVisible(body)) return body;
+      return card;
+    }
     return findCashOutlookTarget();
   }
 
@@ -158,10 +167,6 @@
     if (isVisible(high)) return high;
     const alerts = document.getElementById("sidebarBalanceThresholdAlerts");
     if (isVisible(alerts)) return alerts;
-    // Last resort: anchor on the sidebar itself so the educational
-    // copy still has a meaningful left-edge anchor.
-    const sidebar = document.querySelector("aside.sidebar");
-    if (isVisible(sidebar)) return sidebar;
     return null;
   }
 
@@ -422,6 +427,7 @@
     tooltipEl.setAttribute("role", "dialog");
     tooltipEl.setAttribute("aria-modal", "false");
     tooltipEl.setAttribute("aria-labelledby", "bwTourTitle");
+    tooltipEl.tabIndex = -1;
     tooltipEl.style.zIndex = String(ZINDEX_TOOLTIP);
     tooltipEl.innerHTML = `
       <div class="bw-tour-tooltip__arrow" data-bw-tour-arrow aria-hidden="true"></div>
@@ -540,10 +546,59 @@
     return Math.max(min, Math.min(num, max));
   }
 
+  function isNarrowTourViewport() {
+    return window.innerWidth <= 800;
+  }
+
+  function visualViewportOffset() {
+    const vv = window.visualViewport;
+    if (!vv) return { x: 0, y: 0 };
+    return {
+      x: Number.isFinite(vv.offsetLeft) ? vv.offsetLeft : 0,
+      y: Number.isFinite(vv.offsetTop) ? vv.offsetTop : 0,
+    };
+  }
+
+  function viewportSize() {
+    const vv = window.visualViewport;
+    if (vv && Number.isFinite(vv.width) && Number.isFinite(vv.height)) {
+      return { width: vv.width, height: vv.height };
+    }
+    return { width: window.innerWidth, height: window.innerHeight };
+  }
+
+  function targetViewportRect(el) {
+    const r = el.getBoundingClientRect();
+    const o = visualViewportOffset();
+    return {
+      left: r.left - o.x,
+      top: r.top - o.y,
+      right: r.right - o.x,
+      bottom: r.bottom - o.y,
+      width: r.width,
+      height: r.height,
+    };
+  }
+
+  function scrollWindowBy(dy) {
+    if (!dy) return;
+    const root = document.scrollingElement || document.documentElement;
+    if (root) root.scrollTop += dy;
+    else window.scrollBy(0, dy);
+  }
+
   function normalizePlacements(placement) {
     if (Array.isArray(placement) && placement.length) return placement;
     if (placement === "auto" || !placement) return ["below", "above", "right", "left"];
     return [placement];
+  }
+
+  function placementsForViewport(placement) {
+    const base = normalizePlacements(placement);
+    if (!isNarrowTourViewport()) return base;
+    const vertical = base.filter((p) => p === "below" || p === "above");
+    const rest = base.filter((p) => p !== "below" && p !== "above");
+    return (vertical.length ? vertical : ["below", "above"]).concat(rest);
   }
 
   function getPlacementCandidate(placement, tr, tw, th, vw, vh, gap, pad, minTop) {
@@ -580,11 +635,14 @@
       { left: clampedLeft, top: clampedTop, right: clampedLeft + tw, bottom: clampedTop + th },
       tr
     );
+    const targetArea = Math.max(1, tr.width * tr.height);
+    const cover = overlap / targetArea;
     return {
       left: clampedLeft,
       top: clampedTop,
       side,
-      overflow: overflow + overlap,
+      overflow: overflow + overlap * 4 + (cover > 0.28 ? 500 : 0),
+      overlap,
       targetCenterX,
       targetCenterY,
     };
@@ -602,6 +660,47 @@
     const pos = window.getComputedStyle(nav).position;
     if (pos !== "fixed" && pos !== "sticky") return 0;
     return nav.getBoundingClientRect().bottom;
+  }
+
+  function isScrollableOverflow(el) {
+    if (!el || el === document.body || el === document.documentElement) return false;
+    const cs = window.getComputedStyle(el);
+    const oy = cs.overflowY;
+    if (oy !== "auto" && oy !== "scroll" && oy !== "overlay") return false;
+    return el.scrollHeight > el.clientHeight + 4;
+  }
+
+  function scrollTargetIntoView(el) {
+    if (!el) return;
+    const headerBottom = stickyHeaderBottom();
+    const vh = viewportSize().height;
+    const reserve = isNarrowTourViewport() ? Math.min(280, Math.round(vh * 0.42)) : 28;
+    try {
+      el.scrollIntoView({ behavior: "auto", block: "nearest", inline: "nearest" });
+    } catch (_) {
+      try {
+        el.scrollIntoView(true);
+      } catch (__) {}
+    }
+    let node = el.parentElement;
+    while (node && node !== document.body) {
+      if (isScrollableOverflow(node)) {
+        const pr = node.getBoundingClientRect();
+        const nr = el.getBoundingClientRect();
+        const innerTop = pr.top + 8;
+        const innerBot = pr.bottom - 8;
+        if (nr.top < innerTop) node.scrollTop += nr.top - innerTop;
+        else if (nr.bottom > innerBot) node.scrollTop += nr.bottom - innerBot;
+      }
+      node = node.parentElement;
+    }
+    const r = targetViewportRect(el);
+    const topLimit = headerBottom + 12;
+    const bottomLimit = vh - reserve;
+    if (r.top < topLimit) scrollWindowBy(r.top - topLimit);
+    else if (r.bottom > bottomLimit && r.height < bottomLimit - topLimit) {
+      scrollWindowBy(r.bottom - bottomLimit);
+    }
   }
 
   function targetIsUsable(el) {
@@ -623,7 +722,45 @@
       });
       applySupportHighlights(step);
     }
-    positionTooltip(live, step.placement || "auto");
+    positionTooltip(live, step.placement || "auto", false);
+  }
+
+  function bindTourViewportListeners() {
+    if (!resizeHandler) {
+      resizeHandler = () => repositionToLiveTarget();
+      window.addEventListener("resize", resizeHandler);
+      window.addEventListener("orientationchange", resizeHandler);
+    }
+    if (!scrollHandler) {
+      scrollHandler = () => repositionToLiveTarget();
+      window.addEventListener("scroll", scrollHandler, true);
+    }
+    if (!viewportHandler) {
+      viewportHandler = () => repositionToLiveTarget();
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", viewportHandler);
+        window.visualViewport.addEventListener("scroll", viewportHandler);
+      }
+    }
+  }
+
+  function unbindTourViewportListeners() {
+    if (resizeHandler) {
+      window.removeEventListener("resize", resizeHandler);
+      window.removeEventListener("orientationchange", resizeHandler);
+      resizeHandler = null;
+    }
+    if (scrollHandler) {
+      window.removeEventListener("scroll", scrollHandler, true);
+      scrollHandler = null;
+    }
+    if (viewportHandler) {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", viewportHandler);
+        window.visualViewport.removeEventListener("scroll", viewportHandler);
+      }
+      viewportHandler = null;
+    }
   }
 
   function ensureRepaintWatcher() {
@@ -645,41 +782,34 @@
 
   function positionTooltip(targetEl, placement, allowScroll) {
     if (!tooltipEl || !targetIsUsable(targetEl)) return;
-    const gap = 12;
+    const gap = 14;
     const pad = 10;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const view = viewportSize();
+    const vw = view.width;
+    const vh = view.height;
     const headerBottom = stickyHeaderBottom();
-    const tr = targetEl.getBoundingClientRect();
-    if (allowScroll !== false && vw <= 800 && tr.top < headerBottom + 12) {
-      window.scrollBy(0, tr.top - (headerBottom + 16));
-      return positionTooltip(targetEl, placement, false);
-    }
+    const tr = targetViewportRect(targetEl);
     const tw = tooltipEl.offsetWidth;
     const th = tooltipEl.offsetHeight;
     if (tw < 2 || th < 2) return;
 
     const arrow = tooltipEl.querySelector("[data-bw-tour-arrow]");
-    const placements = normalizePlacements(placement);
+    const placements = placementsForViewport(placement);
     const minTop = Math.max(pad, headerBottom + 8);
     const candidates = placements.map((place) =>
       getPlacementCandidate(place, tr, tw, th, vw, vh, gap, pad, minTop)
     );
-    let chosen = candidates.find((item) => item.overflow === 0) || candidates[0];
+    let chosen = candidates[0];
     for (const item of candidates) {
       if (item.overflow < chosen.overflow) chosen = item;
     }
 
-    if (allowScroll !== false && vw <= 800) {
-      const overlaps = rectOverlapArea(
-        { left: chosen.left, top: chosen.top, right: chosen.left + tw, bottom: chosen.top + th },
-        tr
-      );
+    if (allowScroll && chosen.overlap > 8) {
       const spaceBelow = vh - tr.bottom;
       const need = th + gap + 16;
       const shift = Math.min(Math.max(0, need - spaceBelow), Math.max(0, tr.top - (headerBottom + 16)));
-      if (overlaps > 0 && shift > 8) {
-        window.scrollBy(0, shift);
+      if (shift > 8) {
+        scrollWindowBy(shift);
         return positionTooltip(targetEl, placement, false);
       }
     }
@@ -690,6 +820,7 @@
     tooltipEl.style.top = `${Math.round(clamp(chosen.top, minTop, maxTop))}px`;
 
     if (arrow) {
+      arrow.hidden = false;
       arrow.dataset.side = chosen.side;
       if (chosen.side === "left" || chosen.side === "right") {
         const arrowTopWithinTooltip = clamp(chosen.targetCenterY - chosen.top, 20, th - 20);
@@ -778,15 +909,8 @@
       return;
     }
 
-    // Keep the highlighted control below a fixed header. The tooltip then
-    // places itself in the remaining space.
     try {
-      const rect = target.getBoundingClientRect();
-      const topLimit = stickyHeaderBottom() + 16;
-      if (rect.top < topLimit) window.scrollBy(0, rect.top - topLimit);
-      else if (rect.bottom > window.innerHeight - 24) {
-        target.scrollIntoView({ behavior: "auto", block: "nearest" });
-      }
+      scrollTargetIntoView(target);
     } catch (_) {}
 
     ensureBackdrop();
@@ -883,23 +1007,24 @@
       dimSelector: step.dimSelector,
     });
     applySupportHighlights(step);
-    // Position after a frame so layout (incl. scrollIntoView) settles.
+    const place = (allowScroll) => {
+      if (currentStepIdx !== stepIdx || !currentTargetEl) return;
+      positionTooltip(currentTargetEl, step.placement || "auto", allowScroll);
+    };
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (currentTargetEl) positionTooltip(currentTargetEl, step.placement || "auto");
-      });
+      requestAnimationFrame(() => place(true));
     });
+    window.setTimeout(() => place(false), 80);
+
+    try {
+      const nextBtn = tooltipEl.querySelector("[data-bw-tour-next]");
+      if (nextBtn && !tooltipEl.contains(document.activeElement)) {
+        nextBtn.focus({ preventScroll: true });
+      }
+    } catch (_) {}
 
     ensureRepaintWatcher();
-    // Reposition on resize/scroll so the spotlight stays accurate.
-    if (!resizeHandler) {
-      resizeHandler = () => repositionToLiveTarget();
-      window.addEventListener("resize", resizeHandler);
-    }
-    if (!scrollHandler) {
-      scrollHandler = () => repositionToLiveTarget();
-      window.addEventListener("scroll", scrollHandler, true);
-    }
+    bindTourViewportListeners();
   }
 
   function advanceStep() {
@@ -933,14 +1058,7 @@
         try { document.activeElement.blur(); } catch (_) {}
       }
     }
-    if (resizeHandler) {
-      window.removeEventListener("resize", resizeHandler);
-      resizeHandler = null;
-    }
-    if (scrollHandler) {
-      window.removeEventListener("scroll", scrollHandler, true);
-      scrollHandler = null;
-    }
+    unbindTourViewportListeners();
     stopRepaintWatcher();
     currentStepIdx = -1;
     // Mark as seen for both skip and completion — we don't want to nag users
