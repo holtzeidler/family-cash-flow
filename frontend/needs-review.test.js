@@ -6,6 +6,8 @@ const {
   formatNeedsReviewDueLabel,
   formatNeedsReviewMeta,
   parseNeedsReviewAmount,
+  formatNeedsReviewAmountInput,
+  applyNeedsReviewConfirmLocally,
   buildNeedsReviewConfirmPayload,
   collectNeedsReviewRows,
   syncNeedsReviewItemCache,
@@ -161,6 +163,37 @@ function exp(extra) {
   assert.strictEqual(payload.moved_to_date, null);
   assert.strictEqual(payload.kind, "expense");
   assert.strictEqual(payload.description, "Utilities");
+}
+
+{
+  assert.strictEqual(formatNeedsReviewAmountInput(95), "95.00");
+  assert.strictEqual(formatNeedsReviewAmountInput(108.5), "108.50");
+  assert.strictEqual(formatNeedsReviewAmountInput(1080), "1,080.00");
+  assert.strictEqual(formatNeedsReviewAmountInput(0), "");
+  assert.strictEqual(parseNeedsReviewAmount(formatNeedsReviewAmountInput(1080)), 1080);
+}
+
+{
+  const todayItem = exp({ amount: 95, variable: true });
+  const extraCopy = exp({ amount: 95, variable: true });
+  const future = exp({
+    date: "2026-12-09",
+    occurrence_date: "2026-12-09",
+    amount: 95,
+    variable: true,
+  });
+  applyNeedsReviewConfirmLocally(todayItem, 108, [[extraCopy, future]]);
+  assert.strictEqual(todayItem.variable, false);
+  assert.strictEqual(todayItem.amount, 108);
+  assert.strictEqual(extraCopy.variable, false);
+  assert.strictEqual(extraCopy.amount, 108);
+  assert.strictEqual(future.variable, true);
+  assert.strictEqual(future.amount, 95);
+  const rows = collectNeedsReviewRows({
+    todayIso: TODAY,
+    expectedItems: [todayItem, future],
+  });
+  assert.strictEqual(rows.length, 0);
 }
 
 console.log("needs-review.test.js: ok");

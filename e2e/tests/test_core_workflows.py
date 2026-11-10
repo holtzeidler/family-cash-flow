@@ -350,6 +350,9 @@ def test_needs_review_confirm_this_amount(page, guard):
     page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
     modal = page.locator("#reviewAmountModal.modal-overlay--open")
     expect(modal).to_be_visible()
+    expect(page.locator("#reviewAmountTitle")).to_contain_text(label)
+    expect(modal).not_to_contain_text("Estimated amount")
+    expect(modal).not_to_contain_text("Actual amount")
     expect(page.locator("#reviewAmountConfirmBtn")).to_have_text("Confirm amount")
     expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
     expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
@@ -361,6 +364,15 @@ def test_needs_review_confirm_this_amount(page, guard):
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("108")
     expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
+    expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"] .cal-balance')).to_have_text(money("1892.00"))
+
+    page.reload()
+    show_month(page, start.strftime("%Y-%m"), today.isoformat())
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Nothing to review")
+    today_line = _day_line(page, today.isoformat(), label)
+    expect(today_line).to_contain_text("108")
+    expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
+    expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"] .cal-balance')).to_have_text(money("1892.00"))
 
     show_month(page, next_month.strftime("%Y-%m"), next_month.isoformat())
     next_line = _day_line(page, next_month.isoformat(), label)
@@ -405,7 +417,7 @@ def test_needs_review_confirm_unchanged_amount(page, guard):
     label = _add_planned_item(page, today.isoformat(), "95", kind="expense", repeat="monthly", variable=True)
     page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
     expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_be_visible()
-    expect(page.locator("#reviewAmountInput")).to_have_value("95")
+    expect(page.locator("#reviewAmountInput")).to_have_value("95.00")
     page.locator("#reviewAmountConfirmBtn").click()
     expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
     expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
@@ -413,6 +425,7 @@ def test_needs_review_confirm_unchanged_amount(page, guard):
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("95")
     expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
+    expect(page.locator(f'.cal-cell[data-iso="{today.isoformat()}"] .cal-balance')).to_have_text(money("1905.00"))
     show_month(page, next_month.strftime("%Y-%m"), next_month.isoformat())
     next_line = _day_line(page, next_month.isoformat(), label)
     expect(next_line).to_contain_text("95")
@@ -460,6 +473,32 @@ def test_needs_review_cancel_leaves_estimate(page, guard):
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("95")
     expect(today_line).to_have_class(re.compile(r"cal-expected-variable"))
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Needs Review confirm double click")
+def test_needs_review_confirm_ignores_second_click(page, guard):
+    today = date.today()
+    start = date(today.year, today.month, 1)
+    email = _register_checking("2000.00", start.isoformat())
+    login(page, email, PASSWORD)
+    show_month(page, start.strftime("%Y-%m"), today.isoformat())
+    _add_planned_item(page, today.isoformat(), "95", kind="expense", repeat="monthly", variable=True)
+    page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
+    expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_be_visible()
+    posts = {"n": 0}
+
+    def count_post(route):
+        if route.request.method == "POST":
+            posts["n"] += 1
+        route.continue_()
+
+    page.route(re.compile(r"/expected-transactions/.+/instances/"), count_post)
+    page.locator("#reviewAmountConfirmBtn").evaluate("el => { el.click(); el.click(); }")
+    expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("Nothing to review")
+    assert posts["n"] == 1
     guard.assert_clean()
 
 

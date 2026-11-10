@@ -3529,9 +3529,9 @@ const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
 const sidebarPendingTitle = document.getElementById("sidebarPendingTitle");
 const sidebarPendingStatus = document.getElementById("sidebarPendingStatus");
 const reviewAmountModal = document.getElementById("reviewAmountModal");
+const reviewAmountTitle = document.getElementById("reviewAmountTitle");
 const reviewAmountName = document.getElementById("reviewAmountName");
 const reviewAmountDate = document.getElementById("reviewAmountDate");
-const reviewAmountEstimate = document.getElementById("reviewAmountEstimate");
 const reviewAmountInput = document.getElementById("reviewAmountInput");
 const reviewAmountErr = document.getElementById("reviewAmountErr");
 const reviewAmountCancelBtn = document.getElementById("reviewAmountCancelBtn");
@@ -19002,38 +19002,59 @@ function syncNeedsReviewLoadedSources() {
   );
 }
 
-function closeReviewAmountModal() {
+function setReviewAmountBusy(on) {
+  reviewAmountSaving = !!on;
+  if (reviewAmountInput) reviewAmountInput.disabled = reviewAmountSaving;
+  if (reviewAmountConfirmBtn) {
+    reviewAmountConfirmBtn.disabled = reviewAmountSaving;
+    if (reviewAmountSaving) reviewAmountConfirmBtn.setAttribute("aria-busy", "true");
+    else reviewAmountConfirmBtn.removeAttribute("aria-busy");
+  }
+  if (reviewAmountEditBtn) reviewAmountEditBtn.disabled = reviewAmountSaving;
+  if (reviewAmountCancelBtn) reviewAmountCancelBtn.disabled = reviewAmountSaving;
+}
+
+function closeReviewAmountModal(opts = {}) {
   if (!reviewAmountModal) return;
+  if (reviewAmountSaving && !opts.force) return;
   reviewAmountModal.classList.remove("modal-overlay--open");
   reviewAmountModal.setAttribute("aria-hidden", "true");
   try {
     reviewAmountModal.style.display = "none";
   } catch (_) {}
-  if (!reviewAmountSaving) reviewAmountContext = null;
+  try {
+    reviewAmountInput?.blur();
+  } catch (_) {}
   show(reviewAmountErr, "");
-  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = false;
+  if (!reviewAmountSaving) {
+    reviewAmountContext = null;
+    setReviewAmountBusy(false);
+  }
   syncBwTxEditVisualViewport();
 }
 
 function openReviewAmountModal(item, series) {
-  if (!reviewAmountModal || !item) return;
+  if (!reviewAmountModal || !item || reviewAmountSaving) return;
   reviewAmountContext = { item, series: series || null };
   const iso = normalizeIsoDate(item.date) || normalizeIsoDate(item.occurrence_date) || "";
-  const name = forecastTransactionPrimaryLabel(item);
+  const name = forecastTransactionPrimaryLabel(item) || "Confirm amount";
+  if (reviewAmountTitle) reviewAmountTitle.textContent = name;
   if (reviewAmountName) reviewAmountName.textContent = name;
   if (reviewAmountDate) {
     reviewAmountDate.textContent =
       typeof needsReviewMonthDay === "function" ? needsReviewMonthDay(iso) || iso : iso;
   }
   const amt = Number(item.amount);
-  if (reviewAmountEstimate) {
-    reviewAmountEstimate.textContent = Number.isFinite(amt) ? `$${fmtMoney(amt)}` : "—";
-  }
   if (reviewAmountInput) {
-    reviewAmountInput.value = Number.isFinite(amt) && amt > 0 ? String(amt) : "";
+    reviewAmountInput.value =
+      typeof formatNeedsReviewAmountInput === "function"
+        ? formatNeedsReviewAmountInput(amt)
+        : Number.isFinite(amt) && amt > 0
+          ? fmtMoney(amt)
+          : "";
   }
   show(reviewAmountErr, "");
-  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = false;
+  setReviewAmountBusy(false);
   try {
     reviewAmountModal.style.display = "";
   } catch (_) {}
@@ -19049,6 +19070,7 @@ function openReviewAmountModal(item, series) {
 }
 
 async function openNeedsReviewAmount(item) {
+  if (reviewAmountSaving) return;
   if (await guardBillingWriteAsync()) return;
   if (!item) return;
   const eid = item.expected_transaction_id;
@@ -19066,6 +19088,7 @@ function reviewAmountTypedOrOriginal() {
 
 async function confirmReviewAmount() {
   if (reviewAmountSaving) return;
+  if (!reviewAmountModal?.classList.contains("modal-overlay--open")) return;
   const item = reviewAmountContext?.item;
   if (!item) return;
   show(reviewAmountErr, "");
@@ -19105,28 +19128,40 @@ async function confirmReviewAmount() {
     show(reviewAmountErr, "Invalid occurrence date");
     return;
   }
-  reviewAmountSaving = true;
-  if (reviewAmountConfirmBtn) reviewAmountConfirmBtn.disabled = true;
+  setReviewAmountBusy(true);
   try {
     await api(
       `/api/families/${state.activeFamilyId}/expected-transactions/${item.expected_transaction_id}/instances/${occ}`,
       "POST",
       payload
     );
-    closeReviewAmountModal();
+    if (typeof applyNeedsReviewConfirmLocally === "function") {
+      applyNeedsReviewConfirmLocally(item, amount, [
+        state.monthExpectedItems,
+        state.calendarExtraExpectedItems,
+      ]);
+    } else {
+      item.variable = false;
+      item.amount = amount;
+    }
+    closeReviewAmountModal({ force: true });
     reviewAmountContext = null;
+    try {
+      renderSidebarPendingTransactionsForMonth();
+      invalidateCalendarMonthDaily();
+      applyClientDailyBalancesNow();
+      renderCalendar();
+    } catch (_) {}
     await navigateCalendarToIsoMonthIfNeeded(normalizeIsoDate(item.date) || occ);
   } catch (e) {
     show(reviewAmountErr, e.message || "Could not confirm this amount.");
   } finally {
-    reviewAmountSaving = false;
-    if (reviewAmountConfirmBtn && reviewAmountModal?.classList.contains("modal-overlay--open")) {
-      reviewAmountConfirmBtn.disabled = false;
-    }
+    setReviewAmountBusy(false);
   }
 }
 
 async function openReviewAmountFullEditor() {
+  if (reviewAmountSaving) return;
   const item = reviewAmountContext?.item;
   if (!item) return;
   if (await guardBillingWriteAsync()) return;

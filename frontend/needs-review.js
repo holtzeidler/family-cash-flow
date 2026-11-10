@@ -112,6 +112,32 @@ function parseNeedsReviewAmount(raw) {
   return Math.round(n * 100) / 100;
 }
 
+function formatNeedsReviewAmountInput(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function applyNeedsReviewConfirmLocally(item, amount, expectedLists) {
+  const key = needsReviewOccurrenceKey(item);
+  const amt = Number(amount);
+  const confirmItem = (it) => {
+    if (!it) return;
+    it.variable = false;
+    if (Number.isFinite(amt) && amt > 0) it.amount = amt;
+  };
+  confirmItem(item);
+  const lists = Array.isArray(expectedLists) ? expectedLists : [expectedLists];
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const it of list) {
+      if (!it || it === item) continue;
+      if (key && needsReviewOccurrenceKey(it) === key) confirmItem(it);
+    }
+  }
+  return item;
+}
+
 function buildNeedsReviewConfirmPayload(item, amount, series) {
   const accountId = item?.account_id ?? series?.account_id;
   const categoryRaw = item?.category_id ?? series?.category_id;
@@ -197,6 +223,8 @@ if (typeof module !== "undefined" && module.exports) {
     formatNeedsReviewDueLabel,
     formatNeedsReviewMeta,
     parseNeedsReviewAmount,
+    formatNeedsReviewAmountInput,
+    applyNeedsReviewConfirmLocally,
     buildNeedsReviewConfirmPayload,
     collectNeedsReviewRows,
   };
