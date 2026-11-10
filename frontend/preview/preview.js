@@ -1031,7 +1031,21 @@
   document.getElementById("calendarYear").addEventListener("change", function (event) {
     setMonth(Number(event.target.value), monthIndex, true);
   });
-  document.getElementById("previewWhatIfForm").addEventListener("submit", function (event) { event.preventDefault(); });
+  function applyHypotheticalExpense(opts) {
+    extra = readExtra();
+    renderAll();
+    if (!opts || !opts.scroll) return;
+    if (!extra || !extra.iso) return;
+    var cell = document.querySelector('.cal-cell[data-iso="' + extra.iso + '"]');
+    if (cell && typeof cell.scrollIntoView === "function") {
+      cell.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+
+  document.getElementById("previewWhatIfForm").addEventListener("submit", function (event) {
+    event.preventDefault();
+    applyHypotheticalExpense({ scroll: true });
+  });
   document.getElementById("previewApplyReconcile").addEventListener("click", function () {
     reconciled = true;
     renderAll();
@@ -1041,13 +1055,23 @@
     renderAll();
   });
   document.getElementById("previewExpenseAmount").addEventListener("input", function () {
-    extra = readExtra();
-    renderAll();
+    // Live-update on desktop. On phones, rebuilding the calendar on each key
+    // dismisses the iOS keyboard; Apply / change / blur commit the amount.
+    if (window.matchMedia(PHONE_QUERY).matches) return;
+    applyHypotheticalExpense();
+  });
+  document.getElementById("previewExpenseAmount").addEventListener("change", function () {
+    applyHypotheticalExpense();
   });
   document.getElementById("previewExpenseDay").addEventListener("change", function () {
-    extra = readExtra();
-    renderAll();
+    applyHypotheticalExpense();
   });
+  var applyExpenseBtn = document.getElementById("previewApplyExpense");
+  if (applyExpenseBtn) {
+    applyExpenseBtn.addEventListener("click", function () {
+      applyHypotheticalExpense({ scroll: true });
+    });
+  }
   document.getElementById("previewReset").addEventListener("click", function () {
     extra = null;
     document.getElementById("previewExpenseAmount").value = "";
