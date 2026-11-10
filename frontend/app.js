@@ -2683,10 +2683,9 @@ async function loadCashHealthWindowRows(fid, mode, startIso, endIso) {
   return rows;
 }
 
-/** The label the calendar line shows, so a named payment can be found on the day. */
-function cashHealthLineLabel(row, isExpected) {
-  if (isExpected) return forecastTransactionPrimaryLabel(row);
-  return effectiveTransactionCategoryName(row) || String(row?.description || "Uncategorized").trim();
+/** The category label the calendar line shows. */
+function cashHealthLineLabel(row, _isExpected) {
+  return forecastTransactionPrimaryLabel(row);
 }
 
 async function loadCashHealthRunUpItems(fid, mode, startIso, endIso) {
@@ -9319,7 +9318,7 @@ function tmLargestExpenseInRange(startIso, endIso) {
     const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
     if (!nextIso || nextIso < startIso || nextIso > endIso) continue;
     const a = Math.abs(Number(eff.amount) || 0);
-    const label = String(eff.description || "").trim() || "(no description)";
+    const label = actualTransactionPrimaryLabel(tx);
     if (!best || a > best.amt) best = { amt: a, iso: nextIso, label };
   }
   return best;
@@ -17817,15 +17816,18 @@ function renderUpcomingTransactionsFiltered() {
     cDesc.className = "tm-col tm-col--desc";
     const d1 = document.createElement("div");
     d1.className = `tm-desc${String(eff.kind) === "income" ? " tm-desc--income" : ""}`;
-    d1.textContent = String(eff.description || "(no description)").trim() || "(no description)";
+    const primary = actualTransactionPrimaryLabel(tx);
+    d1.textContent = primary;
     const d2 = document.createElement("div");
     d2.className = "tm-meta";
     const cn = effectiveTransactionCategoryName(tx) || "";
-    const metaBits = [];
-    metaBits.push(cn.trim() ? cn.trim() : "Uncategorized");
-    d2.textContent = metaBits.join(" · ");
-    cDesc.appendChild(d1);
-    cDesc.appendChild(d2);
+    if (cn && cn !== primary) {
+      d2.textContent = cn;
+      cDesc.appendChild(d1);
+      cDesc.appendChild(d2);
+    } else {
+      cDesc.appendChild(d1);
+    }
 
     const cFreq = document.createElement("div");
     cFreq.className = "tm-col tm-col--freq";
@@ -18085,7 +18087,7 @@ function renderRecurringFilteredList() {
     left.className = "left";
     const descEl = document.createElement("div");
     descEl.className = `desc ${kindFgClass(eff.kind)}`;
-    descEl.textContent = eff.description;
+    descEl.textContent = actualTransactionPrimaryLabel(tx);
 
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
@@ -20538,24 +20540,16 @@ function effectiveTransactionCategoryName(tx) {
   return leafCategoryName(name);
 }
 
-/** Primary line for lists: description, else category, else notes snippet, else placeholder. */
+/** Primary line: category only. Never notes or description. */
 function actualTransactionPrimaryLabel(tx) {
-  const desc = String(tx?.description ?? "").trim();
-  if (desc) return desc;
   const cat = effectiveTransactionCategoryName(tx || {});
   if (cat) return cat;
-  const n = tx?.notes != null ? String(tx.notes).trim() : "";
-  if (n) return truncate(n, 72);
-  return "(no description)";
+  return "Uncategorized";
 }
 
-/** Forecast / expected row label (calendar + Needs review): category when set, else description. */
+/** Forecast / expected row label (calendar + Needs review). */
 function forecastTransactionPrimaryLabel(tx) {
-  const cat = effectiveTransactionCategoryName(tx || {});
-  if (cat) return cat;
-  const desc = String(tx?.description ?? "").trim();
-  if (desc) return desc;
-  return "Uncategorized";
+  return actualTransactionPrimaryLabel(tx);
 }
 
 function renderVariableTodosForMonth() {
@@ -20583,7 +20577,7 @@ function renderVariableTodosForMonth() {
 
     const descEl = document.createElement("div");
     descEl.className = `desc ${kindFgClass(it.kind)}`;
-    descEl.textContent = truncate(it.description || "(expected)", 32);
+    descEl.textContent = truncate(forecastTransactionPrimaryLabel(it), 32);
 
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
@@ -21092,10 +21086,7 @@ function renderCalendar() {
           line.dataset.occurrenceDate =
             normalizeIsoDate(row.occurrence_date || row.date) || normalizeIsoDate(iso) || iso;
         }
-        // Match list UIs: prefer category (from API string or category_id → state.categories).
-        // Forecast rows used to always show description (e.g. "ComEd") even when category was "Gas".
-        const descRaw = isExpected ? row.description || "(expected)" : (row.description || "Uncategorized").trim();
-        const labelRaw = isExpected ? forecastTransactionPrimaryLabel(row) : effectiveTransactionCategoryName(row) || descRaw;
+        const labelRaw = isExpected ? forecastTransactionPrimaryLabel(row) : actualTransactionPrimaryLabel(row);
         // Keep labels short so they don't wrap into the amount column.
         const label = truncate(labelRaw, labelMaxLen);
 
