@@ -6601,6 +6601,63 @@ function ensureFavoriteLaunchers() {
 
 ensureFavoriteLaunchers();
 
+function isMobileCalendarToolbar() {
+  try {
+    return window.matchMedia("(max-width: 768px)").matches;
+  } catch (_) {
+    return window.innerWidth <= 768;
+  }
+}
+
+function ensureCalendarMobileAddRow(nav) {
+  if (!nav) return null;
+  let row = document.getElementById("calMobileAddRow");
+  if (!row) {
+    row = document.createElement("div");
+    row.id = "calMobileAddRow";
+    row.className = "cal-mobile-add-row";
+    nav.after(row);
+  }
+  return row;
+}
+
+function placeCalendarAddTransactionControl(split, cluster) {
+  if (!split) return;
+  const nav = document.querySelector(".calendar-nav-bar");
+  const row = ensureCalendarMobileAddRow(nav);
+  if (isMobileCalendarToolbar() && row) {
+    if (split.parentElement !== row) row.appendChild(split);
+    row.hidden = false;
+    return;
+  }
+  if (cluster && split.parentElement !== cluster) cluster.appendChild(split);
+  if (row) row.hidden = true;
+}
+
+function bindCalendarAddPlacement() {
+  if (bindCalendarAddPlacement.bound) return;
+  bindCalendarAddPlacement.bound = true;
+  const sync = () => {
+    const split = document.getElementById("calAddTxSplit");
+    const cluster = document.querySelector(".cal-nav-leading");
+    if (split) placeCalendarAddTransactionControl(split, cluster);
+  };
+  try {
+    const mq = window.matchMedia("(max-width: 768px)");
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+  } catch (_) {}
+  window.addEventListener("orientationchange", sync);
+  window.addEventListener("resize", sync);
+}
+
+function calendarAddTransactionDate() {
+  const selected = document.querySelector(".cal-cell.is-selected[data-iso], .cal-cell[data-selected='1'][data-iso]");
+  const iso = selected && selected.getAttribute("data-iso");
+  if (iso) return iso;
+  return toISODate(new Date());
+}
+
 function ensureCalendarAddTransactionButton() {
   const today = document.getElementById("calendarGoToday");
   const nav = today ? today.closest(".calendar-nav-bar") : document.querySelector(".calendar-nav-bar");
@@ -6613,49 +6670,52 @@ function ensureCalendarAddTransactionButton() {
     cluster.appendChild(today);
   }
   document.getElementById("calFavoritesBtn")?.remove();
-  if (document.getElementById("calAddTxSplit")) return;
-  document.getElementById("calAddTxBtn")?.remove();
-  const split = document.createElement("div");
-  split.id = "calAddTxSplit";
-  split.className = "cal-add-split";
-  split.setAttribute("role", "group");
-  split.setAttribute("aria-label", "Add transaction");
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.id = "calAddTxBtn";
-  btn.className = "cal-add-tx-btn";
-  btn.innerHTML = '<span aria-hidden="true">+</span> Add transaction';
-  btn.addEventListener("click", (e) => {
-    closeCalAddTxMenu();
-    closeFavoritesMenu();
-    openCalendarDayAddTransaction(toISODate(new Date()), e);
-  });
-  const menuBtn = document.createElement("button");
-  menuBtn.type = "button";
-  menuBtn.id = "calAddTxMenuBtn";
-  menuBtn.className = "cal-add-tx-menu-btn";
-  menuBtn.dataset.favoritesToggle = "1";
-  menuBtn.setAttribute("aria-haspopup", "menu");
-  menuBtn.setAttribute("aria-expanded", "false");
-  menuBtn.setAttribute("aria-controls", "calAddTxMenu");
-  menuBtn.setAttribute("aria-label", "More add options");
-  menuBtn.innerHTML =
-    '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.25L6 8.25l3.5-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  menuBtn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    toggleCalAddTxMenu();
-  });
-  menuBtn.addEventListener("keydown", (event) => {
-    if (event.key !== "ArrowDown") return;
-    event.preventDefault();
-    const menu = document.getElementById("calAddTxMenu");
-    if (!menu || menu.hidden) toggleCalAddTxMenu();
-    else menu.querySelector('[role="menuitem"]')?.focus();
-  });
-  split.append(btn, menuBtn);
-  today.after(split);
-  ensureCalAddTxMenu();
+  let split = document.getElementById("calAddTxSplit");
+  if (!split) {
+    document.getElementById("calAddTxBtn")?.remove();
+    split = document.createElement("div");
+    split.id = "calAddTxSplit";
+    split.className = "cal-add-split";
+    split.setAttribute("role", "group");
+    split.setAttribute("aria-label", "Add transaction");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "calAddTxBtn";
+    btn.className = "cal-add-tx-btn";
+    btn.innerHTML = '<span aria-hidden="true">+</span> Add transaction';
+    btn.addEventListener("click", (e) => {
+      closeCalAddTxMenu();
+      closeFavoritesMenu();
+      openCalendarDayAddTransaction(calendarAddTransactionDate(), e);
+    });
+    const menuBtn = document.createElement("button");
+    menuBtn.type = "button";
+    menuBtn.id = "calAddTxMenuBtn";
+    menuBtn.className = "cal-add-tx-menu-btn";
+    menuBtn.dataset.favoritesToggle = "1";
+    menuBtn.setAttribute("aria-haspopup", "menu");
+    menuBtn.setAttribute("aria-expanded", "false");
+    menuBtn.setAttribute("aria-controls", "calAddTxMenu");
+    menuBtn.setAttribute("aria-label", "More add options");
+    menuBtn.innerHTML =
+      '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.25L6 8.25l3.5-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    menuBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleCalAddTxMenu();
+    });
+    menuBtn.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown") return;
+      event.preventDefault();
+      const menu = document.getElementById("calAddTxMenu");
+      if (!menu || menu.hidden) toggleCalAddTxMenu();
+      else menu.querySelector('[role="menuitem"]')?.focus();
+    });
+    split.append(btn, menuBtn);
+    ensureCalAddTxMenu();
+  }
+  placeCalendarAddTransactionControl(split, cluster);
+  bindCalendarAddPlacement();
 }
 
 ensureCalendarAddTransactionButton();

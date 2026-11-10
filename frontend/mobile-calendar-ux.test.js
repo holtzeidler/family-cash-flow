@@ -55,6 +55,38 @@ assert.ok(
   "mobile summary cards are not in a separate sticky scroll layer"
 );
 
+var addBtn = functionBody(app, "ensureCalendarAddTransactionButton");
+assert.ok(addBtn.indexOf("Add transaction") >= 0, "calendar toolbar still has an Add transaction control");
+assert.ok(
+  addBtn.indexOf("openCalendarDayAddTransaction(calendarAddTransactionDate()") >= 0,
+  "toolbar Add uses the existing add-transaction modal path"
+);
+assert.ok(addBtn.indexOf("placeCalendarAddTransactionControl") >= 0, "toolbar Add moves to a mobile row on small screens");
+assert.ok(app.indexOf('id = "calAddTxMenuBtn"') >= 0, "desktop add dropdown is preserved");
+
+var addDate = functionBody(app, "calendarAddTransactionDate");
+assert.ok(addDate.indexOf("toISODate(new Date())") >= 0, "toolbar Add defaults the date to today");
+assert.ok(addDate.indexOf("data-iso") >= 0, "toolbar Add uses a selected calendar date when one exists");
+
+var placeAdd = functionBody(app, "placeCalendarAddTransactionControl");
+assert.ok(placeAdd.indexOf("ensureCalendarMobileAddRow") >= 0, "mobile Add sits in a dedicated row above the date cards");
+assert.ok(placeAdd.indexOf("cluster.appendChild(split)") >= 0, "desktop Add stays beside Today");
+assert.ok(app.indexOf('id = "calMobileAddRow"') >= 0, "mobile Add row is created next to the calendar toolbar");
+
+assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-mobile-add-row:not\(\[hidden\]\)\{[\s\S]*?position:\s*static/.test(css),
+  "mobile Add is in document flow, not a floating overlay"
+);
+assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-mobile-add-row \.cal-add-tx-btn\{[\s\S]*?min-height:\s*44px/.test(css),
+  "mobile Add is a 44px control"
+);
+assert.ok(
+  !/\.calendar--mobile \.cal-cell[\s\S]{0,200}Add transaction/.test(css),
+  "day cards do not get a repeated Add transaction button"
+);
+assert.ok(app.indexOf("bindCalendarCellAddTxClick") >= 0, "tapping a calendar date still adds a transaction");
+
 var dismissStart = app.indexOf("function bindTxAddModalDismiss(");
 var dismissEnd = app.indexOf("bindTxAddModalDismiss();", dismissStart);
 var dismiss = app.slice(dismissStart, dismissEnd);

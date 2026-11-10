@@ -35300,20 +35300,45 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   background: rgba(4, 120, 87, 0.08);
   outline: none;
 }
+.cal-mobile-add-row{
+  display: none;
+  min-width: 0;
+}
+.cal-mobile-add-row[hidden]{
+  display: none !important;
+}
 @media (max-width: 768px){
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn),
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split){
-    grid-template-rows: auto auto auto;
-  }
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-nav-leading,
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split) .cal-nav-leading{
-    grid-column: 1 / -1;
+  body[data-bw-view="calendar"] .cal-mobile-add-row:not([hidden]){
+    display: block;
+    position: static;
+    margin: 8px 0 0;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
   }
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-tx-btn) .cal-detail-toggle,
-  body[data-bw-view="calendar"] .calendar-nav-bar:has(.cal-add-split) .cal-detail-toggle{
-    grid-column: 1 / -1;
-    grid-row: 3;
+  body[data-bw-view="calendar"] .cal-mobile-add-row .cal-add-split{
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border-radius: 12px;
+  }
+  body[data-bw-view="calendar"] .cal-mobile-add-row .cal-add-tx-btn{
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 650;
+  }
+  body[data-bw-view="calendar"] .cal-mobile-add-row .cal-add-tx-menu-btn{
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
   .cal-add-tx-menu-btn{
     min-width: 40px;
