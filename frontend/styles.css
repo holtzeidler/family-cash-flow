@@ -22579,6 +22579,16 @@ body.plans-page--polished .plans-quote{
   gap: 8px;
   margin-top: 2px;
 }
+.balance-check-in__record{
+  margin-top: 2px;
+}
+.balance-check-in__record .cal-confirmed-tip{
+  min-width: 0;
+  max-width: none;
+}
+.balance-check-in__record .cal-confirmed-tip__actions{
+  margin-top: 8px;
+}
 .balance-check-in__primary--full{
   width: 100%;
   justify-content: center;

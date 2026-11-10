@@ -2060,6 +2060,8 @@ const reconcileDateInput = document.getElementById("reconcileDateInput");
 const reconcileBalanceBlock = document.getElementById("reconcileBalanceBlock");
 const reconcileForecastBal = document.getElementById("reconcileForecastBal");
 const reconcileConfirmState = document.getElementById("reconcileConfirmState");
+const reconcileRecordState = document.getElementById("reconcileRecordState");
+const reconcileRecordBody = document.getElementById("reconcileRecordBody");
 const reconcileEditState = document.getElementById("reconcileEditState");
 const reconcileMatchYesBtn = document.getElementById("reconcileMatchYesBtn");
 const reconcileMatchNoBtn = document.getElementById("reconcileMatchNoBtn");
@@ -2067,7 +2069,7 @@ const reconcileActualAmount = document.getElementById("reconcileActualAmount");
 const reconcileSaveBtn = document.getElementById("reconcileSaveBtn");
 const reconcileCancelBtn = document.getElementById("reconcileCancelBtn");
 let reconcileActiveDate = "";
-let reconcileCheckInMode = "confirm"; // "confirm" | "edit"
+let reconcileCheckInMode = "confirm"; // "confirm" | "edit" | "record"
 let reconcileCheckInBusy = false;
 
 const editAdjustmentModal = document.getElementById("editAdjustmentModal");
@@ -6885,14 +6887,19 @@ async function applyReconcileModalDate(iso, { resetMode = true } = {}) {
   syncReconcileDateInputBounds();
   if (reconcileDateInput) reconcileDateInput.value = d;
   if (reconcileDateDisplay) reconcileDateDisplay.textContent = fmtDateLongDisplay(d);
+  await ensureForecastBalanceForIso(d);
+  const forecast = paintBalanceCheckInForecast(d);
+  const recordKind = reconcileModalRecordKind(d);
   if (resetMode) {
     reconcileCheckInBusy = false;
-    setBalanceCheckInMode("confirm");
+    setBalanceCheckInMode(recordKind ? "record" : "confirm");
     show(reconcileErr, "");
     show(reconcileConfirmErr, "");
   }
-  await ensureForecastBalanceForIso(d);
-  const forecast = paintBalanceCheckInForecast(d);
+  if (reconcileCheckInMode === "record") {
+    paintReconcileModalRecord(d);
+    if (reconcileBalanceBlock) reconcileBalanceBlock.hidden = true;
+  }
   if (reconcileActualAmount) {
     reconcileActualAmount.value = balanceCheckInPrefillAmount(d, forecast);
   }
@@ -6903,6 +6910,29 @@ async function applyReconcileModalDate(iso, { resetMode = true } = {}) {
 function isReconciledOnDate(iso) {
   const d = normalizeIsoDate(iso);
   return !!(d && state.reconciledDates && state.reconciledDates.has(d));
+}
+
+function reconcileModalRecordKind(iso) {
+  if (existingVerifiedBalanceOnDate(iso)) return "adjusted";
+  if (isReconciledOnDate(iso)) return "reconciled";
+  return "";
+}
+
+function paintReconcileModalRecord(iso) {
+  if (!reconcileRecordBody) return false;
+  const d = normalizeIsoDate(iso);
+  const dayBal = d && state.monthDailyBalances ? state.monthDailyBalances.get(d) : null;
+  const kind = reconcileModalRecordKind(d);
+  if (kind === "adjusted") {
+    reconcileRecordBody.innerHTML = buildAdjustedBalanceTipHtml(dayBal, d) || "";
+    return true;
+  }
+  if (kind === "reconciled") {
+    reconcileRecordBody.innerHTML = buildReconciledBalanceTipHtml(dayBal, d) || "";
+    return true;
+  }
+  reconcileRecordBody.innerHTML = "";
+  return false;
 }
 
 function isBalanceCheckInAmountValid(raw) {
@@ -6942,15 +6972,23 @@ function balanceCheckInPrefillAmount(iso, forecast) {
 }
 
 function setBalanceCheckInMode(mode) {
-  reconcileCheckInMode = mode === "edit" ? "edit" : "confirm";
+  reconcileCheckInMode = mode === "edit" ? "edit" : mode === "record" ? "record" : "confirm";
   if (reconcileModalPanel) {
     reconcileModalPanel.setAttribute("data-balance-check-in-mode", reconcileCheckInMode);
   }
   const isEdit = reconcileCheckInMode === "edit";
-  if (reconcileConfirmState) reconcileConfirmState.hidden = isEdit;
+  const isRecord = reconcileCheckInMode === "record";
+  if (reconcileConfirmState) reconcileConfirmState.hidden = isEdit || isRecord;
   if (reconcileEditState) reconcileEditState.hidden = !isEdit;
+  if (reconcileRecordState) reconcileRecordState.hidden = !isRecord;
   if (reconcileTitle) {
-    reconcileTitle.textContent = isEdit ? "Update Balance" : "Check your balance";
+    reconcileTitle.textContent = isEdit
+      ? "Update Balance"
+      : isRecord
+        ? reconcileModalRecordKind(reconcileActiveDate) === "adjusted"
+          ? "Adjusted"
+          : "Reconciled"
+        : "Check your balance";
   }
 }
 
@@ -6979,6 +7017,10 @@ async function openReconcileModalAsync(iso) {
   reconcileModal.classList.add("modal-overlay--open");
   reconcileModal.setAttribute("aria-hidden", "false");
   requestAnimationFrame(() => {
+    if (reconcileCheckInMode === "record") {
+      reconcileDateInput?.focus();
+      return;
+    }
     if (reconcileMatchYesBtn && !reconcileMatchYesBtn.disabled) {
       reconcileMatchYesBtn.focus();
     } else if (reconcileMatchNoBtn && !reconcileMatchNoBtn.disabled) {
@@ -7015,6 +7057,7 @@ function closeReconcileModal() {
   reconcileCheckInBusy = false;
   reconcileCheckInMode = "confirm";
   if (reconcileActualAmount) reconcileActualAmount.value = "";
+  if (reconcileRecordBody) reconcileRecordBody.innerHTML = "";
   show(reconcileErr, "");
   show(reconcileConfirmErr, "");
   setBalanceCheckInMode("confirm");
@@ -8084,6 +8127,38 @@ if (reconcileDateInput) {
     const next = clampedReconcileIso(reconcileDateInput.value);
     if (!next) return;
     void applyReconcileModalDate(next, { resetMode: true });
+  });
+}
+if (reconcileRecordState) {
+  reconcileRecordState.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-bw-bal-action]");
+    if (!btn || btn.disabled || !reconcileRecordState.contains(btn)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const action = btn.getAttribute("data-bw-bal-action");
+    const iso = normalizeIsoDate(btn.getAttribute("data-iso") || reconcileActiveDate);
+    if (!action || !iso) return;
+    if (action === "enter-different-balance") {
+      enterBalanceCheckInEditMode();
+      return;
+    }
+    if (action === "edit-adjustment") {
+      closeReconcileModal();
+      openEditAdjustmentModal(iso, { mode: "edit" });
+      return;
+    }
+    if (action === "remove-reconciliation") {
+      void (async () => {
+        try {
+          await removeReconciliationForDate(iso);
+          closeReconcileModal();
+        } catch (err) {
+          if (typeof showBwToast === "function") {
+            showBwToast(err.message || "Could not remove reconciliation.", { placement: "calendar" });
+          }
+        }
+      })();
+    }
   });
 }
 

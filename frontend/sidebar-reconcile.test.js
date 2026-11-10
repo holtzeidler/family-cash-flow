@@ -12,11 +12,13 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-assert(defaultReconcileIso("2026-11-09", "2026-11-01") === "2026-11-08", "default yesterday");
-assert(defaultReconcileIso("2026-11-01", "2026-11-01") === "2026-11-01", "clamp yesterday to start");
-assert(defaultReconcileIso("2026-11-09", "2026-10-15") === "2026-11-08", "yesterday after start");
-assert(clampReconcileIso("2026-11-20", "2026-11-09", "2026-11-01") === "2026-11-09", "no future dates");
-assert(clampReconcileIso("2026-10-01", "2026-11-09", "2026-11-01") === "2026-11-01", "no dates before start");
+assert(defaultReconcileIso("2026-11-10", "2026-11-01") === "2026-11-10", "default today");
+assert(defaultReconcileIso("2026-11-01", "2026-11-01") === "2026-11-01", "today on start date");
+assert(defaultReconcileIso("2026-11-10", "2026-10-15") === "2026-11-10", "today after start");
+assert(defaultReconcileIso("2026-10-31", "2026-11-01") === "2026-11-01", "today before start uses start");
+assert(clampReconcileIso("2026-11-20", "2026-11-10", "2026-11-01") === "2026-11-10", "no future dates");
+assert(clampReconcileIso("2026-10-01", "2026-11-10", "2026-11-01") === "2026-11-01", "no dates before start");
+assert(clampReconcileIso("2026-11-09", "2026-11-10", "2026-11-01") === "2026-11-09", "explicit past date is kept");
 
 assert(sidebarReconcileDaysSince("2026-11-09", "2026-11-09") === 0, "same day");
 assert(sidebarReconcileDaysSince("2026-11-03", "2026-11-09") === 6, "six days");

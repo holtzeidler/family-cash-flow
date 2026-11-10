@@ -34,9 +34,8 @@ function defaultReconcileIso(todayIso, startIso) {
   const today = sidebarReconcileNormalizeIso(todayIso);
   if (!today) return "";
   const start = sidebarReconcileNormalizeIso(startIso);
-  const yesterday = sidebarReconcileAddDays(today, -1);
-  if (start && yesterday && yesterday < start) return start <= today ? start : today;
-  return yesterday || today;
+  if (start && today < start) return start;
+  return today;
 }
 
 function clampReconcileIso(iso, todayIso, startIso) {

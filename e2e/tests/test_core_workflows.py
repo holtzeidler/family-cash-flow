@@ -509,9 +509,7 @@ def test_updating_the_balance_resets_later_days(page, guard):
     expect(page.locator("#sidebarReconcileBtn")).to_have_text("Reconcile balance")
     page.locator("#sidebarReconcileBtn").click()
     expect(page.locator("#reconcileModal.modal-overlay--open")).to_be_visible()
-    start_day = date(today.year, today.month, 1)
-    yesterday = today - timedelta(days=1)
-    expected_iso = (yesterday if yesterday >= start_day else start_day).isoformat()
+    expected_iso = today.isoformat()
     expect(page.locator("#reconcileDateInput")).to_have_value(expected_iso)
     page.locator("#reconcileMatchNoBtn").click()
     page.locator("#reconcileActualAmount").fill("5000")
@@ -801,6 +799,46 @@ def test_balance_record_does_not_block_transactions(page, guard):
     expect(page.locator("#sidebarReconcileDetail")).to_have_text("Not reconciled yet")
     expect(_balance(page, reconciled_day)).to_have_text(money("2050.00"))
     expect(page.locator(".reports-risk-tip.reports-risk-tip--visible")).to_have_count(0)
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Sidebar reconcile defaults to today")
+def test_sidebar_reconcile_defaults_to_today(page, guard):
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    start = min(date(today.year, today.month, 1), today)
+    email = _register_checking("2000.00", start.isoformat())
+    login(page, email, PASSWORD)
+    show_month(page, today.strftime("%Y-%m"), today.isoformat())
+
+    page.locator("#sidebarReconcileBtn").click()
+    modal = page.locator("#reconcileModal.modal-overlay--open")
+    expect(modal).to_be_visible()
+    expect(page.locator("#reconcileDateInput")).to_have_value(today.isoformat())
+    expect(modal.locator("#reconcileTitle")).to_have_text("Check your balance")
+    expect(modal.locator("#reconcileMatchPrompt")).to_be_visible()
+    page.locator("#reconcileMatchYesBtn").click()
+    expect(modal).to_have_count(0)
+    expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
+    expect(page.locator("#sidebarReconcileDetail")).to_have_text(
+        f"{['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][today.month - 1]} {today.day}"
+    )
+
+    page.locator("#sidebarReconcileBtn").click()
+    expect(modal).to_be_visible()
+    expect(page.locator("#reconcileDateInput")).to_have_value(today.isoformat())
+    expect(modal.locator("#reconcileTitle")).to_have_text("Reconciled")
+    expect(modal.locator("#reconcileRecordState")).to_be_visible()
+    expect(modal.locator("#reconcileRecordState")).to_contain_text("Matched bank balance")
+    expect(modal.locator("#reconcileMatchPrompt")).to_be_hidden()
+
+    if yesterday >= start:
+        page.locator("#reconcileDateInput").fill(yesterday.isoformat())
+        page.locator("#reconcileDateInput").dispatch_event("change")
+        expect(page.locator("#reconcileDateInput")).to_have_value(yesterday.isoformat())
+        expect(modal.locator("#reconcileTitle")).to_have_text("Check your balance")
+        expect(modal.locator("#reconcileMatchPrompt")).to_be_visible()
+    page.keyboard.press("Escape")
     guard.assert_clean()
 
 
