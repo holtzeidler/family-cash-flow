@@ -33010,6 +33010,10 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 .cal-confirmed-tip--adjusted .cal-confirmed-tip__actions--edit{
   margin-top: 8px;
 }
+.cal-confirmed-tip--adjusted .cal-confirmed-tip__actions{
+  margin-top: 8px;
+  gap: 6px;
+}
 .cal-confirmed-tip__action{
   border: none;
   background: transparent;

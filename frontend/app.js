@@ -6798,6 +6798,8 @@ function ingestCalendarMonthDailyRows(days) {
       projectedEnd: row.projected_end != null ? Number(row.projected_end) : null,
     });
   }
+  recomputeLastReconciledIso();
+  paintSidebarReconcileRow();
 }
 
 async function ensureForecastBalanceForIso(iso) {
@@ -6839,11 +6841,18 @@ function recomputeLastReconciledIso() {
     for (const group of state.reconciledDatesByMonth.values()) sets.push(group);
   }
   if (state.reconciledDates) sets.push(state.reconciledDates);
+  const verified = [];
+  if (state.verifiedBalances) verified.push(...state.verifiedBalances.keys());
+  const dailyVerified =
+    typeof verifiedCheckIsosFromDaily === "function"
+      ? verifiedCheckIsosFromDaily(state.monthDailyBalances)
+      : [];
+  for (const iso of dailyVerified) verified.push(iso);
   const latest =
     typeof latestBalanceCheckIso === "function"
-      ? latestBalanceCheckIso(sets, state.verifiedBalances)
+      ? latestBalanceCheckIso(sets, verified)
       : typeof latestIsoFromDateSets === "function"
-        ? latestIsoFromDateSets(sets)
+        ? latestIsoFromDateSets(sets.concat(verified))
         : null;
   state.lastReconciledIso = latest;
 }
@@ -7117,6 +7126,7 @@ async function confirmBalanceMatchesForecast() {
   // Only touch this date — older Reconciled / Adjusted badges stay intact.
   if (existingVerifiedBalanceOnDate(iso)) {
     await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+    verifiedBalancesLoadGen += 1;
     state.verifiedBalances?.delete(iso);
     await loadVerifiedBalances(month);
     invalidateLowBalanceAlertCache();
@@ -7158,6 +7168,7 @@ async function saveBalanceCheckIn() {
     date: iso,
     reconciled: false,
   });
+  verifiedBalancesLoadGen += 1;
   if (!state.verifiedBalances) state.verifiedBalances = new Map();
   state.verifiedBalances.set(iso, {
     amount: amt,
@@ -7188,7 +7199,11 @@ function applyClientDailyBalancesNow() {
   } catch (_) {}
 }
 
+let verifiedBalancesLoadGen = 0;
+let reconciledDaysLoadGen = 0;
+
 function dropReconciledDateLocally(iso) {
+  reconciledDaysLoadGen += 1;
   if (typeof dropReconciledIso === "function") {
     dropReconciledIso(iso, state.reconciledDates, state.reconciledDatesByMonth);
   } else {
@@ -7200,6 +7215,7 @@ function dropReconciledDateLocally(iso) {
 }
 
 function restoreReconciledDateLocally(iso) {
+  reconciledDaysLoadGen += 1;
   if (typeof addReconciledIso === "function") {
     if (!state.reconciledDates) state.reconciledDates = new Set();
     if (!state.reconciledDatesByMonth) state.reconciledDatesByMonth = new Map();
@@ -7228,7 +7244,9 @@ function setBalanceRecordTipBusy(busy, label) {
   tip.classList.toggle("is-busy", !!busy);
   if (busy) tip.setAttribute("aria-busy", "true");
   else tip.removeAttribute("aria-busy");
-  const btn = tip.querySelector("[data-bw-bal-action='remove-reconciliation']");
+  const btn = tip.querySelector(
+    "[data-bw-bal-action='remove-reconciliation'], [data-bw-bal-action='remove-adjustment']",
+  );
   tip.querySelectorAll("[data-bw-bal-action]").forEach((el) => {
     el.disabled = !!busy;
   });
@@ -7408,6 +7426,7 @@ async function saveEditAdjustment() {
     // $0 difference: keep a Reconciled check, not an Adjusted record.
     if (existingVerifiedBalanceOnDate(iso)) {
       await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+      verifiedBalancesLoadGen += 1;
       state.verifiedBalances?.delete(iso);
     }
     await api(`/api/families/${state.activeFamilyId}/reconciled-days`, "POST", {
@@ -7429,6 +7448,7 @@ async function saveEditAdjustment() {
     date: iso,
     reconciled: false,
   });
+  verifiedBalancesLoadGen += 1;
   if (!state.verifiedBalances) state.verifiedBalances = new Map();
   state.verifiedBalances.set(iso, {
     amount: amt,
@@ -7443,32 +7463,64 @@ async function saveEditAdjustment() {
 
 async function confirmRemoveAdjustment() {
   show(removeAdjustmentErr, "");
-  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
   const iso = normalizeIsoDate(removeAdjustmentActiveDate);
   if (!iso) throw new Error("Invalid date");
-  const prev = state.verifiedBalances?.get(iso) || null;
   if (removeAdjustmentConfirmBtn) {
     removeAdjustmentConfirmBtn.disabled = true;
     removeAdjustmentConfirmBtn.textContent = "Removing…";
   }
   try {
-    await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(iso)}`, "DELETE");
+    await removeAdjustmentForDate(iso);
     closeRemoveAdjustmentModal();
-    if (state.verifiedBalances) state.verifiedBalances.delete(iso);
+  } catch (e) {
+    if (removeAdjustmentConfirmBtn) {
+      removeAdjustmentConfirmBtn.disabled = false;
+      removeAdjustmentConfirmBtn.textContent = "Remove Adjustment";
+    }
+    throw e;
+  }
+}
+
+async function removeAdjustmentForDate(iso) {
+  if (balanceRecordBusyIso) return;
+  if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
+  const d = normalizeIsoDate(iso);
+  if (!d) throw new Error("Invalid date");
+  const prevVerified = state.verifiedBalances?.get(d) || null;
+  const prevDay = state.monthDailyBalances?.get(d) || null;
+  balanceRecordBusyIso = d;
+  verifiedBalancesLoadGen += 1;
+  syncBalanceRecordTipBusy();
+  markCalendarReconcileBusy(d, true);
+  try {
+    await api(`/api/families/${state.activeFamilyId}/verified-balances/${encodeURIComponent(d)}`, "DELETE");
+    const shownIso = pinnedBalanceRecordIso();
+    const hideTip = typeof shouldHideBalanceRecordTipAfterRemoval === "function"
+      ? shouldHideBalanceRecordTipAfterRemoval(d, shownIso)
+      : !shownIso || shownIso === d;
+    if (hideTip) hidePinnedBalanceRecordTip();
+    if (state.verifiedBalances) state.verifiedBalances.delete(d);
+    if (prevDay && state.monthDailyBalances) {
+      state.monthDailyBalances.set(d, { ...prevDay, verified: false, verifiedAmount: null });
+    }
     recomputeLastReconciledIso();
     paintSidebarReconcileRow();
     invalidateCalendarMonthDaily();
     applyClientDailyBalancesNow();
     renderCalendar();
     if (typeof showBwToast === "function") showBwToast("Adjustment removed.", { placement: "calendar" });
-    void refreshAfterBalanceRecordChange(iso);
+    void refreshAfterBalanceRecordChange(d);
   } catch (e) {
-    if (prev && state.verifiedBalances) state.verifiedBalances.set(iso, prev);
-    if (removeAdjustmentConfirmBtn) {
-      removeAdjustmentConfirmBtn.disabled = false;
-      removeAdjustmentConfirmBtn.textContent = "Remove Adjustment";
-    }
+    if (prevVerified && state.verifiedBalances) state.verifiedBalances.set(d, prevVerified);
+    if (prevDay && state.monthDailyBalances) state.monthDailyBalances.set(d, prevDay);
+    recomputeLastReconciledIso();
+    paintSidebarReconcileRow();
+    renderCalendar();
     throw e;
+  } finally {
+    balanceRecordBusyIso = "";
+    setBalanceRecordTipBusy(false);
+    markCalendarReconcileBusy(d, false);
   }
 }
 
@@ -7570,9 +7622,14 @@ function buildAdjustedBalanceTipHtml(dayBal, iso, { chrome = "tip" } = {}) {
   const d = normalizeIsoDate(iso) || "";
   const bank = typeof adjustedConfirmedBalance === "function" ? adjustedConfirmedBalance(dayBal) : finiteMoney?.(dayBal.verifiedAmount);
   if (bank == null) return "";
+  const stored = d && state.verifiedBalances ? state.verifiedBalances.get(d) : null;
+  const forecast =
+    typeof adjustedForecastBalance === "function"
+      ? adjustedForecastBalance(dayBal, stored?.projected_amount)
+      : finiteMoney?.(dayBal.projectedEnd);
   const caption =
     typeof reconcileRecordCaption === "function"
-      ? reconcileRecordCaption({ matched: false })
+      ? reconcileRecordCaption({ matched: false, diff: forecast != null ? bank - forecast : NaN, fmtMoney })
       : "Bank balance differed from forecast.";
 
   const parts = ['<div class="cal-confirmed-tip cal-confirmed-tip--adjusted" data-bw-balance-record="adjusted">'];
@@ -7583,9 +7640,12 @@ function buildAdjustedBalanceTipHtml(dayBal, iso, { chrome = "tip" } = {}) {
   parts.push(`<p class="cal-confirmed-tip__amount">$${escapeHtml(fmtMoney(bank))}</p>`);
   parts.push(`<p class="cal-confirmed-tip__match">${escapeHtml(caption)}</p>`);
   if (d && !state.viewOnly && state.activeFamilyAccessMode !== "view") {
-    parts.push('<div class="cal-confirmed-tip__actions cal-confirmed-tip__actions--edit">');
+    parts.push('<div class="cal-confirmed-tip__actions">');
     parts.push(
       `<button type="button" class="cal-confirmed-tip__edit-btn" data-bw-write data-bw-bal-action="edit-adjustment" data-iso="${escapeHtml(d)}"><span class="cal-confirmed-tip__edit-btn-icon" aria-hidden="true">${TM_ROW_EDIT_SVG}</span><span>Edit adjustment</span></button>`,
+    );
+    parts.push(
+      `<button type="button" class="cal-confirmed-tip__action cal-confirmed-tip__action--danger" data-bw-write data-bw-bal-action="remove-adjustment" data-iso="${escapeHtml(d)}">Remove adjustment</button>`,
     );
     parts.push("</div>");
   }
@@ -7633,6 +7693,7 @@ function buildStartingPointTipHtml(_accountName) {
 async function loadVerifiedBalances(month) {
   if (!state.activeFamilyId) return;
   if (!month) return;
+  const gen = ++verifiedBalancesLoadGen;
   const cur = String(month).trim();
   const prev = shiftMonthStr(cur, -1);
   const next = shiftMonthStr(cur, 1);
@@ -7643,6 +7704,7 @@ async function loadVerifiedBalances(month) {
         api(`/api/families/${state.activeFamilyId}/verified-balances?month=${encodeURIComponent(m)}`, "GET"),
       ),
     );
+    if (gen !== verifiedBalancesLoadGen) return;
     if (!state.verifiedBalances) state.verifiedBalances = new Map();
     if (!state.verifiedBalanceMonths) state.verifiedBalanceMonths = new Set();
     const monthSet = new Set(months);
@@ -18758,6 +18820,7 @@ async function loadReconciledDays(month, extraIso) {
   if (!state.activeFamilyId) return;
   if (!month) return;
   ensureReconciledDateCacheFamily();
+  const gen = ++reconciledDaysLoadGen;
   const cur = String(month).trim();
   const prev = shiftMonthStr(cur, -1);
   const next = shiftMonthStr(cur, 1);
@@ -18771,6 +18834,7 @@ async function loadReconciledDays(month, extraIso) {
     const results = await Promise.all(
       months.map((m) => api(`/api/families/${state.activeFamilyId}/reconciled-days?month=${encodeURIComponent(m)}`, "GET"))
     );
+    if (gen !== reconciledDaysLoadGen) return;
     for (let i = 0; i < results.length; i++) {
       const data = results[i];
       const ym = months[i];
@@ -18796,6 +18860,7 @@ async function loadReconciledDays(month, extraIso) {
 
 async function lookbackReconciledDays() {
   if (!state.activeFamilyId || state.reconciledLookbackDone) return;
+  const gen = reconciledDaysLoadGen;
   const familyId = state.activeFamilyId;
   const todayIso = toISODate(new Date());
   const todayYm = todayIso.slice(0, 7);
@@ -18821,6 +18886,7 @@ async function lookbackReconciledDays() {
       months.map((m) => api(`/api/families/${familyId}/reconciled-days?month=${encodeURIComponent(m)}`, "GET"))
     );
     if (state.activeFamilyId !== familyId) return;
+    if (gen !== reconciledDaysLoadGen) return;
     for (let i = 0; i < results.length; i++) {
       const ym = months[i];
       const monthSet = new Set();
@@ -18841,6 +18907,7 @@ async function lookbackReconciledDays() {
 
 async function lookbackVerifiedBalances() {
   if (!state.activeFamilyId || state.verifiedLookbackDone) return;
+  const gen = verifiedBalancesLoadGen;
   const familyId = state.activeFamilyId;
   const todayIso = toISODate(new Date());
   const todayYm = todayIso.slice(0, 7);
@@ -18869,6 +18936,7 @@ async function lookbackVerifiedBalances() {
       ),
     );
     if (state.activeFamilyId !== familyId) return;
+    if (gen !== verifiedBalancesLoadGen) return;
     if (!state.verifiedBalances) state.verifiedBalances = new Map();
     for (let i = 0; i < results.length; i++) {
       const ym = months[i];
@@ -19272,6 +19340,8 @@ async function loadCalendarMonthDaily(gen) {
       fillInMonthGapsFromClient();
       if (!stillCurrent()) return;
       state.monthDailyBalances = nextBalances;
+      recomputeLastReconciledIso();
+      paintSidebarReconcileRow();
       return;
     }
   } catch (_) {
@@ -19279,6 +19349,8 @@ async function loadCalendarMonthDaily(gen) {
   }
   if (!stillCurrent()) return;
   computeMonthDailyBalancesLegacy();
+  recomputeLastReconciledIso();
+  paintSidebarReconcileRow();
 }
 
 /** Phones open the current month at today once per page load; any user input turns this off. */
@@ -20035,6 +20107,16 @@ async function handleBalanceRecordTipAction(action, iso) {
       if (typeof showBwToast === "function") {
         showBwToast(e.message || "Could not remove reconciliation.", { placement: "calendar" });
       } else window.alert(e.message || "Could not remove reconciliation.");
+    }
+    return;
+  }
+  if (action === "remove-adjustment") {
+    try {
+      await removeAdjustmentForDate(iso);
+    } catch (e) {
+      if (typeof showBwToast === "function") {
+        showBwToast(e.message || "Could not remove this adjustment.", { placement: "calendar" });
+      } else window.alert(e.message || "Could not remove this adjustment.");
     }
     return;
   }

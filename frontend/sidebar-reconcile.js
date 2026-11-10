@@ -97,6 +97,15 @@ function latestBalanceCheckIso(reconciledSets, verifiedDates) {
   return latestIsoFromDateSets(sets);
 }
 
+function verifiedCheckIsosFromDaily(dailyByIso) {
+  const out = [];
+  if (!dailyByIso || typeof dailyByIso.entries !== "function") return out;
+  for (const [iso, row] of dailyByIso.entries()) {
+    if (row && row.verified) out.push(iso);
+  }
+  return out;
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     SIDEBAR_RECONCILE_STALE_DAYS,
@@ -110,5 +119,6 @@ if (typeof module !== "undefined" && module.exports) {
     formatSidebarReconcileElapsed,
     latestIsoFromDateSets,
     latestBalanceCheckIso,
+    verifiedCheckIsosFromDaily,
   };
 }

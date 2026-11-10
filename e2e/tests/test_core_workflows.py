@@ -791,6 +791,7 @@ def test_balance_record_does_not_block_transactions(page, guard):
     expect(tip).not_to_contain_text("Reconciled balance")
     expect(tip.locator("[data-bw-bal-action='enter-different-balance']")).to_be_visible()
     expect(tip.locator("[data-bw-bal-action='remove-reconciliation']")).to_be_visible()
+    expect(tip.locator("[data-bw-bal-action='remove-adjustment']")).to_have_count(0)
     expect(page.locator("[data-bw-bal-action='reconcile-this-date']")).to_have_count(0)
     expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
     tip.locator("[data-bw-bal-action='remove-reconciliation']").click()
@@ -799,6 +800,45 @@ def test_balance_record_does_not_block_transactions(page, guard):
     expect(reconciled_mark).to_have_count(0)
     expect(page.locator("#sidebarReconcileDetail")).to_have_text("Not reconciled yet")
     expect(_balance(page, reconciled_day)).to_have_text(money("2050.00"))
+    expect(page.locator(".reports-risk-tip.reports-risk-tip--visible")).to_have_count(0)
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Adjusted popover can remove the verified balance")
+def test_adjusted_balance_remove_updates_last_reconciled(page, guard):
+    start = "2026-09-01"
+    matched_day = "2026-09-08"
+    adjusted_day = "2026-09-09"
+    email = _register_checking("2000.00", start)
+    login(page, email, PASSWORD)
+    show_month(page, "2026-09", start)
+
+    _add_planned_item(page, matched_day, "50", kind="expense", name="Mortgage / Rent")
+    page.locator(f'.cal-cell[data-iso="{matched_day}"] .cal-ledger-metrics.cal-day-balance-hit').click()
+    page.locator(".reports-risk-tip.reports-risk-tip--visible [data-bw-bal-action='reconcile-this-date']").click()
+    page.locator("#reconcileMatchYesBtn").click()
+    expect(page.locator("#sidebarReconcileDetail")).to_contain_text("Sep 8")
+
+    page.locator(f'.cal-cell[data-iso="{adjusted_day}"] .cal-ledger-metrics.cal-day-balance-hit').click()
+    page.locator(".reports-risk-tip.reports-risk-tip--visible [data-bw-bal-action='reconcile-this-date']").click()
+    page.locator("#reconcileMatchNoBtn").click()
+    page.locator("#reconcileActualAmount").fill("1999.00")
+    page.locator("#reconcileSaveBtn").click()
+    expect(page.locator("#reconcileModal.modal-overlay--open")).to_have_count(0)
+    expect(page.locator("#sidebarReconcileDetail")).to_contain_text("Sep 9")
+    expect(page.locator(f'.cal-cell[data-iso="{adjusted_day}"]')).to_contain_text("Adjusted")
+
+    page.locator(f'.cal-cell[data-iso="{adjusted_day}"] .cal-ledger-metrics.cal-day-balance-hit').click()
+    tip = _balance_tip(page)
+    expect(tip).to_contain_text("Adjusted")
+    expect(tip).to_contain_text(money("1999.00"))
+    expect(tip).to_contain_text("forecast")
+    expect(tip.locator("[data-bw-bal-action='edit-adjustment']")).to_be_visible()
+    expect(tip.locator("[data-bw-bal-action='remove-adjustment']")).to_have_text("Remove adjustment")
+    tip.locator("[data-bw-bal-action='remove-adjustment']").click()
+    expect(page.locator("#bwToast")).to_contain_text("Adjustment removed.")
+    expect(page.locator(f'.cal-cell[data-iso="{adjusted_day}"]')).not_to_contain_text("Adjusted")
+    expect(page.locator("#sidebarReconcileDetail")).to_contain_text("Sep 8")
     expect(page.locator(".reports-risk-tip.reports-risk-tip--visible")).to_have_count(0)
     guard.assert_clean()
 

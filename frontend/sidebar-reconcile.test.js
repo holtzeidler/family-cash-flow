@@ -7,6 +7,7 @@ const {
   formatSidebarReconcileElapsed,
   latestIsoFromDateSets,
   latestBalanceCheckIso,
+  verifiedCheckIsosFromDaily,
 } = require("./sidebar-reconcile.js");
 
 function assert(cond, msg) {
@@ -47,6 +48,17 @@ assert(
   adjusted.delete("2026-11-09");
   assert(latestBalanceCheckIso([matching], adjusted) === "2026-11-04", "removing adjusted falls back to earlier matching");
   assert(latestBalanceCheckIso([new Set()], new Map()) === null, "no checks yet");
+
+  const daily = new Map([
+    ["2026-11-04", { verified: false, end: 100 }],
+    ["2026-11-09", { verified: true, end: 250 }],
+  ]);
+  const fromDaily = verifiedCheckIsosFromDaily(daily);
+  assert(fromDaily.length === 1 && fromDaily[0] === "2026-11-09", "only verified daily rows count");
+  assert(
+    latestBalanceCheckIso([new Set(["2026-11-04"])], fromDaily) === "2026-11-09",
+    "calendar verified flag updates Last Reconciled",
+  );
 }
 
 console.log("sidebar-reconcile.test.js: ok");

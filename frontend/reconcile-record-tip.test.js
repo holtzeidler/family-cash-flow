@@ -37,10 +37,10 @@ assert.strictEqual(finiteMoney("13331.75"), 13331.75);
 }
 
 assert.strictEqual(reconcileRecordCaption({ matched: true }), "Bank balance matched forecast.");
-assert.strictEqual(reconcileRecordCaption({ matched: false, diff: 68.25, fmtMoney: money }), "Bank balance differed from forecast.");
-assert.strictEqual(reconcileRecordCaption({ matched: false, diff: -12, fmtMoney: money }), "Bank balance differed from forecast.");
+assert.strictEqual(reconcileRecordCaption({ matched: false, diff: 68.25, fmtMoney: money }), "Your balance was $68.25 higher than forecast.");
+assert.strictEqual(reconcileRecordCaption({ matched: false, diff: -12, fmtMoney: money }), "Your balance was $12.00 lower than forecast.");
 assert.strictEqual(reconcileRecordCaption({ matched: false }), "Bank balance differed from forecast.");
-assert.notStrictEqual(reconcileRecordCaption({ matched: false }), "Bank balance matched forecast.");
+assert.notStrictEqual(reconcileRecordCaption({ matched: false, diff: 10, fmtMoney: money }), "Bank balance matched forecast.");
 
 {
   const merged = new Set(["2026-09-01", "2026-09-08"]);
