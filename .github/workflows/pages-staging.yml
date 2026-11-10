@@ -64,6 +64,9 @@ jobs:
       - name: Mobile calendar UX
         run: node frontend/mobile-calendar-ux.test.js
 
+      - name: Onboarding mobile UX
+        run: node frontend/onboarding-mobile-ux.test.js
+
       - name: Build staging frontend
         env:
           API_BASE: ${{ secrets.API_BASE_STAGING }}
