@@ -96,12 +96,31 @@ assert.ok(
   "mobile calendar does not pin a pixel label column that can overflow"
 );
 
-assert.ok(previewHtml.indexOf("previewApplyExpense") >= 0, "sample forecast has an Apply expense control");
+assert.ok(
+  previewHtml.indexOf("See how an extra purchase could affect your future balance. Nothing is saved.") >= 0,
+  "hypothetical copy is short and says nothing is saved"
+);
+assert.ok(previewHtml.indexOf("See impact") >= 0, "sample forecast has an explicit See impact control");
+assert.ok(previewHtml.indexOf("Reset scenario") >= 0, "sample forecast has a Reset scenario control");
+assert.ok(previewHtml.indexOf("e.g., 500") >= 0, "amount field uses an example placeholder");
+assert.ok(previewHtml.indexOf(">Added<") < 0, "ambiguous Added status is gone");
 assert.ok(preview.indexOf("applyHypotheticalExpense") >= 0, "hypothetical expense has an explicit apply path");
-assert.ok(preview.indexOf("PHONE_QUERY") >= 0, "hypothetical live-update is skipped while typing on phones");
+assert.ok(
+  !/previewExpenseAmount"\)\.addEventListener\("change"/.test(preview),
+  "changing the amount does not auto-apply the hypothetical"
+);
+var amountInputHandler = preview.slice(
+  preview.indexOf('previewExpenseAmount").addEventListener("input"'),
+  preview.indexOf('previewExpenseAmount").addEventListener("input"') + 180
+);
+assert.ok(
+  amountInputHandler.indexOf("applyHypotheticalExpense") < 0,
+  "typing an amount does not apply the hypothetical"
+);
 assert.ok(
   preview.indexOf('hypothetical: true') >= 0 && preview.indexOf("Demo only. Not saved.") >= 0,
   "hypothetical expenses stay in the browser"
 );
+assert.ok(preview.indexOf("previewExploreState") < 0, "preview JS no longer toggles an Added state label");
 
 console.log("mobile-calendar-ux.test.js ok");
