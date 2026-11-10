@@ -1,6 +1,7 @@
 const assert = require("assert");
 const {
   NEEDS_REVIEW_UPCOMING_DAYS,
+  NEEDS_REVIEW_EMPTY_TITLE,
   needsReviewAddDays,
   needsReviewWindowRange,
   needsReviewTodayChanged,
@@ -35,6 +36,7 @@ function exp(extra) {
 
 {
   assert.strictEqual(NEEDS_REVIEW_UPCOMING_DAYS, 3);
+  assert.strictEqual(NEEDS_REVIEW_EMPTY_TITLE, "All caught up.");
   assert.strictEqual(isNeedsReviewDateEligible("2026-11-09", TODAY), true);
   assert.strictEqual(isNeedsReviewDateEligible("2026-11-12", TODAY), true);
   assert.strictEqual(isNeedsReviewDateEligible("2026-11-13", TODAY), false);

@@ -4,6 +4,7 @@
  */
 
 const NEEDS_REVIEW_UPCOMING_DAYS = 3;
+const NEEDS_REVIEW_EMPTY_TITLE = "All caught up.";
 const NEEDS_REVIEW_MAX_LOOKBACK_MONTHS = 36;
 const NEEDS_REVIEW_FALLBACK_LOOKBACK_MONTHS = 12;
 const NEEDS_REVIEW_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -246,6 +247,7 @@ function collectNeedsReviewRows({
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     NEEDS_REVIEW_UPCOMING_DAYS,
+    NEEDS_REVIEW_EMPTY_TITLE,
     NEEDS_REVIEW_MAX_LOOKBACK_MONTHS,
     needsReviewAddDays,
     needsReviewAddMonths,

@@ -19293,6 +19293,8 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.textContent = "";
     sidebarPendingStatus.hidden = true;
   }
+  const emptyTitle =
+    typeof NEEDS_REVIEW_EMPTY_TITLE === "string" ? NEEDS_REVIEW_EMPTY_TITLE : "All caught up.";
   const setTitle = () => {
     if (!sidebarPendingTitle) return;
     sidebarPendingTitle.textContent = "Needs Review";
@@ -19301,6 +19303,10 @@ function renderSidebarPendingTransactionsForMonth() {
     if (!sidebarPendingStatus) return;
     sidebarPendingStatus.textContent = text || "";
     sidebarPendingStatus.hidden = !text;
+  };
+  const showCaughtUp = () => {
+    if (sidebarPendingTitle) sidebarPendingTitle.textContent = emptyTitle;
+    setPendingStatus("");
   };
 
   syncNeedsReviewLoadedSources();
@@ -19328,13 +19334,12 @@ function renderSidebarPendingTransactionsForMonth() {
         sidebarPendingTxCard.hidden = true;
         sidebarPendingTxCard.classList.add("sidebar-pending--empty");
       }
-      setPendingStatus("");
+      showCaughtUp();
       return;
     }
     if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
     if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty", "sidebar-pending--success");
-    if (sidebarPendingTitle) sidebarPendingTitle.textContent = "All caught up.";
-    setPendingStatus("");
+    showCaughtUp();
     return;
   }
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
