@@ -57,7 +57,8 @@ assert.ok(formatTxEditSeriesOnlyError(["Notes", "Repeat"]).includes("Notes and R
   assert.strictEqual(copy.seriesTitle, "This and future occurrences");
   assert.strictEqual(copy.recommended, "instance");
   assert.strictEqual(copy.defaultChoice, "instance");
-  assert.ok(copy.instanceHint.includes("Nov 15"));
+  assert.strictEqual(copy.helper, "This transaction repeats. Choose which dates to update.");
+  assert.strictEqual(copy.instanceHint, "Updates Nov 15 only.");
 }
 {
   const copy = formatTxEditApplyScopeCopy({
@@ -67,6 +68,7 @@ assert.ok(formatTxEditSeriesOnlyError(["Notes", "Repeat"]).includes("Notes and R
   assert.strictEqual(copy.instanceTitle, "Move only Nov 15 to Nov 17");
   assert.strictEqual(copy.seriesTitle, "Change this and future scheduled dates");
   assert.strictEqual(copy.defaultChoice, "instance");
+  assert.ok(copy.helper.includes("moving Nov 15"));
 }
 {
   const copy = formatTxEditApplyScopeCopy({

@@ -1324,7 +1324,11 @@ def test_changing_one_occurrence_amount_leaves_later_dates(page, guard):
     scope = page.locator("#txEditApplyScopeModal.modal-overlay--open")
     expect(scope).to_be_visible()
     expect(scope.locator("#txEditApplyScopeInstanceBtn")).to_have_class(re.compile(r"apply-scope-option--selected"))
+    expect(scope.locator("#txEditApplyScopeHelper")).to_have_text(
+        "This transaction repeats. Choose which dates to update."
+    )
     expect(scope.locator("#txEditApplyScopeInstanceTitle")).to_have_text("Only this occurrence")
+    expect(scope.locator("#txEditApplyScopeInstanceHint")).to_have_text("Updates Nov 9 only.")
     expect(scope.locator("#txEditApplyScopeInstanceBadge")).to_be_visible()
     scope.get_by_role("button", name="Save Changes").click()
     expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
