@@ -438,6 +438,14 @@ function showBwToast(message, { durationMs = 2800, placement = "bottom" } = {}) 
 
 window.showBwToast = showBwToast;
 
+function resetBwModalPanel(panel) {
+  if (!panel) return;
+  panel.style.transform = "";
+  panel.classList.remove("is-dragging");
+  panel.dataset.bwModalDragX = "0";
+  panel.dataset.bwModalDragY = "0";
+}
+
 let _bwConfirmModalEl = null;
 let _bwConfirmResolve = null;
 
@@ -5632,11 +5640,7 @@ function openTxEditDeleteScopeModal() {
 }
 
 function resetTxEditModalPosition() {
-  if (!txEditInner) return;
-  txEditInner.style.transform = "";
-  txEditInner.classList.remove("is-dragging");
-  txEditInner.dataset.txEditDragX = "0";
-  txEditInner.dataset.txEditDragY = "0";
+  resetBwModalPanel(txEditInner);
 }
 
 function closeTxEditModal() {
@@ -7972,99 +7976,10 @@ if (txEditCancel) {
 if (txEditModal) {
   txEditModal.addEventListener("click", (e) => {
     if (txEditInner?.classList.contains("is-dragging")) return;
-    if (txEditInner?.dataset.txEditDidDrag === "1") return;
+    if (txEditInner?.dataset.bwModalDidDrag === "1") return;
     if (e.target === txEditModal) closeTxEditModal();
   });
 }
-
-(function initTxEditModalDrag() {
-  if (!txEditModal || !txEditInner) return;
-  const handle = txEditModal.querySelector(".tx-edit-top");
-  if (!handle) return;
-  handle.removeAttribute("title");
-
-  let pointerId = null;
-  let startX = 0;
-  let startY = 0;
-  let originX = 0;
-  let originY = 0;
-  let moved = false;
-
-  function currentOffset() {
-    return {
-      x: Number(txEditInner.dataset.txEditDragX || 0) || 0,
-      y: Number(txEditInner.dataset.txEditDragY || 0) || 0,
-    };
-  }
-
-  function applyOffset(x, y) {
-    const rect = txEditInner.getBoundingClientRect();
-    const cur = currentOffset();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const pad = 12;
-    const headerH = Math.min(52, rect.height);
-    let left = rect.left - cur.x + x;
-    let top = rect.top - cur.y + y;
-    const width = rect.width;
-    const height = rect.height;
-    if (left > vw - pad) x -= left - (vw - pad);
-    if (left + width < pad) x += pad - (left + width);
-    if (top > vh - headerH) y -= top - (vh - headerH);
-    if (top + headerH < pad) y += pad - (top + headerH);
-    if (top + height < pad) y += pad - (top + height);
-    txEditInner.dataset.txEditDragX = String(x);
-    txEditInner.dataset.txEditDragY = String(y);
-    txEditInner.style.transform = x || y ? `translate(${x}px, ${y}px)` : "";
-  }
-
-  function endDrag(e) {
-    if (pointerId == null) return;
-    if (e && e.pointerId !== pointerId) return;
-    try {
-      if (e) handle.releasePointerCapture(pointerId);
-    } catch (_) {}
-    pointerId = null;
-    txEditInner.classList.remove("is-dragging");
-    if (moved) {
-      txEditInner.dataset.txEditDidDrag = "1";
-      window.setTimeout(() => {
-        if (txEditInner) txEditInner.dataset.txEditDidDrag = "0";
-      }, 80);
-    }
-    moved = false;
-  }
-
-  handle.addEventListener("pointerdown", (e) => {
-    if (e.button != null && e.button !== 0) return;
-    const t = e.target;
-    if (t && t.closest && t.closest("input, select, textarea, button, a, label")) return;
-    const cur = currentOffset();
-    pointerId = e.pointerId;
-    startX = e.clientX;
-    startY = e.clientY;
-    originX = cur.x;
-    originY = cur.y;
-    moved = false;
-    try {
-      handle.setPointerCapture(pointerId);
-    } catch (_) {}
-    e.preventDefault();
-  });
-
-  handle.addEventListener("pointermove", (e) => {
-    if (pointerId == null || e.pointerId !== pointerId) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
-    moved = true;
-    txEditInner.classList.add("is-dragging");
-    applyOffset(originX + dx, originY + dy);
-  });
-
-  handle.addEventListener("pointerup", endDrag);
-  handle.addEventListener("pointercancel", endDrag);
-})();
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
@@ -8132,105 +8047,176 @@ document.addEventListener("keydown", (e) => {
 if (txAddModal) {
   txAddModal.addEventListener("click", (e) => {
     if (txAddInner?.classList.contains("is-dragging")) return;
-    if (txAddInner?.dataset.txAddDidDrag === "1") return;
+    if (txAddInner?.dataset.bwModalDidDrag === "1") return;
     if (e.target === txAddModal) closeTxAddModal();
   });
 }
 
 function resetTxAddModalPosition() {
-  if (!txAddInner) return;
-  txAddInner.style.transform = "";
-  txAddInner.classList.remove("is-dragging");
-  txAddInner.dataset.txAddDragX = "0";
-  txAddInner.dataset.txAddDragY = "0";
+  resetBwModalPanel(txAddInner);
 }
 
-(function initTxAddModalDrag() {
-  if (!txAddModal || !txAddInner) return;
-  const handle = txAddInner.querySelector("#txAddTitle") || txAddInner.querySelector("h3");
-  if (!handle) return;
+(function initBwSiteModalDrag() {
+  const HANDLE_SEL = ".tx-edit-top, .balance-check-in__header, .tx-history-head, .tx-fav-dialog__title";
+  const PANEL_SEL = ".modal, .tx-history-panel, .tx-fav-dialog__card";
+  const SKIP_SEL = "input, select, textarea, button, a, label, [contenteditable='true']";
+  const TITLE_BLOCK_SEL = ".modal-actions, .apply-scope-actions, .tx-add-form__body, .expected-edit-panel";
 
-  let pointerId = null;
-  let startX = 0;
-  let startY = 0;
-  let originX = 0;
-  let originY = 0;
-  let moved = false;
+  function panelFrom(el) {
+    return el && el.closest ? el.closest(PANEL_SEL) : null;
+  }
 
-  function currentOffset() {
+  function overlayFrom(panel) {
+    if (!panel || !panel.closest) return null;
+    return panel.closest(".modal-overlay") || panel.closest(".tx-fav-dialog") || null;
+  }
+
+  function handleFrom(el) {
+    if (!el || !el.closest || el.closest(SKIP_SEL)) return null;
+    const panel = panelFrom(el);
+    if (!panel) return null;
+    const header = el.closest(HANDLE_SEL);
+    if (header && panel.contains(header)) return header;
+    const title = el.closest("h1, h2, h3");
+    if (
+      title &&
+      title.parentElement === panel &&
+      !title.classList.contains("sr-only") &&
+      !title.closest(TITLE_BLOCK_SEL)
+    ) {
+      return title;
+    }
+    return null;
+  }
+
+  function currentOffset(panel) {
     return {
-      x: Number(txAddInner.dataset.txAddDragX || 0) || 0,
-      y: Number(txAddInner.dataset.txAddDragY || 0) || 0,
+      x: Number(panel.dataset.bwModalDragX || 0) || 0,
+      y: Number(panel.dataset.bwModalDragY || 0) || 0,
     };
   }
 
-  function applyOffset(x, y) {
-    const rect = txAddInner.getBoundingClientRect();
-    const cur = currentOffset();
+  function applyOffset(panel, x, y) {
+    const rect = panel.getBoundingClientRect();
+    const cur = currentOffset(panel);
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const pad = 12;
     const headerH = Math.min(52, rect.height);
     let left = rect.left - cur.x + x;
     let top = rect.top - cur.y + y;
-    const width = rect.width;
-    const height = rect.height;
     if (left > vw - pad) x -= left - (vw - pad);
-    if (left + width < pad) x += pad - (left + width);
+    if (left + rect.width < pad) x += pad - (left + rect.width);
     if (top > vh - headerH) y -= top - (vh - headerH);
     if (top + headerH < pad) y += pad - (top + headerH);
-    if (top + height < pad) y += pad - (top + height);
-    txAddInner.dataset.txAddDragX = String(x);
-    txAddInner.dataset.txAddDragY = String(y);
-    txAddInner.style.transform = x || y ? `translate(${x}px, ${y}px)` : "";
+    if (top + rect.height < pad) y += pad - (top + rect.height);
+    panel.dataset.bwModalDragX = String(x);
+    panel.dataset.bwModalDragY = String(y);
+    panel.style.transform = x || y ? `translate(${x}px, ${y}px)` : "";
   }
+
+  let drag = null;
 
   function endDrag(e) {
-    if (pointerId == null) return;
-    if (e && e.pointerId !== pointerId) return;
+    if (!drag) return;
+    if (e && e.pointerId !== drag.pointerId) return;
     try {
-      if (e) handle.releasePointerCapture(pointerId);
+      drag.handle.releasePointerCapture(drag.pointerId);
     } catch (_) {}
-    pointerId = null;
-    txAddInner.classList.remove("is-dragging");
-    if (moved) {
-      txAddInner.dataset.txAddDidDrag = "1";
+    drag.panel.classList.remove("is-dragging");
+    if (drag.moved) {
+      drag.panel.dataset.bwModalDidDrag = "1";
+      if (drag.overlay) drag.overlay.dataset.bwModalDidDrag = "1";
+      const panel = drag.panel;
+      const overlay = drag.overlay;
       window.setTimeout(() => {
-        if (txAddInner) txAddInner.dataset.txAddDidDrag = "0";
+        if (panel) panel.dataset.bwModalDidDrag = "0";
+        if (overlay) overlay.dataset.bwModalDidDrag = "0";
       }, 80);
     }
-    moved = false;
+    drag = null;
   }
 
-  handle.addEventListener("pointerdown", (e) => {
-    if (e.button != null && e.button !== 0) return;
-    const t = e.target;
-    if (t && t.closest && t.closest("input, select, textarea, button, a, label")) return;
-    const cur = currentOffset();
-    pointerId = e.pointerId;
-    startX = e.clientX;
-    startY = e.clientY;
-    originX = cur.x;
-    originY = cur.y;
-    moved = false;
-    try {
-      handle.setPointerCapture(pointerId);
-    } catch (_) {}
-    e.preventDefault();
-  });
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.button != null && e.button !== 0) return;
+      const handle = handleFrom(e.target);
+      if (!handle) return;
+      const panel = panelFrom(handle);
+      if (!panel) return;
+      const cur = currentOffset(panel);
+      drag = {
+        panel,
+        overlay: overlayFrom(panel),
+        handle,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        originX: cur.x,
+        originY: cur.y,
+        moved: false,
+      };
+      try {
+        handle.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      e.preventDefault();
+    },
+    true
+  );
 
-  handle.addEventListener("pointermove", (e) => {
-    if (pointerId == null || e.pointerId !== pointerId) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
-    moved = true;
-    txAddInner.classList.add("is-dragging");
-    applyOffset(originX + dx, originY + dy);
-  });
+  document.addEventListener(
+    "pointermove",
+    (e) => {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      if (!drag.moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+      drag.moved = true;
+      drag.panel.classList.add("is-dragging");
+      applyOffset(drag.panel, drag.originX + dx, drag.originY + dy);
+    },
+    true
+  );
 
-  handle.addEventListener("pointerup", endDrag);
-  handle.addEventListener("pointercancel", endDrag);
+  document.addEventListener("pointerup", endDrag, true);
+  document.addEventListener("pointercancel", endDrag, true);
+
+  document.addEventListener(
+    "click",
+    (e) => {
+      const overlay = e.target;
+      if (!overlay || !overlay.classList) return;
+      if (!overlay.classList.contains("modal-overlay") && !overlay.classList.contains("tx-fav-dialog")) return;
+      if (overlay.dataset.bwModalDidDrag === "1") {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    },
+    true
+  );
+
+  try {
+    new MutationObserver((muts) => {
+      for (const m of muts) {
+        if (m.type !== "attributes") continue;
+        const el = m.target;
+        if (!el.classList) continue;
+        if (el.classList.contains("modal-overlay")) {
+          if (el.classList.contains("modal-overlay--open")) continue;
+          resetBwModalPanel(el.querySelector(":scope > .modal, :scope > .tx-history-panel"));
+          continue;
+        }
+        if (el.classList.contains("tx-fav-dialog") && el.hidden) {
+          resetBwModalPanel(el.querySelector(".tx-fav-dialog__card"));
+        }
+      }
+    }).observe(document.documentElement, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "hidden"],
+    });
+  } catch (_) {}
 })();
 
 if (reconcileCancelBtn) {
