@@ -26130,7 +26130,6 @@ button.review-amount__edit-link:focus-visible{
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label,
 .modal--tx-add .tx-add-variable-block .form-row-h__label,
 .modal--tx-add .tx-add-notes-row .form-row-h__label,
-.modal--tx-add .tx-add-name-row .form-row-h__label,
 .modal--tx-add .tx-add-cat-color-row .form-row-h__label{
   flex: none;
   max-width: none;
@@ -26154,7 +26153,6 @@ button.review-amount__edit-link:focus-visible{
 .modal--tx-add #txAddRecurringBlock .tx-add-second-monthly-row .form-row-h__label label,
 .modal--tx-add .tx-add-variable-block .form-row-h__label label,
 .modal--tx-add .tx-add-notes-row .form-row-h__label label,
-.modal--tx-add .tx-add-name-row .form-row-h__label label,
 .modal--tx-add .tx-add-cat-color-row .form-row-h__label label{
   width: 100%;
   text-align: right;
@@ -26181,20 +26179,8 @@ button.review-amount__edit-link:focus-visible{
   align-self: center;
   min-width: 0;
 }
-.modal--tx-add .tx-add-notes-row,
-.modal--tx-add .tx-add-name-row{
+.modal--tx-add .tx-add-notes-row{
   margin-top: 2px;
-}
-.modal--tx-add .tx-add-name-row .form-row-h__label{
-  align-items: flex-start;
-  padding-top: 8px;
-}
-.tx-edit-name-row .tx-add-field-hint,
-.tx-add-name-row .tx-add-field-hint{
-  margin: 4px 0 0;
-  font-size: 11px;
-  line-height: 1.35;
-  color: rgba(100, 116, 139, 0.78);
 }
 .modal--tx-add .tx-add-form .tx-add-variable-field{
   gap: 2px;
@@ -26532,16 +26518,14 @@ body.account-setup-page .account-setup-step3-form .tx-add-schedule-toolbar{
   padding-bottom: 2px;
   padding-top: 0;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-tx-notes-row,
-body.account-setup-page .account-setup-step3-form .account-setup-tx-name-row{
+body.account-setup-page .account-setup-step3-form .account-setup-tx-notes-row{
   margin-top: 20px;
   gap: 2px;
 }
 
 /* Account setup wizard: Notes — secondary field */
 body.account-setup-page .account-setup-step3-form label[for="asTxNotes"],
-body.account-setup-page .account-setup-step3-form label[for="asExpTxNotes"],
-body.account-setup-page .account-setup-step3-form label[for="asTxDescription"]{
+body.account-setup-page .account-setup-step3-form label[for="asExpTxNotes"]{
   display: block;
   margin-bottom: 0;
   font-size: var(--as-helper-size);
@@ -26553,8 +26537,7 @@ body.account-setup-page .account-setup-step3-form label[for="asTxDescription"]{
   text-align: left;
 }
 body.account-setup-page #asTxNotes.input-notes-flex,
-body.account-setup-page #asExpTxNotes.input-notes-flex,
-body.account-setup-page #asTxDescription.input-notes-flex{
+body.account-setup-page #asExpTxNotes.input-notes-flex{
   min-height: 42px;
   font-size: 0.9375rem;
   font-weight: 450;
@@ -27002,8 +26985,7 @@ body.account-setup-page .account-setup-step3-form .account-setup-tx-variable-inl
   font-weight: 500;
   color: var(--as-label-primary-color);
 }
-body.account-setup-page .account-setup-tx-notes-row,
-body.account-setup-page .account-setup-tx-name-row{
+body.account-setup-page .account-setup-tx-notes-row{
   gap: 2px;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell,
@@ -27107,8 +27089,7 @@ body.account-setup-page #accountSetupWizardPanel3 .account-setup-step3-form__bod
   gap: 5px;
   margin-bottom: 0;
 }
-body.account-setup-page .account-setup-step3-form .account-setup-step3-form__body > .account-setup-tx-notes-row,
-body.account-setup-page .account-setup-step3-form .account-setup-step3-form__body > .account-setup-tx-name-row{
+body.account-setup-page .account-setup-step3-form .account-setup-step3-form__body > .account-setup-tx-notes-row{
   margin-top: 14px;
 }
 body.account-setup-page .account-setup-wizard__shell:has(#accountSetupWizardPanel2[data-step3-phase="form"]) .account-setup-actions--shell,

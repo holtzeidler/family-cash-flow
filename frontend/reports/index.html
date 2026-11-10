@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=931" />
+    <link rel="stylesheet" href="../styles.css?v=932" />
   </head>
   <body>
     <h1 class="sr-only">Reports</h1>
@@ -263,14 +263,6 @@
                     />
                     <p class="tx-add-twice-monthly-hint">Pick a date on a different day of the month than the start date.</p>
                   </div>
-                </div>
-              </div>
-              <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
-              <div class="form-row-h tx-add-name-row">
-                <div class="form-row-h__label"><label for="txAddDescription">Transaction name</label></div>
-                <div class="form-row-h__field">
-                  <input id="txAddDescription" type="text" maxlength="500" class="input-notes-flex" placeholder="e.g. ComEd" autocomplete="off" />
-                  <p class="tx-add-field-hint">Optional — helps distinguish transactions in the same category.</p>
                 </div>
               </div>
               <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
@@ -1461,14 +1453,6 @@
             </div>
           </div>
           <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
-          <div id="txEditNameRow" class="form-row-h tx-edit-name-row">
-            <div class="form-row-h__label"><label for="txEditDescription" id="txEditDescriptionLabel">Transaction name</label></div>
-            <div class="form-row-h__field">
-              <input id="txEditDescription" type="text" maxlength="500" class="input-notes-flex" placeholder="e.g. ComEd" autocomplete="off" />
-              <p class="tx-add-field-hint">Optional — helps distinguish transactions in the same category.</p>
-            </div>
-          </div>
-          <div class="tx-add-vspace tx-add-vspace--xs" aria-hidden="true"></div>
           <div class="tx-add-advanced" id="txEditMoreOptions">
             <button type="button" id="txEditMoreOptionsToggle" class="tx-add-advanced__expander" aria-expanded="false" aria-controls="txEditMoreOptionsPanel">
               <span class="tx-add-advanced__expander-chev" aria-hidden="true">
@@ -1870,10 +1854,9 @@
     <script src="../cash-health-summary.js?v=6"></script>
     <script src="../needs-review.js?v=6"></script>
     <script src="../sidebar-reconcile.js?v=4"></script>
-    <script src="../tx-display-name.js?v=1"></script>
     <script src="../tx-edit-scope.js?v=4"></script>
     <script src="../reconcile-record-tip.js?v=5"></script>
-    <script src="../app.js?v=604"></script>
+    <script src="../app.js?v=605"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=27" defer></script>
   </body>

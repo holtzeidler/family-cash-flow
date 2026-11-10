@@ -2031,7 +2031,6 @@ const txEditDate = document.getElementById("txEditDate");
 const txEditKind = null;
 const txEditAmount = document.getElementById("txEditAmount");
 const txEditNotes = document.getElementById("txEditNotes");
-const txEditDescription = document.getElementById("txEditDescription");
 const txEditErr = document.getElementById("txEditErr");
 const txEditSave = document.getElementById("txEditSave");
 const txEditDelete = document.getElementById("txEditDelete");
@@ -2121,7 +2120,6 @@ const txAddDate = document.getElementById("txAddDate");
 const txAddDateLabel = document.getElementById("txAddDateLabel");
 const txAddAmount = document.getElementById("txAddAmount");
 const txAddNotes = document.getElementById("txAddNotes");
-const txAddDescription = document.getElementById("txAddDescription");
 const txAddRecurringBlock = document.getElementById("txAddRecurringBlock");
 const txAddRecurrence = document.getElementById("txAddRecurrence");
 const txAddEndsMode = document.getElementById("txAddEndsMode");
@@ -2685,7 +2683,7 @@ async function loadCashHealthWindowRows(fid, mode, startIso, endIso) {
   return rows;
 }
 
-/** The label the calendar line shows, so a named payment can be found on the day. */
+/** The category label the calendar line shows. */
 function cashHealthLineLabel(row, _isExpected) {
   return forecastTransactionPrimaryLabel(row);
 }
@@ -4441,27 +4439,15 @@ if (familySendInviteBtn) {
   });
 }
 
-function readTransactionNameInput(inputEl) {
-  return String(inputEl?.value || "").trim().slice(0, 500);
-}
-
-function categoryNameForTransactionRow(tx) {
-  return effectiveTransactionCategoryName(tx) || String(tx?.category || "").trim();
-}
-
-function fillTransactionNameInput(inputEl, tx) {
-  if (!inputEl) return "";
-  const custom =
-    typeof transactionCustomName === "function"
-      ? transactionCustomName(tx, categoryNameForTransactionRow(tx))
-      : String(tx?.description || "").trim();
-  inputEl.value = custom;
-  return custom;
-}
-
-/** Optional custom name from the form. Empty means display the category. */
-function descriptionForNewTransaction(_categoryId, opts = {}) {
-  return readTransactionNameInput(opts.inputEl || txAddDescription);
+/** Series / transaction label on the server (add form has no separate Label field). */
+function descriptionForNewTransaction(categoryId, opts = {}) {
+  const recurring = !!opts.recurring;
+  const cid = categoryId != null ? Number(categoryId) : NaN;
+  if (Number.isFinite(cid) && (state.categories || []).length) {
+    const c = (state.categories || []).find((x) => Number(x.id) === cid);
+    if (c?.name && String(c.name).trim()) return String(c.name).trim().slice(0, 500);
+  }
+  return recurring ? "Scheduled" : "";
 }
 
 function defaultNewCategoryGroupId() {
@@ -4996,7 +4982,7 @@ if (txAddSave) {
       const amountVal = txAddAmount?.value || "";
       const categoryId = categoryIdFromCategoryField("txAddCategoryId");
       const repeats = txAddRepeatsActive();
-      const desc = descriptionForNewTransaction(categoryId);
+      const desc = descriptionForNewTransaction(categoryId, { recurring: repeats });
 
       if (!dateVal) throw new Error(repeats ? "Start date is required" : "Date is required");
       if (!amountVal || Number(amountVal) <= 0) throw new Error("Amount must be greater than zero");
@@ -5333,7 +5319,9 @@ async function convertActualTransactionToRecurring(actualId) {
   const endCountRaw = instanceEndCount?.value != null ? String(instanceEndCount.value).trim() : "";
   const endCountVal = endCountRaw === "" ? null : Number(endCountRaw);
   const notesRaw = txEditNotes?.value?.trim() || "";
-  const desc = readTransactionNameInput(txEditDescription);
+  const desc =
+    (txEditDescriptionSnapshot && String(txEditDescriptionSnapshot).trim()) ||
+    descriptionForNewTransaction(categoryId, { recurring: true });
 
   let secondDayOfMonth = null;
   let secondOccurrenceMonth = null;
@@ -5382,7 +5370,7 @@ async function openTxEditModalAsync(tx) {
     if (radio) radio.checked = true;
   }
   txEditAmount.value = tx.amount;
-  txEditDescriptionSnapshot = fillTransactionNameInput(txEditDescription, tx);
+  txEditDescriptionSnapshot = String(tx.description || "").trim().slice(0, 500);
   if (txEditNotes) txEditNotes.value = tx.notes || "";
   txEditReimbursableValue = !!tx.reimbursable;
   renderTxEditCategoryOptions();
@@ -6020,7 +6008,7 @@ function readFavoriteForm(mode) {
     categoryName: category ? String(category.name || "") : "",
     accountId: (edit ? instanceAccountId?.value : syncTxAddHiddenAccount(txAddAccountId?.value)) || "",
     notes: (edit ? txEditNotes : txAddNotes)?.value || "",
-    description: readTransactionNameInput(edit ? txEditDescription : txAddDescription),
+    description: edit ? txEditDescriptionSnapshot : "",
   };
 }
 
@@ -6702,7 +6690,6 @@ async function openTxAddModalAsync(opts = {}) {
   applyMinDateToTxAddDateInput();
   dateEl.value = dateVal || toISODate(new Date());
   if (txAddAmount) txAddAmount.value = "";
-  if (txAddDescription) txAddDescription.value = "";
   if (txAddNotes) txAddNotes.value = "";
   setCategoryFieldValue("txAddCategoryId", null);
   txAddSelectedBgColor = null;
@@ -7893,7 +7880,7 @@ if (txEditSave) {
           date: rawDate,
           kind: getRadioValue("txEditKind", "expense"),
           amount: Number(amountVal),
-          description: readTransactionNameInput(txEditDescription),
+          description: txEditDescriptionSnapshot,
           notes: txEditNotes && txEditNotes.value.trim() ? txEditNotes.value.trim() : null,
           category_id: categoryIdFromCategoryField("txEditCategoryId"),
           ...txColorFieldsForSave(txEditSelectedBgColor),
@@ -17138,7 +17125,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
       }
       if (instanceExpectedTxId) instanceExpectedTxId.value = String(tx.id);
       if (txEditNotes) txEditNotes.value = tx.notes || "";
-      txEditDescriptionSnapshot = fillTransactionNameInput(txEditDescription, tx);
+      txEditDescriptionSnapshot = String(tx.description || "").trim().slice(0, 500);
       {
         const k = tx && tx.kind ? String(tx.kind) : "expense";
         const radio = document.querySelector(`input[type="radio"][name="txEditKind"][value="${k}"]`);
@@ -20561,14 +20548,9 @@ function effectiveTransactionCategoryName(tx) {
   return leafCategoryName(name);
 }
 
-/** Primary line: custom name when set, otherwise the category. Never notes. */
+/** Primary line: category only. Never notes or description. */
 function actualTransactionPrimaryLabel(tx) {
-  if (typeof transactionDisplayName === "function") {
-    return transactionDisplayName(tx, categoryNameForTransactionRow(tx), "Uncategorized");
-  }
-  const desc = String(tx?.description ?? "").trim();
   const cat = effectiveTransactionCategoryName(tx || {});
-  if (desc && (!cat || desc.toLowerCase() !== cat.toLowerCase())) return desc;
   if (cat) return cat;
   return "Uncategorized";
 }
@@ -20634,9 +20616,7 @@ function getExpectedSeriesMeta(expectedId) {
   return (state.expectedTransactions || []).find((t) => Number(t.id) === Number(expectedId));
 }
 
-/** Custom name for recurring save payloads. Empty keeps the category as the display name. */
 function expectedSaveDescription() {
-  if (txEditDescription) return readTransactionNameInput(txEditDescription);
   const inst = selectedExpectedInstance;
   if (inst && inst.description != null && String(inst.description).trim() !== "") {
     return String(inst.description).trim().slice(0, 500);
@@ -20677,7 +20657,7 @@ function selectExpectedInstance(item) {
     if (radio) radio.checked = true;
   }
   if (txEditAmount) txEditAmount.value = Number(item.amount);
-  txEditDescriptionSnapshot = fillTransactionNameInput(txEditDescription, item);
+  txEditDescriptionSnapshot = String(item.description || "").trim().slice(0, 500);
   if (txEditNotes) txEditNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   syncTxEditHiddenAccount(item.account_id != null ? item.account_id : "");
   setCategoryFieldValue("txEditCategoryId", item.category_id);
@@ -25751,7 +25731,6 @@ async function openSetupItemNeedingCategory(t, date) {
   await openTxAddModalAsync({ date, kind: t.kind === "income" ? "income" : "expense" });
   if (!txAddModal || !txAddModal.classList.contains("modal-overlay--open")) return;
   if (txAddAmount) txAddAmount.value = String(Number(t.amount));
-  fillTransactionNameInput(txAddDescription, t);
   if (txAddNotes) txAddNotes.value = t.notes ? String(t.notes) : "";
   if (txAddVariable) txAddVariable.checked = !!t.variable;
   const recurrence = t.recurring ? (t.recurrence === "bimonthly" ? "twice_monthly" : String(t.recurrence || "")) : "";
@@ -25928,7 +25907,7 @@ async function tryRecoverAccountSetupDraft() {
     const amt = Number(t.amount);
     if (!Number.isFinite(amt) || amt <= 0) continue;
     txTotal += 1;
-    const description = String(t.description || "").trim().slice(0, 500);
+    const description = (t.category || "").trim() || "Transaction";
     const txDate = recoveryEffectiveTxDate(t.date);
     const labelKey = onboardingCategoryLookupKey(t.category);
     if (!labelKey || labelKey === "uncategorized") {
