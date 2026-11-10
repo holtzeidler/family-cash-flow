@@ -239,7 +239,10 @@ function everyPostHasCategory(calls) {
 var behaviorCases = [
   runSignupSave({ transactions: [paycheck, daycare] }, { categories: seeded, categoryCreateFails: true }).then(function (r) {
     var posts = txPosts(r.calls);
-    check("setup: failed category creation does not save the item", posts.length === 1 && posts[0].body.description === "Paycheck");
+    check(
+      "setup: failed category creation does not save the item",
+      posts.length === 1 && Number(posts[0].body.amount) === 2500 && posts[0].body.kind === "income"
+    );
     check("setup: saved items always have a category", everyPostHasCategory(r.calls));
     check("setup: failed category creation is reported", r.result.ok === false && r.result.error === "category_unavailable");
     check("setup: only the unsaved item is kept for recovery", (r.result.unsaved || []).length === 1 && (r.result.unsaved || [])[0] === daycare);
