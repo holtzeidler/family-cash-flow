@@ -2106,6 +2106,7 @@ const sidebarReconcileBtn = document.getElementById("sidebarReconcileBtn");
 
 // Add transaction modal (one-time or recurring from calendar)
 const txAddModal = document.getElementById("txAddModal");
+const txAddInner = txAddModal ? txAddModal.querySelector(".modal--tx-add") : document.querySelector(".modal--tx-add");
 const txAddErr = document.getElementById("txAddErr");
 const txAddDate = document.getElementById("txAddDate");
 const txAddDateLabel = document.getElementById("txAddDateLabel");
@@ -6681,6 +6682,7 @@ async function openTxAddModalAsync(opts = {}) {
   try {
     modalEl.style.display = "";
   } catch (_) {}
+  resetTxAddModalPosition();
   modalEl.classList.add("modal-overlay--open");
   modalEl.setAttribute("aria-hidden", "false");
   applyMinDateToTxAddDateInput();
@@ -6742,6 +6744,7 @@ function closeTxAddModal() {
   resetTxAddFormValidation();
   if (!txAddSaveInFlight) setTxAddSaveBusy(false);
   show(txAddErr, "");
+  resetTxAddModalPosition();
   txAddModal.classList.remove("modal-overlay--open");
   txAddModal.setAttribute("aria-hidden", "true");
   mountTxAddFormInSidebar();
@@ -8128,9 +8131,107 @@ document.addEventListener("keydown", (e) => {
 
 if (txAddModal) {
   txAddModal.addEventListener("click", (e) => {
+    if (txAddInner?.classList.contains("is-dragging")) return;
+    if (txAddInner?.dataset.txAddDidDrag === "1") return;
     if (e.target === txAddModal) closeTxAddModal();
   });
 }
+
+function resetTxAddModalPosition() {
+  if (!txAddInner) return;
+  txAddInner.style.transform = "";
+  txAddInner.classList.remove("is-dragging");
+  txAddInner.dataset.txAddDragX = "0";
+  txAddInner.dataset.txAddDragY = "0";
+}
+
+(function initTxAddModalDrag() {
+  if (!txAddModal || !txAddInner) return;
+  const handle = txAddInner.querySelector("#txAddTitle") || txAddInner.querySelector("h3");
+  if (!handle) return;
+
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let originX = 0;
+  let originY = 0;
+  let moved = false;
+
+  function currentOffset() {
+    return {
+      x: Number(txAddInner.dataset.txAddDragX || 0) || 0,
+      y: Number(txAddInner.dataset.txAddDragY || 0) || 0,
+    };
+  }
+
+  function applyOffset(x, y) {
+    const rect = txAddInner.getBoundingClientRect();
+    const cur = currentOffset();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 12;
+    const headerH = Math.min(52, rect.height);
+    let left = rect.left - cur.x + x;
+    let top = rect.top - cur.y + y;
+    const width = rect.width;
+    const height = rect.height;
+    if (left > vw - pad) x -= left - (vw - pad);
+    if (left + width < pad) x += pad - (left + width);
+    if (top > vh - headerH) y -= top - (vh - headerH);
+    if (top + headerH < pad) y += pad - (top + headerH);
+    if (top + height < pad) y += pad - (top + height);
+    txAddInner.dataset.txAddDragX = String(x);
+    txAddInner.dataset.txAddDragY = String(y);
+    txAddInner.style.transform = x || y ? `translate(${x}px, ${y}px)` : "";
+  }
+
+  function endDrag(e) {
+    if (pointerId == null) return;
+    if (e && e.pointerId !== pointerId) return;
+    try {
+      if (e) handle.releasePointerCapture(pointerId);
+    } catch (_) {}
+    pointerId = null;
+    txAddInner.classList.remove("is-dragging");
+    if (moved) {
+      txAddInner.dataset.txAddDidDrag = "1";
+      window.setTimeout(() => {
+        if (txAddInner) txAddInner.dataset.txAddDidDrag = "0";
+      }, 80);
+    }
+    moved = false;
+  }
+
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const t = e.target;
+    if (t && t.closest && t.closest("input, select, textarea, button, a, label")) return;
+    const cur = currentOffset();
+    pointerId = e.pointerId;
+    startX = e.clientX;
+    startY = e.clientY;
+    originX = cur.x;
+    originY = cur.y;
+    moved = false;
+    try {
+      handle.setPointerCapture(pointerId);
+    } catch (_) {}
+    e.preventDefault();
+  });
+
+  handle.addEventListener("pointermove", (e) => {
+    if (pointerId == null || e.pointerId !== pointerId) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+    moved = true;
+    txAddInner.classList.add("is-dragging");
+    applyOffset(originX + dx, originY + dy);
+  });
+
+  handle.addEventListener("pointerup", endDrag);
+  handle.addEventListener("pointercancel", endDrag);
+})();
 
 if (reconcileCancelBtn) {
   reconcileCancelBtn.addEventListener("click", () => closeReconcileModal());
