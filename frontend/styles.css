@@ -33924,6 +33924,46 @@ body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--succe
 body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--success #sidebarPendingTxList{
   display: none;
 }
+body[data-bw-view="calendar"] .cash-health-status--review .cash-health-status__heading,
+body[data-bw-view="transactions"] .cash-health-status--review .cash-health-status__heading,
+body[data-bw-view="settings"] .cash-health-status--review .cash-health-status__heading,
+body[data-bw-view="reports"] .cash-health-status--review .cash-health-status__heading{
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+body[data-bw-view="calendar"] .cash-health-status--review #sidebarPendingMonth,
+body[data-bw-view="transactions"] .cash-health-status--review #sidebarPendingMonth,
+body[data-bw-view="settings"] .cash-health-status--review #sidebarPendingMonth,
+body[data-bw-view="reports"] .cash-health-status--review #sidebarPendingMonth{
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body[data-bw-view="calendar"] .cash-health-status--review.sidebar-pending--empty:not(.sidebar-pending--success) .cash-health-status__label,
+body[data-bw-view="transactions"] .cash-health-status--review.sidebar-pending--empty:not(.sidebar-pending--success) .cash-health-status__label,
+body[data-bw-view="settings"] .cash-health-status--review.sidebar-pending--empty:not(.sidebar-pending--success) .cash-health-status__label,
+body[data-bw-view="reports"] .cash-health-status--review.sidebar-pending--empty:not(.sidebar-pending--success) .cash-health-status__label{
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 620;
+  color: rgba(100, 116, 139, 0.78);
+}
+body[data-bw-view="calendar"] .sidebar-pending-more,
+body[data-bw-view="transactions"] .sidebar-pending-more,
+body[data-bw-view="settings"] .sidebar-pending-more,
+body[data-bw-view="reports"] .sidebar-pending-more{
+  width: auto;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 620;
+}
 body[data-bw-view="calendar"] .sidebar-month-input,
 body[data-bw-view="transactions"] .sidebar-month-input,
 body[data-bw-view="settings"] .sidebar-month-input,

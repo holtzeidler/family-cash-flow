@@ -662,10 +662,6 @@ let state = {
   monthExpectedItems: [],
   calendarExtraActualItems: [],
   calendarExtraExpectedItems: [],
-  needsReviewExpectedByKey: new Map(),
-  needsReviewActualByKey: new Map(),
-  needsReviewWindowExpected: [],
-  needsReviewWindowActual: [],
   reconciledDates: new Set(),
   reconciledDatesByMonth: new Map(),
   lastReconciledIso: null,
@@ -3530,6 +3526,7 @@ const sidebarPendingTxCard = document.getElementById("sidebarPendingTxCard");
 const sidebarPendingTxList = document.getElementById("sidebarPendingTxList");
 const sidebarPendingTitle = document.getElementById("sidebarPendingTitle");
 const sidebarPendingStatus = document.getElementById("sidebarPendingStatus");
+const sidebarPendingMonth = document.getElementById("sidebarPendingMonth");
 const reviewAmountModal = document.getElementById("reviewAmountModal");
 const reviewAmountTitle = document.getElementById("reviewAmountTitle");
 const reviewAmountName = document.getElementById("reviewAmountName");
@@ -3541,8 +3538,10 @@ const reviewAmountConfirmBtn = document.getElementById("reviewAmountConfirmBtn")
 const reviewAmountEditBtn = document.getElementById("reviewAmountEditBtn");
 let reviewAmountContext = null;
 let reviewAmountSaving = false;
-let needsReviewWindowKey = "";
-let needsReviewWindowGen = 0;
+let needsReviewReadyYm = "";
+let needsReviewShowAll = false;
+let needsReviewShowAllYm = "";
+const needsReviewSeenVariableYm = new Set();
 let needsReviewRenderedTodayIso = "";
 const catReportStart = document.getElementById("catReportStart");
 const catReportEnd = document.getElementById("catReportEnd");
@@ -14314,11 +14313,10 @@ async function loadFamilies() {
   if (familyChanged) {
     invalidateBillingStatusCache();
     resetReconciledDateCache();
-    state.needsReviewExpectedByKey = new Map();
-    state.needsReviewActualByKey = new Map();
-    state.needsReviewWindowExpected = [];
-    state.needsReviewWindowActual = [];
-    needsReviewWindowKey = "";
+    needsReviewReadyYm = "";
+    needsReviewShowAll = false;
+    needsReviewShowAllYm = "";
+    needsReviewSeenVariableYm.clear();
   }
   syncActiveFamilyFlags();
   void refreshBillingWriteLock();
@@ -18178,6 +18176,9 @@ async function loadExpectedTransactions() {
     if (gen !== expectedTxLoadGen) return;
     tmExpectedListSettled = true;
     renderUpcomingTransactionsFiltered();
+    try {
+      renderSidebarPendingTransactionsForMonth();
+    } catch (_) {}
     const sig = `${state.activeFamilyId}:${JSON.stringify(state.expectedTransactions)}`;
     if (expectedTxLoadedSig !== null && expectedTxLoadedSig !== sig) invalidateLowBalanceAlertCache();
     else requestCashHealthRecompute();
@@ -18512,7 +18513,7 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-async function loadTransactions() {
+async function loadTransactions(gen) {
   try {
     show(txErr, "");
     if (!state.activeFamilyId) return;
@@ -18527,6 +18528,7 @@ async function loadTransactions() {
     const results = await Promise.all(
       uniqueMonths.map((m) => api(`/api/families/${state.activeFamilyId}/transactions?month=${encodeURIComponent(m)}`, "GET"))
     );
+    if (gen != null && gen !== calendarLoadGen) return;
     const byId = new Map();
     for (const r of results) {
       for (const it of r?.items || []) {
@@ -18578,22 +18580,24 @@ async function loadUpcomingTransactionsPanel() {
   }
 }
 
-async function loadExpectedCalendar() {
+async function loadExpectedCalendar(gen) {
   try {
     // Keep bootstrap banners visible; only clear a blank slot.
     const cur = String(calendarErr?.textContent || "").trim();
     if (!cur) show(calendarErr, "");
-    state.monthExpectedItems = [];
+    if (gen == null || gen === calendarLoadGen) state.monthExpectedItems = [];
     if (!state.activeFamilyId) return;
 
     const month = calendarMonth?.value || monthInput?.value;
     if (!month) return;
 
     const data = await api(`/api/families/${state.activeFamilyId}/expected-calendar?month=${encodeURIComponent(month)}`, "GET");
+    if (gen != null && gen !== calendarLoadGen) return;
     state.monthExpectedItems = data?.items || [];
   } catch (e) {
     show(calendarErr, e.message || "Failed to load expected calendar");
   }
+  if (gen != null && gen !== calendarLoadGen) return;
   renderVariableTodosForMonth();
 }
 
@@ -18983,48 +18987,14 @@ function monthStartEndIso(ym) {
   return { start, end };
 }
 
-async function loadNeedsReviewWindow() {
-  if (!state.activeFamilyId) {
-    state.needsReviewWindowExpected = [];
-    state.needsReviewWindowActual = [];
-    needsReviewWindowKey = "";
-    return;
+function needsReviewSeriesById() {
+  const map = new Map();
+  for (const tx of state.expectedTransactions || []) {
+    const id = Number(tx?.id);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    map.set(id, tx);
   }
-  const todayIso = toISODate(new Date());
-  const startBal = typeof getFamilyEarliestStartingBalanceIso === "function" ? getFamilyEarliestStartingBalanceIso() : "";
-  const range =
-    typeof needsReviewWindowRange === "function"
-      ? needsReviewWindowRange(todayIso, startBal)
-      : { startIso: startBal || todayIso, endIso: todayIso };
-  if (!range.startIso || !range.endIso) return;
-  const key = `${state.activeFamilyId}|${range.startIso}|${range.endIso}`;
-  if (key === needsReviewWindowKey) return;
-  const gen = ++needsReviewWindowGen;
-  const fid = state.activeFamilyId;
-  const [expRes, actRes] = await Promise.all([
-    api(
-      `/api/families/${fid}/expected-calendar?start_date=${encodeURIComponent(range.startIso)}&end_date=${encodeURIComponent(range.endIso)}`,
-      "GET"
-    ),
-    api(
-      `/api/families/${fid}/transactions?start_date=${encodeURIComponent(range.startIso)}&end_date=${encodeURIComponent(range.endIso)}`,
-      "GET"
-    ),
-  ]);
-  if (gen !== needsReviewWindowGen) return;
-  state.needsReviewWindowExpected = expRes?.items || [];
-  state.needsReviewWindowActual = actRes?.items || [];
-  needsReviewWindowKey = key;
-}
-
-function mergeNeedsReviewItems(calendarMap, windowItems, keyFn) {
-  const next = calendarMap instanceof Map ? new Map(calendarMap) : new Map();
-  for (const it of windowItems || []) {
-    const key = keyFn(it);
-    if (!key) continue;
-    next.set(key, it);
-  }
-  return next;
+  return map;
 }
 
 function maybeRefreshNeedsReviewForToday() {
@@ -19035,42 +19005,27 @@ function maybeRefreshNeedsReviewForToday() {
   } else if (todayIso === needsReviewRenderedTodayIso) {
     return;
   }
-  needsReviewRenderedTodayIso = todayIso;
-  void (async () => {
-    try {
-      await loadNeedsReviewWindow();
-    } catch (_) {}
-    try {
-      renderSidebarPendingTransactionsForMonth();
-    } catch (_) {}
-  })();
+  try {
+    renderSidebarPendingTransactionsForMonth();
+  } catch (_) {}
 }
 
-function syncNeedsReviewLoadedSources() {
-  const viewed = calendarMonth?.value || monthInput?.value || "";
-  const loadedMonths = viewed
-    ? [viewed, shiftMonthStr(viewed, -1), shiftMonthStr(viewed, 1)].filter(Boolean)
-    : [];
-  const expected = [...(state.monthExpectedItems || []), ...(state.calendarExtraExpectedItems || [])];
-  const actuals = [
-    ...(state.monthActualItems || []),
-    ...(state.calendarExtraActualItems || []),
-    ...(state.upcomingActualItems || []),
-  ];
-  state.needsReviewExpectedByKey = syncNeedsReviewItemCache(
-    state.needsReviewExpectedByKey,
-    expected,
-    loadedMonths,
-    needsReviewOccurrenceKey,
-    needsReviewItemMonth
-  );
-  state.needsReviewActualByKey = syncNeedsReviewItemCache(
-    state.needsReviewActualByKey,
-    actuals,
-    loadedMonths,
-    needsReviewActualKey,
-    needsReviewItemMonth
-  );
+function beginNeedsReviewMonthLoad(ym) {
+  needsReviewReadyYm = "";
+  if (needsReviewShowAllYm !== ym) {
+    needsReviewShowAll = false;
+    needsReviewShowAllYm = ym || "";
+  }
+  try {
+    renderSidebarPendingTransactionsForMonth();
+  } catch (_) {}
+}
+
+function finishNeedsReviewMonthLoad(ym) {
+  needsReviewReadyYm = ym || "";
+  try {
+    renderSidebarPendingTransactionsForMonth();
+  } catch (_) {}
 }
 
 function setReviewAmountBusy(on) {
@@ -19210,7 +19165,6 @@ async function confirmReviewAmount() {
       applyNeedsReviewConfirmLocally(item, amount, [
         state.monthExpectedItems,
         state.calendarExtraExpectedItems,
-        state.needsReviewWindowExpected,
       ]);
     } else {
       item.variable = false;
@@ -19293,40 +19247,77 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.textContent = "";
     sidebarPendingStatus.hidden = true;
   }
-  const emptyTitle =
+  const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
+  const monthLabel =
+    typeof needsReviewMonthLabel === "function" ? needsReviewMonthLabel(viewedYm) : viewedYm;
+  const caughtUpTitle =
     typeof NEEDS_REVIEW_EMPTY_TITLE === "string" ? NEEDS_REVIEW_EMPTY_TITLE : "All caught up.";
+  const noneTitle =
+    typeof NEEDS_REVIEW_EMPTY_NONE_TITLE === "string"
+      ? NEEDS_REVIEW_EMPTY_NONE_TITLE
+      : "No estimates to review.";
   const setTitle = () => {
     if (!sidebarPendingTitle) return;
     sidebarPendingTitle.textContent = "Needs Review";
+  };
+  const setMonthLabel = (visible) => {
+    if (!sidebarPendingMonth) return;
+    sidebarPendingMonth.textContent = visible ? monthLabel : "";
+    sidebarPendingMonth.hidden = !visible || !monthLabel;
   };
   const setPendingStatus = (text) => {
     if (!sidebarPendingStatus) return;
     sidebarPendingStatus.textContent = text || "";
     sidebarPendingStatus.hidden = !text;
   };
-  const showCaughtUp = () => {
-    if (sidebarPendingTitle) sidebarPendingTitle.textContent = emptyTitle;
+  const showEmpty = (title, { success = false } = {}) => {
+    if (sidebarPendingTitle) sidebarPendingTitle.textContent = title;
+    setMonthLabel(false);
     setPendingStatus("");
+    if (sidebarPendingTxCard) {
+      sidebarPendingTxCard.classList.add("sidebar-pending--empty");
+      if (success) sidebarPendingTxCard.classList.add("sidebar-pending--success");
+    }
   };
 
-  syncNeedsReviewLoadedSources();
   const todayIso = toISODate(new Date());
   needsReviewRenderedTodayIso = todayIso;
-  const expectedByKey = mergeNeedsReviewItems(
-    state.needsReviewExpectedByKey,
-    state.needsReviewWindowExpected,
-    needsReviewOccurrenceKey
-  );
-  const actualByKey = mergeNeedsReviewItems(
-    state.needsReviewActualByKey,
-    state.needsReviewWindowActual,
-    needsReviewActualKey
-  );
-  const reviewRows = collectNeedsReviewRows({
-    expectedItems: [...expectedByKey.values()],
-    actualItems: [...actualByKey.values()],
-    todayIso,
-  });
+  if (needsReviewShowAllYm !== viewedYm) {
+    needsReviewShowAll = false;
+    needsReviewShowAllYm = viewedYm;
+  }
+
+  const dataReady = !!viewedYm && needsReviewReadyYm === viewedYm;
+  if (!dataReady) {
+    if (forecastIntroApplies()) {
+      if (sidebarPendingTxCard) {
+        sidebarPendingTxCard.hidden = true;
+        sidebarPendingTxCard.classList.add("sidebar-pending--empty");
+      }
+      setTitle();
+      setMonthLabel(false);
+      return;
+    }
+    if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
+    setTitle();
+    setMonthLabel(true);
+    setPendingStatus("");
+    return;
+  }
+
+  const collected =
+    typeof collectNeedsReviewRows === "function"
+      ? collectNeedsReviewRows({
+          expectedItems: state.monthExpectedItems || [],
+          actualItems: state.monthActualItems || [],
+          todayIso,
+          monthYm: viewedYm,
+          seriesById: needsReviewSeriesById(),
+        })
+      : { rows: [], hadVariableEstimates: false };
+  const reviewRows = collected.rows || [];
+  if (reviewRows.length || collected.hadVariableEstimates) needsReviewSeenVariableYm.add(viewedYm);
+  const hadVariableEstimates = !!collected.hadVariableEstimates || needsReviewSeenVariableYm.has(viewedYm);
 
   if (!reviewRows.length) {
     if (forecastIntroApplies()) {
@@ -19334,20 +19325,23 @@ function renderSidebarPendingTransactionsForMonth() {
         sidebarPendingTxCard.hidden = true;
         sidebarPendingTxCard.classList.add("sidebar-pending--empty");
       }
-      showCaughtUp();
+      showEmpty(hadVariableEstimates ? caughtUpTitle : noneTitle, { success: hadVariableEstimates });
       return;
     }
     if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
-    if (sidebarPendingTxCard) sidebarPendingTxCard.classList.add("sidebar-pending--empty", "sidebar-pending--success");
-    showCaughtUp();
+    showEmpty(hadVariableEstimates ? caughtUpTitle : noneTitle, { success: hadVariableEstimates });
     return;
   }
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
 
   setTitle();
+  setMonthLabel(true);
   setPendingStatus(`(${reviewRows.length})`);
-  for (let idx = 0; idx < reviewRows.length; idx++) {
-    const r = reviewRows[idx];
+  const visibleRows =
+    typeof visibleNeedsReviewRows === "function"
+      ? visibleNeedsReviewRows(reviewRows, { expanded: needsReviewShowAll })
+      : reviewRows;
+  for (const r of visibleRows) {
     const it = r.item;
     const open = () => {
       void openNeedsReviewAmount(it);
@@ -19403,6 +19397,22 @@ function renderSidebarPendingTransactionsForMonth() {
     el.appendChild(textCol);
     el.appendChild(indicator);
     sidebarPendingTxList.appendChild(el);
+  }
+
+  const limit = typeof NEEDS_REVIEW_INITIAL_LIMIT === "number" ? NEEDS_REVIEW_INITIAL_LIMIT : 5;
+  if (reviewRows.length > limit) {
+    const moreBtn = document.createElement("button");
+    moreBtn.type = "button";
+    moreBtn.className = "secondary sidebar-pending-more";
+    moreBtn.textContent = needsReviewShowAll ? "Show less" : "Show all";
+    moreBtn.setAttribute("aria-expanded", needsReviewShowAll ? "true" : "false");
+    moreBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      needsReviewShowAll = !needsReviewShowAll;
+      renderSidebarPendingTransactionsForMonth();
+    });
+    sidebarPendingTxList.appendChild(moreBtn);
   }
 }
 
@@ -19721,6 +19731,8 @@ function setCalendarLoadingUi(on) {
 async function loadMonthAndCalendar() {
   const gen = ++calendarLoadGen;
   const stillCurrent = () => gen === calendarLoadGen;
+  const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
+  beginNeedsReviewMonthLoad(viewedYm);
   try {
     state.monthActualItems = [];
     state.monthExpectedItems = [];
@@ -19748,7 +19760,7 @@ async function loadMonthAndCalendar() {
     renderCalendar();
 
     if (!state.activeFamilyId) {
-      renderSidebarPendingTransactionsForMonth();
+      if (stillCurrent()) finishNeedsReviewMonthLoad(viewedYm);
       renderMonthSummaryTotalsFromState();
       if (stillCurrent()) updateCalendarEmptyStateBanner();
       return;
@@ -19780,19 +19792,18 @@ async function loadMonthAndCalendar() {
     renderCalendar();
 
     await Promise.all([
-      runStep("transactions", () => loadTransactions()),
+      runStep("transactions", () => loadTransactions(gen)),
       runStep("upcoming", () => loadUpcomingTransactionsPanel()),
-      runStep("expected", () => loadExpectedCalendar()),
+      runStep("expected", () => loadExpectedCalendar(gen)),
       runStep("extras", () => loadCalendarExtras()),
       runStep("reconciled", () => loadReconciledDays(getCalendarViewYm())),
       runStep("verified", () => loadVerifiedBalances(getCalendarViewYm())),
-      runStep("needs-review-window", () => loadNeedsReviewWindow()),
     ]);
     try {
       repairOutOfMonthBalanceContinuity();
     } catch (_) {}
     if (!stillCurrent()) return;
-    renderSidebarPendingTransactionsForMonth();
+    finishNeedsReviewMonthLoad(viewedYm);
     renderMonthSummaryTotalsFromState();
     renderCalendar();
     updateCalendarEmptyStateBanner();
