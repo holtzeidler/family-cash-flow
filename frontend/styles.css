@@ -22302,8 +22302,9 @@ body.plans-page--polished .plans-quote{
   border-color: rgba(17, 24, 39, 0.07);
   box-shadow: 0 1px 2px rgba(17, 24, 39, 0.024);
 }
-.cal-cell.cal-cell--out .cal-daynum-num{
-  color: rgba(75, 85, 99, 0.8);
+.cal-cell.cal-cell--out .cal-day-tx-line:not(.cal-day-tx-line--start-balance),
+.cal-cell.cal-cell--out .cal-day-more{
+  opacity: 0.58;
 }
 .cal-cell.cal-cell--past:not(.cal-cell--out):not(.cal-cell--before-start){
   background: rgba(255, 255, 255, 0.94);
@@ -22321,6 +22322,12 @@ body.plans-page--polished .plans-quote{
 }
 .cal-cell.cal-cell--before-start .cal-daynum-num{
   color: rgba(75, 85, 99, 0.58);
+}
+.cal-cell.cal-cell--out .cal-daynum-num,
+.cal-cell.cal-cell--out.cal-cell--past .cal-daynum-num,
+.cal-cell.cal-cell--out.cal-cell--before-start .cal-daynum-num{
+  color: rgba(100, 116, 139, 0.4);
+  font-weight: 500;
 }
 .cal-cell.cal-cell--before-start .cal-cell-fill{
   cursor: not-allowed;
@@ -24551,29 +24558,38 @@ body[data-bw-view="transactions"] .tm__field label{
 
 /* "+N more" — pill affordance aligned with expandable busy days */
 .cal-day-more{
+  position: relative;
   margin-top: 2px;
   align-self: flex-start;
-  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(17, 24, 39, 0.05);
   background: rgba(248, 250, 252, 0.75);
   width: fit-content;
   max-width: 100%;
   font: inherit;
-  font-size: 8.5px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: rgba(71, 85, 105, 0.82);
+  color: rgba(71, 85, 105, 0.78);
   cursor: pointer;
   text-decoration: none;
   line-height: 1.2;
+  white-space: nowrap;
   box-shadow: none;
   transition:
     border-color 0.14s ease,
     background 0.14s ease,
     color 0.14s ease,
     box-shadow 0.14s ease;
+}
+.cal-day-more::after{
+  content: "";
+  position: absolute;
+  inset: -5px -6px;
 }
 .cal-day-more:hover{
   color: rgba(51, 65, 85, 0.94);
@@ -24587,7 +24603,7 @@ body[data-bw-view="transactions"] .tm__field label{
 }
 .cal-day-more.is-expanded{
   color: rgba(100, 116, 139, 0.86);
-  font-size: 8.65px;
+  font-size: 10.5px;
   border-style: dashed;
   border-color: rgba(100, 116, 139, 0.2);
   background: rgba(248, 250, 252, 0.7);
@@ -31639,7 +31655,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
 
   .calendar--mobile .cal-day-more{
     margin-top: 2px;
-    font-size: 10.5px;
+    padding: 4px 9px;
+    font-size: 11px;
   }
 
   .calendar--mobile .cal-ledger-metrics{
