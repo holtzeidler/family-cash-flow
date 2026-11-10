@@ -22502,6 +22502,9 @@ body.plans-page--polished .plans-quote{
   display: block;
   margin: 6px 0 0;
 }
+.modal--balance-check-in[data-balance-check-in-mode="record"] .balance-check-in__date-field{
+  display: none;
+}
 .balance-check-in__date-input{
   display: block;
   width: 100%;

@@ -32,13 +32,8 @@ function adjustedForecastBalance(dayBal, storedProjected) {
   return finiteMoney(dayBal.projectedEnd);
 }
 
-function reconcileRecordCaption({ matched, diff, fmtMoney } = {}) {
-  if (matched) return "Matched bank balance";
-  const n = Number(diff);
-  if (!Number.isFinite(n) || Math.abs(n) < 0.005) return "Did not match forecast";
-  const amt = typeof fmtMoney === "function" ? fmtMoney(Math.abs(n)) : Math.abs(n).toFixed(2);
-  if (n > 0) return `Your balance was $${amt} higher than forecast.`;
-  return `Your balance was $${amt} lower than forecast.`;
+function reconcileRecordCaption({ matched } = {}) {
+  return matched ? "Bank balance matched forecast." : "Bank balance differed from forecast.";
 }
 
 function normalizeReconciledIso(raw) {

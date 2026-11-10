@@ -786,7 +786,8 @@ def test_balance_record_does_not_block_transactions(page, guard):
     expect(tip).to_contain_text("Reconciled")
     expect(tip).to_contain_text("Sep 8, 2026")
     expect(tip).to_contain_text(money("2050.00"))
-    expect(tip).to_contain_text("Matched bank balance")
+    expect(tip).to_contain_text("Bank balance matched forecast.")
+    expect(tip).not_to_contain_text("Reconciled ·")
     expect(tip).not_to_contain_text("Reconciled balance")
     expect(tip.locator("[data-bw-bal-action='enter-different-balance']")).to_be_visible()
     expect(tip.locator("[data-bw-bal-action='remove-reconciliation']")).to_be_visible()
@@ -826,19 +827,26 @@ def test_sidebar_reconcile_defaults_to_today(page, guard):
 
     page.locator("#sidebarReconcileBtn").click()
     expect(modal).to_be_visible()
-    expect(page.locator("#reconcileDateInput")).to_have_value(today.isoformat())
     expect(modal.locator("#reconcileTitle")).to_have_text("Reconciled")
     expect(modal.locator("#reconcileRecordState")).to_be_visible()
-    expect(modal.locator("#reconcileRecordState")).to_contain_text("Matched bank balance")
+    expect(modal.locator("#reconcileRecordState")).to_contain_text("Bank balance matched forecast.")
+    expect(modal.locator("#reconcileRecordState")).not_to_contain_text("Reconciled ·")
     expect(modal.locator("#reconcileMatchPrompt")).to_be_hidden()
+    expect(page.locator("#reconcileDateInput")).to_be_hidden()
+    expect(page.locator("#reconcileDateDisplay")).to_be_visible()
 
+    page.keyboard.press("Escape")
     if yesterday >= start:
-        page.locator("#reconcileDateInput").fill(yesterday.isoformat())
-        page.locator("#reconcileDateInput").dispatch_event("change")
+        page.locator(
+            f'.cal-cell[data-iso="{yesterday.isoformat()}"] .cal-ledger-metrics.cal-day-balance-hit'
+        ).click()
+        page.locator(".reports-risk-tip.reports-risk-tip--visible [data-bw-bal-action='reconcile-this-date']").click()
+        expect(modal).to_be_visible()
+        expect(page.locator("#reconcileDateInput")).to_be_visible()
         expect(page.locator("#reconcileDateInput")).to_have_value(yesterday.isoformat())
         expect(modal.locator("#reconcileTitle")).to_have_text("Check your balance")
         expect(modal.locator("#reconcileMatchPrompt")).to_be_visible()
-    page.keyboard.press("Escape")
+        page.keyboard.press("Escape")
     guard.assert_clean()
 
 

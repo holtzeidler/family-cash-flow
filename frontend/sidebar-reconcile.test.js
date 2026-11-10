@@ -6,6 +6,7 @@ const {
   formatSidebarReconcileDate,
   formatSidebarReconcileElapsed,
   latestIsoFromDateSets,
+  latestBalanceCheckIso,
 } = require("./sidebar-reconcile.js");
 
 function assert(cond, msg) {
@@ -34,7 +35,18 @@ assert(formatSidebarReconcileElapsed(8) === "8 days ago", "older elapsed copy");
 
 assert(
   latestIsoFromDateSets([new Set(["2026-10-04", "2026-11-01"]), ["2026-09-12"]]) === "2026-11-01",
-  "latest from reconciled sets only"
+  "latest from date sets"
 );
+
+{
+  const matching = new Set(["2026-11-04", "2026-11-10"]);
+  const adjusted = new Map([["2026-11-09", { amount: 1200 }]]);
+  assert(latestBalanceCheckIso([matching], adjusted) === "2026-11-10", "matching Nov 10 wins over adjusted Nov 9");
+  matching.delete("2026-11-10");
+  assert(latestBalanceCheckIso([matching], adjusted) === "2026-11-09", "removing latest matching falls back to adjusted");
+  adjusted.delete("2026-11-09");
+  assert(latestBalanceCheckIso([matching], adjusted) === "2026-11-04", "removing adjusted falls back to earlier matching");
+  assert(latestBalanceCheckIso([new Set()], new Map()) === null, "no checks yet");
+}
 
 console.log("sidebar-reconcile.test.js: ok");
