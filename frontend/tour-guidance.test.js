@@ -22,7 +22,7 @@ function functionBody(src, name) {
 }
 
 assert.ok(calendarHtml.indexOf("tour.js?v=28") >= 0, "calendar loads the updated tour script");
-assert.ok(calendarHtml.indexOf("styles.css?v=936") >= 0, "calendar loads the updated tour styles");
+assert.ok(calendarHtml.indexOf("styles.css?v=937") >= 0, "calendar loads the updated tour styles");
 
 assert.ok(tour.indexOf('data-bw-tour-arrow') >= 0, "popover includes a caret");
 assert.ok(tour.indexOf('data-bw-tour-next') >= 0, "Next control is present");
