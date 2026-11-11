@@ -1,4 +1,4 @@
-"""Mobile login should land on the forecast once, then stay put while secondary data arrives."""
+"""Mobile login should open the forecast at the top with Cash Health visible."""
 
 from __future__ import annotations
 
@@ -52,7 +52,11 @@ def _today_metrics(page):
             restoration: String(history.scrollRestoration || ""),
             toCount: log.filter((row) => row.kind === "to").length,
             byCount: log.filter((row) => row.kind === "by").length,
-            landCount: trace.filter((row) => row.event === "mobile-land").length,
+            landCount: trace.filter((row) => row.event === "mobile-today").length,
+            topCount: trace.filter((row) => row.event === "mobile-top").length,
+            cashHealthTop: document.querySelector("#sidebarCashHealthCard")
+              ? Math.round(document.querySelector("#sidebarCashHealthCard").getBoundingClientRect().top)
+              : null,
             renders: trace.filter((row) => row.event === "renderCalendar").length,
             daily: trace.some((row) => row.event === "daily-balances-painted"),
             secondary: trace.some((row) => row.event === "secondary-painted"),
@@ -63,13 +67,13 @@ def _today_metrics(page):
     )
 
 
-@pytest.mark.smoke_title("Mobile login lands on today once")
+@pytest.mark.smoke_title("Mobile login opens Cash Health at the top")
 @pytest.mark.parametrize("width", [320, 375, 390])
 def test_mobile_login_lands_once(page, seed, guard, width):
     page.set_viewport_size({"width": width, "height": 844})
     page.add_init_script(SCROLL_HOOK)
     login(page, seed["active"]["email"], seed["active"]["password"])
-    expect(page.locator(".cal-cell--today")).to_be_visible()
+    expect(page.locator("#sidebarCashHealthCard")).to_be_visible()
     expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
     after_ready = _today_metrics(page)
     page.wait_for_timeout(2800)
@@ -77,15 +81,13 @@ def test_mobile_login_lands_once(page, seed, guard, width):
 
     assert after_ready["daily"] or after_ready["todayIso"], "daily balances never painted"
     assert after_settle["restoration"] == "manual"
-    assert after_settle["toCount"] <= 3, after_settle
-    assert after_settle["landCount"] <= 1, after_settle
-    if after_settle["todayTop"] is not None:
-        assert after_settle["todayTop"] < 844, after_settle
-        if after_ready["todayTop"] is not None and after_ready["y"] > 40:
-            assert abs(after_settle["todayTop"] - after_ready["todayTop"]) <= 80, (
-                after_ready,
-                after_settle,
-            )
+    assert after_settle["y"] <= 24, after_settle
+    assert after_settle["byCount"] == 0, after_settle
+    assert after_settle["landCount"] == 0, after_settle
+    assert after_settle["toCount"] <= 1, after_settle
+    if after_settle["cashHealthTop"] is not None:
+        assert after_settle["cashHealthTop"] < 280, after_settle
+    expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
     assert not after_settle["welcomeOpen"]
     assert not after_settle["tourOpen"]
     guard.assert_clean()
@@ -105,8 +107,25 @@ def test_mobile_slow_network_keeps_daily_balances_first(page, seed, guard):
     page.route("**/api/**", delay)
     login(page, seed["active"]["email"], seed["active"]["password"])
     expect(page.locator(".cal-cell--today .cal-balance, .cal-cell--today")).to_be_visible()
+    expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
     metrics = _today_metrics(page)
     assert metrics["daily"] or metrics["todayIso"]
+    assert metrics["y"] <= 24, metrics
+    assert metrics["landCount"] == 0, metrics
     page.unroute("**/api/**")
     expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"), timeout=30_000)
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Mobile Today control scrolls to today")
+def test_mobile_today_button_scrolls_to_today(page, seed, guard):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.add_init_script(SCROLL_HOOK)
+    login(page, seed["active"]["email"], seed["active"]["password"])
+    expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
+    expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    page.locator("#calendarGoToday").click()
+    page.wait_for_timeout(500)
+    metrics = _today_metrics(page)
+    assert metrics["landCount"] >= 1 or (metrics["todayTop"] is not None and metrics["todayTop"] < 220), metrics
     guard.assert_clean()

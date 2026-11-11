@@ -121,37 +121,34 @@ assert.ok(
 assert.ok(loadBody.indexOf("maybeShowForecastReadyPopup()") >= 0, "first-forecast welcome still waits on the full load");
 var busyOffIdx = loadBody.indexOf("setCalendarLoadingUi(false)");
 assert.ok(busyOffIdx > parallelIdx, "aria-busy stays on through secondary fetches");
-assert.ok(loadBody.indexOf("scheduleMobileCalendarLanding()") >= 0, "mobile landing is scheduled after the first usable paint");
-assert.ok(
-  loadBody.indexOf("maybeScrollMobileCalendarToToday()") < 0,
-  "month load does not keep re-aiming the page as secondary data arrives"
-);
+assert.ok(loadBody.indexOf("scheduleMobileForecastTop()") >= 0, "mobile forecast pins to the top after the first usable paint");
+assert.ok(loadBody.indexOf("scheduleMobileCalendarLanding()") < 0, "month load does not auto-scroll to today");
+assert.ok(loadBody.indexOf("maybeScrollMobileCalendarToToday()") < 0, "month load does not re-aim at today as data arrives");
 var mainFn = functionBody(app, "main");
 assert.ok(
   mainFn.indexOf("computeMonthDailyBalancesLegacy()") < 0,
   "bootstrap does not paint a client-side placeholder calendar"
 );
 
-var landFn = functionBody(app, "maybeScrollMobileCalendarToToday");
-assert.ok(landFn.indexOf("calendarLandingBlocked()") >= 0, "landing waits for the welcome modal and tour");
-assert.ok(landFn.indexOf("window.scrollY > 0") < 0, "Safari scroll restoration does not cancel the one landing");
+assert.ok(app.indexOf("function keepMobileTodayInPlace(") < 0, "today-follow observer is gone");
+assert.ok(app.indexOf("function maybeScrollMobileCalendarToToday(") < 0, "auto-land on today is gone");
 assert.ok(app.indexOf('history.scrollRestoration = "manual"') >= 0, "calendar owns the first scroll position");
 
-var followFn = functionBody(app, "keepMobileTodayInPlace");
-assert.ok(followFn.indexOf("document.body") < 0, "follow observer does not watch the whole document");
-assert.ok(followFn.indexOf("calendarPanel") >= 0, "follow observer watches the calendar panel");
-assert.ok(followFn.indexOf("scrollBy") >= 0, "later layout changes follow today's cell instead of re-targeting");
-assert.ok(followFn.indexOf("maybeScrollMobileCalendarToToday()") < 0, "follow does not call the landing scroller again");
-assert.ok(followFn.indexOf("2500") >= 0, "follow window is short");
-assert.ok(followFn.indexOf("6000") < 0, "six-second body chase is gone");
-assert.ok(followFn.indexOf("lastTop == null") >= 0, "grid rebuilds re-anchor instead of applying a stale delta");
+var topFn = functionBody(app, "pinMobileForecastTop");
+assert.ok(topFn.indexOf("scrollTo") >= 0, "Safari restore is corrected back to the top");
+assert.ok(topFn.indexOf("calendarMobileUserMoved") >= 0, "a user scroll is not overwritten");
+
+var todayFn = functionBody(app, "scrollMobileCalendarToToday");
+assert.ok(todayFn.indexOf("mobileCalendarScrollTopFor") >= 0, "the Today control still scrolls to today");
+assert.ok(app.indexOf("scrollMobileCalendarToToday()") >= 0, "the Today button calls the explicit today scroller");
 
 var skipFn = functionBody(app, "ensureForecastReadyModal");
-assert.ok(skipFn.indexOf("scheduleMobileCalendarLanding()") >= 0, "skipping the welcome still lands on today once");
-assert.ok(
-  /bw-tour-ended[\s\S]{0,180}calendarMobileTodayScroll = "off"/.test(app),
-  "ending the tour does not leave auto-landing armed"
-);
+assert.ok(skipFn.indexOf("scheduleMobileForecastTop()") < 0, "skipping the welcome does not move the page");
+assert.ok(skipFn.indexOf("scrollMobileCalendarToToday()") < 0, "skipping the welcome does not jump to today");
+
+var tourEnded = app.slice(app.indexOf('window.addEventListener("bw-tour-ended"'), app.indexOf("let calendarLoadingGuardTimer"));
+assert.ok(tourEnded.indexOf("scrollTo") < 0, "ending the tour does not auto-scroll to today");
+assert.ok(tourEnded.indexOf("calendarMobileUserMoved = true") >= 0, "ending the tour leaves later loads from moving the page");
 
 var showBody = functionBody(app, "maybeShowForecastReadyPopup");
 assert.ok(showBody.indexOf("preventScroll: true") >= 0, "welcome focus does not scroll the forecast");
