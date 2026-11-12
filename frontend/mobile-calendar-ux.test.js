@@ -110,19 +110,22 @@ assert.ok(
   loadBody.indexOf("state.monthDailyBalances = new Map()") < 0,
   "month load does not wipe balances before the API responds"
 );
-var dailyIdx = loadBody.indexOf('runStep("daily-balances"');
+var dailyIdx = loadBody.indexOf("dailyPromise");
+var txIdx = loadBody.indexOf("txPromise");
 var parallelIdx = loadBody.indexOf("await Promise.all([");
-assert.ok(dailyIdx >= 0 && parallelIdx >= 0, "load sequence markers exist");
-assert.ok(dailyIdx < parallelIdx, "daily balances still start before secondary fetches");
-assert.ok(loadBody.indexOf("coherentFirstPaint") >= 0, "phones wait for a coherent first calendar paint");
-assert.ok(loadBody.indexOf('cashHealthPromise') >= 0, "Cash Health loads with the month, not after the first paint");
+assert.ok(dailyIdx >= 0 && txIdx >= 0 && parallelIdx >= 0, "load sequence markers exist");
+assert.ok(dailyIdx < parallelIdx && txIdx < parallelIdx, "daily balances and transactions start together");
+assert.ok(loadBody.indexOf("const mobile = isMobileCalendarViewport()") >= 0, "phones wait for a coherent first calendar paint");
+assert.ok(loadBody.indexOf("usable-calendar") >= 0, "phones mark a usable calendar as soon as the month can paint");
+assert.ok(loadBody.indexOf("cashHealthPromise") >= 0, "Cash Health loads with the month, not after the first paint");
 assert.ok(loadBody.indexOf("scheduleMobileForecastTop()") < 0, "month load does not keep issuing top-pin scroll commands");
 assert.ok(loadBody.indexOf("maybeShowForecastReadyPopup()") >= 0, "first-forecast welcome still waits on the full load");
-var busyOffIdx = loadBody.indexOf("setCalendarLoadingUi(false)");
-assert.ok(busyOffIdx > parallelIdx, "aria-busy stays on through secondary fetches");
+var extrasFn = functionBody(app, "loadCalendarExtras");
+assert.ok(extrasFn.indexOf("expected-calendar") >= 0 && extrasFn.indexOf("await Promise.all([") >= 0, "wrap-month extras fetch in one round");
+var mainFn = functionBody(app, "main");
+assert.ok(mainFn.indexOf("Promise.all([accountsPromise, loadMonthAndCalendar()])") >= 0, "accounts do not block the month fetch");
 assert.ok(loadBody.indexOf("scheduleMobileCalendarLanding()") < 0, "month load does not auto-scroll to today");
 assert.ok(loadBody.indexOf("maybeScrollMobileCalendarToToday()") < 0, "month load does not re-aim at today as data arrives");
-var mainFn = functionBody(app, "main");
 assert.ok(
   mainFn.indexOf("computeMonthDailyBalancesLegacy()") < 0,
   "bootstrap does not paint a client-side placeholder calendar"
@@ -138,6 +141,11 @@ assert.ok(
   "Cash Health is in the first HTML layout, not hidden behind Monthly Cash Flow"
 );
 assert.ok(calendarHtml.indexOf("calendar-panel--loading") >= 0, "the calendar panel starts in its loading state");
+assert.ok(calendarHtml.indexOf("sidebar-pending--empty") >= 0, "Needs Review starts compact when empty");
+assert.ok(
+  /id="sidebarReconcileRow"[^>]*hidden/.test(calendarHtml) === false,
+  "Last Reconciled is in the first HTML layout"
+);
 assert.ok(calendarHtml.indexOf('id="calendarLoadingIndicator" hidden') < 0, "the loading overlay is visible on first paint");
 assert.ok(calendarHtml.indexOf('history.scrollRestoration = "manual"') >= 0, "Safari is told not to restore a mid-month scroll before app.js runs");
 
@@ -179,12 +187,12 @@ assert.ok(showBody.indexOf("preventScroll: true") >= 0, "welcome focus does not 
 
 assert.ok(/body\[data-bw-view="calendar"\]\{[\s\S]*?overflow-anchor:\s*none/.test(css), "inserting Cash Health does not overflow-anchor the page down to today");
 assert.ok(
-  /body\[data-bw-view="calendar"\] \.sidebar-cash-health__alerts\{[\s\S]*?min-height:\s*56px/.test(css),
-  "mobile Cash Health slot is reserved before the banner fills in"
+  /body\[data-bw-view="calendar"\] \.sidebar \.card\[data-sidebar-key="month"\]\{[\s\S]*?display:\s*none/.test(css),
+  "phones hide Monthly Cash Flow on Forecast; Reports still has it"
 );
 assert.ok(
-  /body\[data-bw-view="calendar"\] #totals\{[\s\S]*?min-height:\s*84px/.test(css),
-  "mobile Monthly Cash Flow totals are reserved before numbers arrive"
+  /body\[data-bw-view="calendar"\] \.calendar-panel--loading \.calendar-loading-indicator[\s\S]*?position:\s*static/.test(css),
+  "phones use a compact calendar loading placeholder instead of a full-panel overlay"
 );
 
 var labelCol = functionBody(app, "applyCalendarDayLabelColumnWidth");
