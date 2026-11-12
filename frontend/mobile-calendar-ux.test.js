@@ -145,14 +145,29 @@ assert.ok(loadBody.indexOf("month-cache-hit") >= 0, "cached months paint without
 assert.ok(loadBody.indexOf("allowCache") >= 0, "month snapshots are reused only when navigating months");
 assert.ok(app.indexOf("loadMonthAndCalendar({ allowCache: true })") >= 0, "month buttons reuse warmed adjacent months");
 assert.ok(loadBody.indexOf("schedulePrefetchAdjacentCalendarMonths()") >= 0, "phones warm adjacent months after the first usable paint");
-assert.ok(loadBody.indexOf("cashHealthPromise") >= 0, "Cash Health loads with the month, not after the first paint");
+assert.ok(loadBody.indexOf("cashHealthPromise") >= 0, "Cash Health still loads on the Forecast path");
+assert.ok(loadBody.indexOf("{ adjacent: false }") >= 0, "phones fetch the current month daily balances before adjacent months");
+assert.ok(loadBody.indexOf("showCashHealthPendingUi()") >= 0, "phones keep a compact Cash Health loading state until copy is ready");
+assert.ok(loadBody.indexOf("applyCalendarStatusDecorations()") >= 0, "reconciled markers arrive without rebuilding the calendar");
+assert.ok(loadBody.indexOf("secondary-painted") >= 0, "phones mark when extras and Cash Health catch up");
+var usableIdx = loadBody.indexOf("usable-calendar");
+var secondaryStartIdx = loadBody.lastIndexOf("startSecondary()");
+assert.ok(usableIdx >= 0 && secondaryStartIdx > usableIdx, "phones start extras and Cash Health after the first usable calendar");
+assert.ok(
+  loadBody.indexOf('runStep("upcoming"') >= 0 && loadBody.indexOf("? Promise.resolve()") >= 0,
+  "phones do not fetch the 548-day upcoming list on the first Forecast paint"
+);
 assert.ok(loadBody.indexOf("revealMobileCalendarPlaced()") >= 0, "phones place today before the calendar is revealed");
 assert.ok(loadBody.indexOf("scheduleMobileForecastTop()") < 0, "month load does not keep issuing top-pin scroll commands");
 assert.ok(loadBody.indexOf("maybeShowForecastReadyPopup()") >= 0, "first-forecast welcome still waits on the full load");
 var extrasFn = functionBody(app, "loadCalendarExtras");
-assert.ok(extrasFn.indexOf("expected-calendar") >= 0 && extrasFn.indexOf("await Promise.all([") >= 0, "wrap-month extras fetch in one round");
+assert.ok(extrasFn.indexOf("requestMonthExpectedCalendar") >= 0 && extrasFn.indexOf("await Promise.all([") >= 0, "wrap-month extras fetch in one round");
 var mainFn = functionBody(app, "main");
 assert.ok(mainFn.indexOf("Promise.all([accountsPromise, loadMonthAndCalendar()])") >= 0, "accounts do not block the month fetch");
+assert.ok(
+  mainFn.indexOf("!isMobileCalendarViewport()") >= 0 && mainFn.indexOf("categoriesBootstrap = loadCategories()") >= 0,
+  "phones do not start category fetches before the first calendar paint"
+);
 assert.ok(loadBody.indexOf("scheduleMobileCalendarLanding()") < 0, "month load does not auto-scroll to today");
 assert.ok(loadBody.indexOf("maybeScrollMobileCalendarToToday()") < 0, "month load does not re-aim at today as data arrives");
 assert.ok(
@@ -214,6 +229,9 @@ assert.ok(app.indexOf("function placeMobileCalendarBeforeReveal(") >= 0, "initia
 assert.ok(app.indexOf("keepMobileTodayInPlace") < 0, "today-follow observer stays gone");
 assert.ok(!/new ResizeObserver/.test(functionBody(app, "placeMobileCalendarBeforeReveal")), "placement does not observe later layout shifts");
 assert.ok(app.indexOf('id = "calCashHealthStrip"') >= 0, "phones get a compact Cash Health strip");
+assert.ok(app.indexOf("function showCashHealthPendingUi(") >= 0, "Cash Health has a compact pending state");
+assert.ok(app.indexOf("function requestMonthTransactions(") >= 0, "month transaction fetches are reused while in flight");
+assert.ok(app.indexOf("function apiRequest(") >= 0, "identical GET requests share one in-flight promise");
 assert.ok(app.indexOf("function syncCashHealthStrip(") >= 0, "the compact strip paints from the same Cash Health copy");
 assert.ok(app.indexOf("mobileCashHealthStripReserve") >= 0, "today sits below the compact strip");
 assert.ok(
@@ -240,6 +258,10 @@ assert.ok(
 assert.ok(
   /body\[data-bw-view="calendar"\] \.cal-cash-health-strip\.is-active\{[\s\S]*?background:\s*#eef6f0/.test(css),
   "healthy Cash Health uses a calm green strip"
+);
+assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-cash-health-strip--pending\.is-active\{[\s\S]*?background:\s*#eef1ee/.test(css),
+  "pending Cash Health uses a neutral strip instead of a tone"
 );
 assert.ok(
   /body\[data-bw-view="calendar"\] \.cal-cash-health-strip__kicker\{[\s\S]*?font-weight:\s*600/.test(css),

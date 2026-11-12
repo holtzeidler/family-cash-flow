@@ -281,6 +281,32 @@ def _assert_strip_tone_styles(styles, tone):
         assert ratio >= 4.5, {"tone": tone, "whenRatio": ratio, "styles": styles}
 
 
+def _cell_balances(page):
+    return page.evaluate(
+        """() => {
+          const out = {};
+          for (const el of document.querySelectorAll(".calendar--mobile .cal-cell:not(.cal-cell--out)")) {
+            const amt = el.querySelector(".cal-stat.cal-balance");
+            out[el.getAttribute("data-iso") || ""] = amt ? String(amt.textContent || "").replace(/\\s+/g, " ").trim() : "";
+          }
+          return out;
+        }"""
+    )
+
+
+def _wait_for_cash_health_copy(page, timeout=15000):
+    page.wait_for_function(
+        """() => {
+          const el = document.getElementById("calCashHealthStrip");
+          if (!el || el.hidden || !el.classList.contains("is-active")) return false;
+          return el.classList.contains("cal-cash-health-strip--below")
+            || el.classList.contains("cal-cash-health-strip--negative")
+            || el.classList.contains("cal-cash-health-strip--healthy");
+        }""",
+        timeout=timeout,
+    )
+
+
 def _assert_today_with_strip(metrics):
     assert metrics["todayInView"] is True, metrics
     assert metrics["earlierToggle"] is False, metrics
@@ -321,8 +347,15 @@ def test_mobile_login_lands_once(page, seed, guard, width):
     expect(page.locator("#sidebarCashHealthCard")).to_be_visible()
     after_ready, samples = _sample_until_ready(page)
     expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    balances_ready = _cell_balances(page)
     page.wait_for_timeout(2800)
+    _wait_for_cash_health_copy(page)
     after_settle = _today_metrics(page)
+    balances_settle = _cell_balances(page)
+    assert balances_settle == balances_ready, {
+        "ready": balances_ready,
+        "settle": balances_settle,
+    }
     _write_trace(f"chromium-{width}.json", {"ready": after_ready, "settle": after_settle, "samples": samples})
 
     busy_samples = [row for row in samples if row["busy"]]
@@ -589,6 +622,7 @@ def test_mobile_cash_health_strip_tones(page, seed, guard, width):
     page.add_init_script(SCROLL_HOOK)
     login(page, seed["active"]["email"], seed["active"]["password"])
     expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    _wait_for_cash_health_copy(page)
     _assert_today_with_strip(_today_metrics(page))
 
     below = _strip_styles(page)
