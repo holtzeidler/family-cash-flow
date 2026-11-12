@@ -176,6 +176,13 @@ assert.ok(navIife.indexOf("tabs.scrollTo") >= 0, "active tab only scrolls the ta
 
 var todayFn = functionBody(app, "scrollMobileCalendarToToday");
 assert.ok(todayFn.indexOf("mobileCalendarScrollTopFor") >= 0, "desktop Today still has a today scroller");
+var chipFn = functionBody(app, "syncCashHealthCalendarChip");
+assert.ok(chipFn.indexOf("cashHealthCardIsOnScreen()") >= 0, "phones do not repeat the Cash Health warning above the calendar");
+assert.ok(chipFn.indexOf('querySelectorAll(".cal-cash-health-chip")') >= 0, "a leftover calendar warning chip is still removed");
+assert.ok(
+  functionBody(app, "cashHealthCardIsOnScreen").indexOf("sidebarCashHealthCard.hidden") >= 0,
+  "the calendar chip stays away while Cash Health is already in the forecast layout"
+);
 assert.ok(app.indexOf("cal-earlier-toggle") >= 0, "phones can reveal dates before today without auto-scrolling");
 assert.ok(app.indexOf("mobileCalendarShowEarlier = false") >= 0, "month changes start the current month at today again");
 var dailyReq = functionBody(app, "requestCalendarMonthDaily");

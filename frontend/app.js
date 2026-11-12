@@ -20066,10 +20066,20 @@ function clearCashHealthFocus() {
   );
 })();
 
-/** Phones: a one-line Cash Health warning just above today's card, from the same summary as the sidebar. */
+function cashHealthCardIsOnScreen() {
+  if (!sidebarCashHealthCard || sidebarCashHealthCard.hidden) return false;
+  try {
+    const style = window.getComputedStyle(sidebarCashHealthCard);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+  } catch (_) {}
+  return true;
+}
+
+/** Phones: keep the warning in Cash Health. Do not repeat it above today's card when that card is already on screen. */
 function syncCashHealthCalendarChip() {
   if (!calendarGrid) return;
   for (const el of calendarGrid.querySelectorAll(".cal-cash-health-chip")) el.remove();
+  if (cashHealthCardIsOnScreen()) return;
   const wrap = calendarGrid.querySelector(".calendar--mobile");
   const copy = state.cashHealth?.copy;
   if (!wrap || !copy || copy.tone === "healthy" || !copy.actionIso) return;
