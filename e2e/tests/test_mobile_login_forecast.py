@@ -186,6 +186,15 @@ def test_mobile_login_lands_once(page, seed, guard, width):
     if after_settle["todayTop"] is not None:
         assert after_settle["todayTop"] < 844, after_settle
     expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
+    expect(page.locator(".cal-cash-health-chip")).to_have_count(0)
+    assert after_settle["chip"] is False, after_settle
+    kicker = page.locator(".cash-health-card__kicker")
+    expect(kicker).to_be_visible()
+    kicker_text = kicker.inner_text()
+    if "Below minimum projected" in kicker_text or "Negative balance projected" in kicker_text:
+        panel_text = page.locator("#calendarPanel").inner_text()
+        assert "Below minimum projected" not in panel_text
+        assert "Negative balance projected" not in panel_text
     expect(page.get_by_role("heading", name="Monthly Cash Flow")).to_have_count(0)
     assert not after_settle["welcomeOpen"]
     assert not after_settle["tourOpen"]
