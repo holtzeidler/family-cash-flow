@@ -122,6 +122,7 @@ assert.ok(loadBody.indexOf("allowCache") >= 0, "month snapshots are reused only 
 assert.ok(app.indexOf("loadMonthAndCalendar({ allowCache: true })") >= 0, "month buttons reuse warmed adjacent months");
 assert.ok(loadBody.indexOf("schedulePrefetchAdjacentCalendarMonths()") >= 0, "phones warm adjacent months after the first usable paint");
 assert.ok(loadBody.indexOf("cashHealthPromise") >= 0, "Cash Health loads with the month, not after the first paint");
+assert.ok(loadBody.indexOf("revealMobileCalendarPlaced()") >= 0, "phones place today before the calendar is revealed");
 assert.ok(loadBody.indexOf("scheduleMobileForecastTop()") < 0, "month load does not keep issuing top-pin scroll commands");
 assert.ok(loadBody.indexOf("maybeShowForecastReadyPopup()") >= 0, "first-forecast welcome still waits on the full load");
 var extrasFn = functionBody(app, "loadCalendarExtras");
@@ -183,8 +184,11 @@ assert.ok(
   functionBody(app, "cashHealthCardIsOnScreen").indexOf("sidebarCashHealthCard.hidden") >= 0,
   "the calendar chip stays away while Cash Health is already in the forecast layout"
 );
-assert.ok(app.indexOf("cal-earlier-toggle") >= 0, "phones can reveal dates before today without auto-scrolling");
-assert.ok(app.indexOf("mobileCalendarShowEarlier = false") >= 0, "month changes start the current month at today again");
+assert.ok(app.indexOf("cal-earlier-toggle") < 0, "phones do not hide earlier dates behind a control");
+assert.ok(app.indexOf("mobileCalendarShowEarlier") < 0, "earlier dates stay in the mobile list");
+assert.ok(app.indexOf("function placeMobileCalendarBeforeReveal(") >= 0, "initial today placement happens before reveal");
+assert.ok(app.indexOf("keepMobileTodayInPlace") < 0, "today-follow observer stays gone");
+assert.ok(!/new ResizeObserver/.test(functionBody(app, "placeMobileCalendarBeforeReveal")), "placement does not observe later layout shifts");
 var dailyReq = functionBody(app, "requestCalendarMonthDaily");
 assert.ok(dailyReq.indexOf("calendarMonthDailyCache.get") >= 0, "daily-balance requests reuse cached months");
 
