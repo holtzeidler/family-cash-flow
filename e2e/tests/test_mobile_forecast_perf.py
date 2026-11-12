@@ -41,6 +41,12 @@ def _perf_snapshot(page):
             const row = trace.find((item) => item.event === "step:" + label);
             return row && row.extra ? row.extra.ms : null;
           };
+          const usableAt = timed("usable-calendar") || timed("coherent-painted");
+          const apiBeforeUsable = api.filter((row) => usableAt == null || row.t <= usableAt);
+          const pathsBefore = apiBeforeUsable.map((row) => {
+            const qs = row.qs ? ("?" + row.qs) : "";
+            return String(row.path || "") + qs;
+          });
           return {
             nav: nav && {
               start: Math.round(nav.startTime || 0),
@@ -69,6 +75,7 @@ def _perf_snapshot(page):
               reconciled: step("reconciled"),
               verified: step("verified"),
               upcoming: step("upcoming"),
+              adjacent: step("adjacent-daily"),
               confidence: step("forecast-confidence"),
             },
             renderMs: (trace.find((row) => row.event === "renderCalendar-done") || {}).extra
@@ -77,6 +84,19 @@ def _perf_snapshot(page):
             placeMs: ((trace.find((row) => row.event === "mobile-place-today" || row.event === "mobile-place-month") || {}).extra || {}).ms,
             renders: trace.filter((row) => row.event === "renderCalendar").length,
             warmed: trace.filter((row) => row.event === "month-warmed").length,
+            apiCount: api.length,
+            apiBeforeUsableCount: apiBeforeUsable.length,
+            apiBeforeUsable: apiBeforeUsable.map((row) => ({
+              path: row.path,
+              qs: row.qs,
+              ms: row.ms,
+              status: row.status,
+              bytes: row.bytes,
+              t: row.t,
+            })),
+            upcomingBeforeUsable: pathsBefore.some((path) => path.indexOf("transactions?start_date=") >= 0),
+            extrasBeforeUsable: pathsBefore.filter((path) => path.indexOf("transactions?month=") >= 0).length > 1
+              || pathsBefore.filter((path) => path.indexOf("expected-calendar?month=") >= 0).length > 1,
             api: api.map((row) => ({
               path: row.path,
               qs: row.qs,
@@ -110,6 +130,9 @@ def test_mobile_forecast_perf_login(page, seed, guard, width):
     _write_perf(f"login-{width}.json", snap)
     assert snap["marks"]["usable"] or snap["marks"]["coherent"], snap
     assert snap["api"], snap
+    assert snap["upcomingBeforeUsable"] is False, snap
+    if snap["marks"]["usable"] and snap["marks"]["cashHealth"]:
+        assert snap["marks"]["usable"] <= snap["marks"]["cashHealth"], snap
     guard.assert_clean()
 
 
