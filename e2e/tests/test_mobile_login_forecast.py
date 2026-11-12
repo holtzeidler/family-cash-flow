@@ -370,6 +370,29 @@ def test_mobile_login_lands_once(page, seed, guard, width):
     assert not after_settle["tourOpen"]
     TRACE_DIR.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(TRACE_DIR / f"chromium-{width}-ready.png"), full_page=False)
+    density = page.evaluate(
+        """() => {
+          const cells = [...document.querySelectorAll(".calendar--mobile .cal-cell:not(.cal-cell--out)")];
+          return cells.map((el) => {
+            const txns = el.querySelector(".cal-day-txns");
+            const txnsStyle = txns ? getComputedStyle(txns) : null;
+            return {
+              iso: el.getAttribute("data-iso"),
+              noTx: el.classList.contains("cal-cell--no-tx"),
+              today: el.classList.contains("cal-cell--today"),
+              h: Math.round(el.getBoundingClientRect().height),
+              txnsDisplay: txnsStyle ? txnsStyle.display : "",
+            };
+          });
+        }"""
+    )
+    empty = [row for row in density if row["noTx"]]
+    assert empty, density
+    for row in empty:
+        assert 56 <= row["h"] <= 80, row
+        assert row["txnsDisplay"] == "none", row
+    today_row = next((row for row in density if row["today"]), None)
+    assert today_row and 56 <= today_row["h"] <= 80, today_row
     guard.assert_clean()
 
 
@@ -593,4 +616,48 @@ def test_mobile_cash_health_strip_tones(page, seed, guard, width):
     assert after_click["cashHealthInView"] is True, after_click
     assert after_click["stripActive"] is False, after_click
     assert after_click["duplicateCashHealth"] is False, after_click
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Mobile days with transactions stay compact but taller than empty days")
+@pytest.mark.parametrize("width", [320, 375, 390])
+def test_mobile_populated_days_are_tighter(page, seed, guard, width):
+    page.set_viewport_size({"width": width, "height": 844})
+    page.add_init_script(SCROLL_HOOK)
+    login(page, seed["active"]["email"], seed["active"]["password"])
+    expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    _assert_today_with_strip(_today_metrics(page))
+    page.locator("#calendarPrevMonth").click()
+    page.locator("#calendarPrevMonth").click()
+    page.wait_for_function(
+        """() => {
+          const ym = document.getElementById("calendarMonth") && document.getElementById("calendarMonth").value;
+          const panel = document.getElementById("calendarPanel");
+          return ym === "2026-09" && panel && !panel.classList.contains("calendar-panel--loading");
+        }""",
+        timeout=8000,
+    )
+    sept = page.evaluate(
+        """() => {
+          const cells = [...document.querySelectorAll(".calendar--mobile .cal-cell:not(.cal-cell--out)")];
+          return cells.map((el) => ({
+            iso: el.getAttribute("data-iso"),
+            noTx: el.classList.contains("cal-cell--no-tx"),
+            h: Math.round(el.getBoundingClientRect().height),
+            txCount: el.querySelectorAll(".cal-day-tx-line").length,
+          }));
+        }"""
+    )
+    populated = [row for row in sept if not row["noTx"]]
+    empty_sept = [row for row in sept if row["noTx"]]
+    assert populated, sept
+    assert empty_sept, sept
+    assert max(row["h"] for row in populated) > min(row["h"] for row in empty_sept), {
+        "populated": populated,
+        "empty": empty_sept,
+    }
+    for row in empty_sept:
+        assert 56 <= row["h"] <= 88, row
+    TRACE_DIR.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=str(TRACE_DIR / f"chromium-{width}-sept.png"), full_page=False)
     guard.assert_clean()
