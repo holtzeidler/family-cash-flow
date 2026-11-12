@@ -49,7 +49,7 @@ def _wait_confirm_url(email: str) -> str:
 
 
 def _register_with_rare_bills():
-    email = f"bw-smoke-txload-{uuid.uuid4().hex[:10]}@example.com"
+    email = f"bw-smoke-tx{uuid.uuid4().hex[:10]}@example.com"
     assert_bot_email(email)
     _request(
         "POST",
@@ -103,6 +103,8 @@ def _register_with_rare_bills():
             "account_id": account_id,
             "start_date": semi_start.isoformat(),
             "recurrence": "semiannual",
+            "second_day_of_month": semi_start.day,
+            "second_occurrence_month": ((semi_start.month + 5) % 12) + 1,
             "description": "County Property Taxes",
             "kind": "expense",
             "amount": "2100.00",
@@ -123,10 +125,10 @@ def _snapshot(page, width):
             return row ? Math.round(row.t) : null;
           };
           const rangeTx = api.filter((row) =>
-            /\/transactions$/.test(String(row.path || '')) && String(row.qs || '').indexOf('start_date=') >= 0
+            /\\/transactions$/.test(String(row.path || '')) && String(row.qs || '').indexOf('start_date=') >= 0
           );
           const expected = api.filter((row) =>
-            /\/expected-transactions$/.test(String(row.path || '')) && String(row.method || 'GET') === 'GET'
+            /\\/expected-transactions$/.test(String(row.path || '')) && String(row.method || 'GET') === 'GET'
           );
           return {
             width,
@@ -151,6 +153,15 @@ def _wait_list(page):
     expect(page.locator(".tm-list-loading")).to_have_count(0)
 
 
+def _row(page, amount: str, freq: str):
+    """Match the visible row copy. Uncategorized series show the category, not the description."""
+    return page.locator("#txListMain .tm-row").filter(has_text=amount).filter(has_text=freq)
+
+
+def _expect_list_count(page, n: int):
+    expect(page.get_by_text(f"{n} in this list")).to_be_visible()
+
+
 def _run_viewport(page, guard, email, width, height, name):
     page.set_viewport_size({"width": width, "height": height})
     login(page, email, PASSWORD)
@@ -170,14 +181,25 @@ def _run_viewport(page, guard, email, width, height, name):
     if snap["calendar"] is not None:
         assert snap["listStart"] <= snap["calendar"], snap
 
+    yearly = _row(page, "-$1,280.00", "Every year")
+    semi = _row(page, "-$2,100.00", "Twice Yearly")
+    expect(yearly).to_be_visible()
+    expect(semi).to_be_visible()
+    _expect_list_count(page, snap["rows"])
+
     page.locator("#tmSearch").fill("Annual Insurance")
-    expect(page.locator("#txListMain .tm-row", has_text="Annual Insurance Premium")).to_be_visible()
+    expect(yearly).to_be_visible()
+    expect(semi).to_have_count(0)
+    _expect_list_count(page, 1)
     page.locator("#tmSearch").fill("policy 9988")
-    expect(page.locator("#txListMain .tm-row", has_text="Annual Insurance Premium")).to_be_visible()
+    expect(yearly).to_be_visible()
+    expect(semi).to_have_count(0)
+    _expect_list_count(page, 1)
     page.locator("#tmSearch").fill("County Property")
-    row = page.locator("#txListMain .tm-row", has_text="County Property Taxes")
-    expect(row).to_be_visible()
-    row.click()
+    expect(semi).to_be_visible()
+    expect(yearly).to_have_count(0)
+    _expect_list_count(page, 1)
+    semi.locator(".tm-row__edit").click()
     expect(page.locator("#txEditModal.modal-overlay--open")).to_be_visible()
     page.locator("#txEditAmount").fill("2150")
     page.locator("#txEditSave").click()
@@ -191,9 +213,10 @@ def _run_viewport(page, guard, email, width, height, name):
     expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
 
     page.locator("#tmSearch").fill("")
-    expect(page.locator("#txListMain .tm-row", has_text="Annual Insurance Premium")).to_be_visible()
-    expect(page.locator("#txListMain .tm-row", has_text="County Property Taxes")).to_be_visible()
+    expect(yearly).to_be_visible()
+    expect(semi).to_be_visible()
     expect(page.locator("#txListMain .tm-row")).to_have_count(snap["rows"])
+    _expect_list_count(page, snap["rows"])
 
     page.wait_for_function(
         """() => {
