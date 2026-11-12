@@ -2835,6 +2835,7 @@ function renderCashHealth() {
     setSidebarLowBalanceBanner("", "off");
     setLowBalanceResult("", true);
     syncCashHealthCalendarChip();
+    syncCashHealthStrip(null);
     return;
   }
   const { summary } = ch;
@@ -2853,6 +2854,7 @@ function renderCashHealth() {
     setSidebarCashHealthCard(copy);
   }
   syncCashHealthCalendarChip();
+  syncCashHealthStrip(copy);
   bwCalendarTraceLayout("cash-health-painted");
 }
 
@@ -2869,6 +2871,7 @@ async function refreshLowBalanceAlert() {
       setLowBalanceResult("", true);
       syncSidebarCashHealthCardVisibility();
       syncCashHealthCalendarChip();
+      syncCashHealthStrip(null);
       return;
     }
     syncSidebarCashHealthCardVisibility();
@@ -2921,6 +2924,7 @@ async function refreshLowBalanceAlert() {
     setSidebarHighBalanceBanner("", "off");
     setSidebarBalanceThresholdHint("");
     syncCashHealthCalendarChip();
+    syncCashHealthStrip(null);
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
   }
 }
@@ -19925,10 +19929,23 @@ function fixedHeaderBottom() {
   return bottom;
 }
 
-/** Scroll position that puts a day just below the fixed header. */
+/** Space under the nav for the compact Cash Health strip while today is in view. */
+function mobileCashHealthStripReserve() {
+  if (!isMobileCalendarViewport()) return 0;
+  const el = cashHealthStripEl();
+  if (el && el.classList.contains("is-active") && !el.hidden) {
+    const height = Math.round(el.getBoundingClientRect().height);
+    if (height > 0) return height;
+  }
+  return 40;
+}
+
 function mobileCalendarScrollTopFor(cell) {
   if (!cell) return 0;
-  return Math.max(0, cell.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 12);
+  return Math.max(
+    0,
+    cell.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - mobileCashHealthStripReserve() - 8
+  );
 }
 
 function setMobileCalendarScrollTop(top) {
@@ -19989,6 +20006,7 @@ function revealMobileCalendarPlaced() {
     const finish = () => {
       if (!calendarMobileUserMoved) placeMobileCalendarBeforeReveal(kind);
       markMobileCalendarPlacing(false);
+      syncCashHealthStripVisibility();
       resolve();
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(finish);
@@ -20004,6 +20022,7 @@ function scrollMobileCalendarToToday() {
   const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
   if (!cell) return;
   setMobileCalendarScrollTop(mobileCalendarScrollTopFor(cell));
+  syncCashHealthStripVisibility();
   bwCalendarTrace("mobile-today", { iso: todayIso });
 }
 
@@ -20126,6 +20145,111 @@ function cashHealthCardIsOnScreen() {
   return true;
 }
 
+function cashHealthStripEl() {
+  return document.getElementById("calCashHealthStrip");
+}
+
+function cashHealthStripKicker(copy) {
+  if (!copy) return "";
+  if (copy.tone === "negative") return "Negative";
+  if (copy.tone === "below") return "Below minimum";
+  return copy.kicker || copy.headline || "Cash Health";
+}
+
+function cashHealthCardInViewport() {
+  const card = document.getElementById("sidebarCashHealthCard");
+  if (!card || card.hidden) return false;
+  const rect = card.getBoundingClientRect();
+  const header = fixedHeaderBottom();
+  return rect.bottom > header + 4 && rect.top < window.innerHeight - 8;
+}
+
+function cashHealthStripShouldShow() {
+  if (!isMobileCalendarViewport()) return false;
+  if (document.body?.dataset?.bwView !== "calendar") return false;
+  if (document.querySelector(".bw-tour-tooltip--open, .modal-overlay--open, .bw-tour-backdrop--open")) return false;
+  const copy = state.cashHealth?.copy;
+  if (!copy) return false;
+  return !cashHealthCardInViewport();
+}
+
+function ensureCashHealthStrip() {
+  let el = cashHealthStripEl();
+  if (el) return el;
+  el = document.createElement("button");
+  el.type = "button";
+  el.id = "calCashHealthStrip";
+  el.className = "cal-cash-health-strip";
+  el.hidden = true;
+  el.addEventListener("click", (e) => {
+    e.preventDefault();
+    const copy = state.cashHealth?.copy;
+    if (copy && copy.tone !== "healthy" && copy.actionIso) {
+      void openCashHealthDate();
+      return;
+    }
+    const card = document.getElementById("sidebarCashHealthCard");
+    if (!card) return;
+    calendarMobileUserMoved = true;
+    const top = Math.max(0, card.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 8);
+    window.scrollTo({ top, behavior: "auto" });
+    syncCashHealthStripVisibility();
+  });
+  document.body.appendChild(el);
+  return el;
+}
+
+function syncCashHealthStrip(copy) {
+  const el = ensureCashHealthStrip();
+  const src = copy || state.cashHealth?.copy;
+  if (!src) {
+    el.hidden = true;
+    el.classList.remove("is-active");
+    el.innerHTML = "";
+    return;
+  }
+  const kicker = escapeHtml(cashHealthStripKicker(src));
+  const amount = escapeHtml(src.amountText || "");
+  const when = escapeHtml(src.whenLabel || "");
+  el.className = `cal-cash-health-strip cal-cash-health-strip--${src.tone || "healthy"}`;
+  el.setAttribute("aria-label", src.ariaLabel || "Cash Health");
+  el.innerHTML = `${cashHealthStatusIconHtml(src.tone)}<span class="cal-cash-health-strip__kicker">${kicker}</span>${
+    amount ? `<span class="cal-cash-health-strip__amount">${amount}</span>` : ""
+  }${when ? `<span class="cal-cash-health-strip__when">${when}</span>` : ""}`;
+  observeCashHealthStrip();
+  syncCashHealthStripVisibility();
+}
+
+function syncCashHealthStripVisibility() {
+  const el = cashHealthStripEl();
+  if (!el) return;
+  const show = !!(el.innerHTML && cashHealthStripShouldShow());
+  el.hidden = !show;
+  el.classList.toggle("is-active", show);
+}
+
+let cashHealthStripObserver = null;
+
+function observeCashHealthStrip() {
+  if (!isMobileCalendarViewport() || typeof IntersectionObserver !== "function") {
+    syncCashHealthStripVisibility();
+    return;
+  }
+  const card = document.getElementById("sidebarCashHealthCard");
+  if (!card) return;
+  if (cashHealthStripObserver) {
+    syncCashHealthStripVisibility();
+    return;
+  }
+  const header = Math.max(fixedHeaderBottom(), 110);
+  cashHealthStripObserver = new IntersectionObserver(() => syncCashHealthStripVisibility(), {
+    root: null,
+    threshold: 0,
+    rootMargin: `-${header}px 0px 0px 0px`,
+  });
+  cashHealthStripObserver.observe(card);
+}
+
 /** Phones: keep the warning in Cash Health. Do not repeat it above today's card when that card is already on screen. */
 function syncCashHealthCalendarChip() {
   if (!calendarGrid) return;
@@ -20155,6 +20279,7 @@ function syncCashHealthCalendarChip() {
 
 window.addEventListener("bw-tour-ended", () => {
   calendarMobileUserMoved = true;
+  syncCashHealthStripVisibility();
 });
 
 let calendarLoadingGuardTimer = null;

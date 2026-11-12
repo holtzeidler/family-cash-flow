@@ -35937,9 +35937,71 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
   white-space: nowrap;
   color: var(--accent);
 }
+.cal-cash-health-strip{
+  display: none;
+}
 @media (max-width: 768px){
   .calendar--mobile .cal-cell.cal-cell--out.cal-cell--cash-health-payment{
     display: flex;
+  }
+  body[data-bw-view="calendar"] .cal-cash-health-strip.is-active{
+    display: flex;
+    position: fixed;
+    top: var(--app-top-nav-offset);
+    left: 0;
+    right: 0;
+    z-index: 40;
+    box-sizing: border-box;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 36px;
+    max-height: 40px;
+    margin: 0;
+    padding: 7px 16px;
+    overflow: hidden;
+    border: 0;
+    border-bottom: 1px solid rgba(180, 140, 70, 0.18);
+    border-radius: 0;
+    background: #fbf8f3;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+    color: rgba(55, 48, 42, 0.92);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body[data-bw-view="calendar"] .cal-cash-health-strip.is-active:focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  body[data-bw-view="calendar"] .cal-cash-health-strip .cash-health-card__icon{
+    margin-top: 0;
+  }
+  body[data-bw-view="calendar"] .cal-cash-health-strip__kicker{
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  body[data-bw-view="calendar"] .cal-cash-health-strip__amount{
+    flex: 0 0 auto;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  body[data-bw-view="calendar"] .cal-cash-health-strip__when{
+    flex: 0 0 auto;
+    color: rgba(120, 113, 108, 0.78);
+    white-space: nowrap;
+  }
+  body[data-bw-view="calendar"]:has(.bw-tour-tooltip--open) .cal-cash-health-strip,
+  body[data-bw-view="calendar"]:has(.bw-tour-backdrop--open) .cal-cash-health-strip,
+  body[data-bw-view="calendar"]:has(.modal-overlay--open) .cal-cash-health-strip{
+    display: none;
   }
 }
 

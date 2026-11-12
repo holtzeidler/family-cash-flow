@@ -52,6 +52,10 @@ def _today_metrics(page):
           const datesHidden = !!(scrollStyle && (scrollStyle.visibility === "hidden" || scrollStyle.opacity === "0"));
           const todayRect = cell ? cell.getBoundingClientRect() : null;
           const ch = document.querySelector("#sidebarCashHealthCard");
+          const strip = document.getElementById("calCashHealthStrip");
+          const stripRect = strip && !strip.hidden ? strip.getBoundingClientRect() : null;
+          const nav = document.querySelector(".top-nav");
+          const navBottom = nav ? Math.round(nav.getBoundingClientRect().bottom) : 0;
           const mcf = document.querySelector('.sidebar .card[data-sidebar-key="month"]');
           const addTx = document.querySelector(".cal-add-tx-btn, .cal-mobile-add-row");
           const log = window.__bwScrollLog || [];
@@ -74,7 +78,7 @@ def _today_metrics(page):
             todayIso: cell && cell.getAttribute("data-iso"),
             firstInMonthIso: firstCell && firstCell.getAttribute("data-iso"),
             firstVisibleIso: firstCell && firstCell.getAttribute("data-iso"),
-            todayInView: !!(todayRect && todayRect.top >= 70 && todayRect.top < window.innerHeight - 80 && !datesHidden),
+            todayInView: !!(todayRect && todayRect.top >= Math.max(70, stripRect ? stripRect.bottom - 2 : 70) && todayRect.top < window.innerHeight - 80 && !datesHidden),
             datesHidden,
             earlierToggle: !!document.querySelector(".cal-earlier-toggle"),
             placeCount: events.filter((e) => e === "mobile-place-today" || e === "mobile-place-month").length,
@@ -98,6 +102,19 @@ def _today_metrics(page):
             topCount: trace.filter((row) => row.event === "mobile-top").length,
             cashHealthHidden: !!(ch && ch.hidden),
             cashHealthTop: ch ? Math.round(ch.getBoundingClientRect().top) : null,
+            cashHealthInView: !!(ch && !ch.hidden && (() => {
+              const rect = ch.getBoundingClientRect();
+              return rect.bottom > navBottom + 4 && rect.top < window.innerHeight - 8;
+            })()),
+            stripActive: !!(strip && !strip.hidden && strip.classList.contains("is-active")),
+            stripTop: stripRect ? Math.round(stripRect.top) : null,
+            stripBottom: stripRect ? Math.round(stripRect.bottom) : null,
+            stripInView: !!(stripRect && stripRect.top >= navBottom - 1 && stripRect.bottom <= window.innerHeight),
+            stripText: strip ? String(strip.textContent || "").replace(/\\s+/g, " ").trim() : "",
+            duplicateCashHealth: !!(strip && !strip.hidden && strip.classList.contains("is-active") && ch && !ch.hidden && (() => {
+              const rect = ch.getBoundingClientRect();
+              return rect.bottom > navBottom + 4 && rect.top < window.innerHeight - 8;
+            })()),
             renders: trace.filter((row) => row.event === "renderCalendar").length,
             skippedEmpty: events.filter((e) => e === "renderCalendar-skipped-empty").length,
             daily: events.includes("daily-balances-painted"),
@@ -132,6 +149,20 @@ def _today_metrics(page):
           };
         }"""
     )
+
+
+def _assert_today_with_strip(metrics):
+    assert metrics["todayInView"] is True, metrics
+    assert metrics["earlierToggle"] is False, metrics
+    assert metrics["stripActive"] is True, metrics
+    assert metrics["stripInView"] is True, metrics
+    assert metrics["cashHealthInView"] is False, metrics
+    assert metrics["duplicateCashHealth"] is False, metrics
+    if metrics["stripBottom"] is not None and metrics["todayTop"] is not None:
+        assert metrics["stripBottom"] <= metrics["todayTop"] + 2, metrics
+    if metrics["stripTop"] is not None:
+        assert metrics["stripTop"] >= 70, metrics
+    assert metrics["chip"] is False, metrics
 
 
 def _write_trace(name, payload):
@@ -182,17 +213,15 @@ def test_mobile_login_lands_once(page, seed, guard, width):
     assert after_settle["cells"] > 0, after_settle
     assert after_settle["mcfVisible"] is False, after_settle
     assert after_settle["usable"] or after_settle["coherent"], after_settle
-    assert after_settle["earlierToggle"] is False, after_settle
     assert after_settle["datesHidden"] is False, after_settle
-    assert after_settle["todayInView"] is True, after_settle
     assert after_settle["placeCount"] >= 1, after_settle
+    _assert_today_with_strip(after_settle)
     if after_settle["todayIso"] and after_settle["firstInMonthIso"]:
         assert after_settle["firstInMonthIso"] < after_settle["todayIso"], after_settle
     if after_settle["todayTop"] is not None:
         assert 40 <= after_settle["todayTop"] < 844, after_settle
     expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
     expect(page.locator(".cal-cash-health-chip")).to_have_count(0)
-    assert after_settle["chip"] is False, after_settle
     kicker = page.locator(".cash-health-card__kicker")
     expect(kicker).to_be_visible()
     kicker_text = kicker.inner_text()
@@ -236,8 +265,7 @@ def test_mobile_slow_network_holds_calendar_until_ready(page, seed, guard):
     assert after_ready["daily"] is False, after_ready
     assert metrics["landCount"] == 0, metrics
     assert metrics["cells"] > 0, metrics
-    assert metrics["todayInView"] is True, metrics
-    assert metrics["earlierToggle"] is False, metrics
+    _assert_today_with_strip(metrics)
     guard.assert_clean()
 
 
@@ -259,8 +287,7 @@ def test_mobile_refresh_stays_at_top(page, seed, guard):
                 assert row["datesHidden"] is True, row
     expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
     settled = _today_metrics(page)
-    assert settled["todayInView"] is True, settled
-    assert settled["earlierToggle"] is False, settled
+    _assert_today_with_strip(settled)
     guard.assert_clean()
 
 
@@ -290,8 +317,7 @@ def test_mobile_today_button_scrolls_to_today(page, seed, guard):
     page.locator("#calendarGoToday").click()
     page.wait_for_timeout(200)
     metrics = _today_metrics(page)
-    assert metrics["todayInView"] is True, metrics
-    assert metrics["earlierToggle"] is False, metrics
+    _assert_today_with_strip(metrics)
     assert metrics["landCount"] >= 1, metrics
     guard.assert_clean()
 
@@ -303,7 +329,7 @@ def test_mobile_natural_scroll_around_today(page, seed, guard):
     login(page, seed["active"]["email"], seed["active"]["password"])
     expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
     ready = _today_metrics(page)
-    assert ready["todayInView"] is True, ready
+    _assert_today_with_strip(ready)
     assert ready["firstInMonthIso"] < ready["todayIso"], ready
     page.evaluate("window.scrollBy(0, -360)")
     page.wait_for_timeout(80)
@@ -320,6 +346,16 @@ def test_mobile_natural_scroll_around_today(page, seed, guard):
         }"""
     )
     assert earlier["iso"] and earlier["iso"] < ready["todayIso"], earlier
+    mid = _today_metrics(page)
+    assert mid["stripActive"] is True, mid
+    assert mid["cashHealthInView"] is False, mid
+    page.evaluate("window.scrollTo(0, 0)")
+    page.wait_for_timeout(80)
+    at_top = _today_metrics(page)
+    assert at_top["cashHealthInView"] is True, at_top
+    assert at_top["stripActive"] is False, at_top
+    page.evaluate(f"window.scrollTo(0, {int(ready['y'])})")
+    page.wait_for_timeout(80)
     page.evaluate("window.scrollBy(0, 720)")
     page.wait_for_timeout(80)
     later = page.evaluate(
@@ -377,6 +413,11 @@ def test_mobile_cached_next_month_is_instant(page, seed, guard):
     assert after["cacheHits"] >= 1, after
     assert after["earlierToggle"] is False, after
     assert after["datesHidden"] is False, after
+    assert after["duplicateCashHealth"] is False, after
+    if after["cashHealthInView"]:
+        assert after["stripActive"] is False, after
+    else:
+        assert after["stripActive"] is True, after
     assert elapsed_ms < 1500, {"elapsed_ms": elapsed_ms, "after": after}
     expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
     guard.assert_clean()
