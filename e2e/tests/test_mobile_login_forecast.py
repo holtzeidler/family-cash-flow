@@ -45,14 +45,28 @@ def _today_metrics(page):
     return page.evaluate(
         """() => {
           const cell = document.querySelector(".cal-cell--today");
+          const firstCell = document.querySelector(".cal-cell");
           const panel = document.getElementById("calendarPanel");
           const ch = document.querySelector("#sidebarCashHealthCard");
+          const mcf = document.querySelector('.sidebar .card[data-sidebar-key="month"]');
+          const addTx = document.querySelector(".cal-add-tx-btn, .cal-mobile-add-row");
           const log = window.__bwScrollLog || [];
           const trace = window.__bwCalendarTrace || [];
           const events = trace.map((row) => row.event);
+          const timed = (name) => {
+            const row = trace.find((item) => item.event === name);
+            return row ? Math.round(row.t) : null;
+          };
           return {
             y: Math.round(window.scrollY || 0),
             todayTop: cell ? Math.round(cell.getBoundingClientRect().top) : null,
+            firstCellTop: firstCell ? Math.round(firstCell.getBoundingClientRect().top) : null,
+            calendarTop: panel ? Math.round(panel.getBoundingClientRect().top) : null,
+            addTxTop: addTx ? Math.round(addTx.getBoundingClientRect().top) : null,
+            mcfVisible: !!(mcf && mcf.offsetParent !== null && getComputedStyle(mcf).display !== "none"),
+            cashHealthMs: timed("cash-health-painted"),
+            usableMs: timed("usable-calendar") || timed("coherent-painted"),
+            bootstrapMs: timed("bootstrap-start"),
             todayIso: cell && cell.getAttribute("data-iso"),
             busy: !!(panel && panel.classList.contains("calendar-panel--loading")),
             restoration: String(history.scrollRestoration || ""),
@@ -67,6 +81,7 @@ def _today_metrics(page):
             daily: events.includes("daily-balances-painted"),
             coherent: events.includes("coherent-painted"),
             ready: events.includes("month-load-ready"),
+            usable: events.includes("usable-calendar"),
             cells: document.querySelectorAll(".cal-cell").length,
             txLines: document.querySelectorAll(".cal-day-tx-line").length,
             chip: !!document.querySelector(".cal-cash-health-chip"),
@@ -143,9 +158,16 @@ def test_mobile_login_lands_once(page, seed, guard, width):
     assert after_settle["landCount"] == 0, after_settle
     assert after_settle["toCount"] <= 1, after_settle
     assert after_settle["cells"] > 0, after_settle
+    assert after_settle["mcfVisible"] is False, after_settle
+    assert after_settle["usable"] or after_settle["coherent"], after_settle
     if after_settle["cashHealthTop"] is not None:
         assert after_settle["cashHealthTop"] < 280, after_settle
+    if after_settle["firstCellTop"] is not None:
+        assert after_settle["firstCellTop"] < 844, after_settle
+    if after_settle["calendarTop"] is not None:
+        assert after_settle["calendarTop"] < 700, after_settle
     expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
+    expect(page.get_by_role("heading", name="Monthly Cash Flow")).to_have_count(0)
     assert not after_settle["welcomeOpen"]
     assert not after_settle["tourOpen"]
     TRACE_DIR.mkdir(parents=True, exist_ok=True)

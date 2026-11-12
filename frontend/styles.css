@@ -33615,7 +33615,7 @@ body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
 @media (max-width: 768px){
   body[data-bw-view="calendar"] .sidebar,
   body[data-bw-view="transactions"] .sidebar{
-    gap: 10px;
+    gap: 8px;
     overflow: visible;
     height: auto;
     max-height: none;
@@ -33623,18 +33623,86 @@ body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
   body[data-bw-view="calendar"] .sidebar-sticky-head,
   body[data-bw-view="transactions"] .sidebar-sticky-head{
     position: static;
-    gap: 10px;
+    gap: 8px;
   }
-  body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"],
+  body[data-bw-view="calendar"] .sidebar .card[data-sidebar-key="month"]{
+    display: none;
+  }
   body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
     margin-top: 0;
   }
-  /* Reserve the Cash Health / Monthly Cash Flow slots so they fill in without shoving the calendar. */
-  body[data-bw-view="calendar"] .sidebar-cash-health__alerts{
-    min-height: 56px;
+  body[data-bw-view="calendar"] #sidebarCashHealthCard{
+    padding: 8px 10px 8px;
   }
-  body[data-bw-view="calendar"] #totals{
-    min-height: 84px;
+  body[data-bw-view="calendar"] .sidebar-cash-health__head{
+    margin-bottom: 4px;
+  }
+  body[data-bw-view="calendar"] .sidebar-cash-health__alerts{
+    min-height: 0;
+  }
+  body[data-bw-view="calendar"] #sidebarLowBalanceBanner.calendar-low-balance--sidebar{
+    padding: 8px 10px;
+    margin-top: 2px;
+  }
+  body[data-bw-view="calendar"] .cash-health-status--review{
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+  body[data-bw-view="calendar"] #sidebarPendingTxCard.sidebar-pending--empty{
+    margin-top: 4px;
+    padding-top: 4px;
+  }
+  body[data-bw-view="calendar"] .sidebar-reconcile{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+  body[data-bw-view="calendar"] .sidebar-reconcile__status{
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  body[data-bw-view="calendar"] button.sidebar-reconcile__action{
+    width: auto;
+    min-height: 32px;
+    margin: 0;
+    padding: 6px 10px;
+    flex: 0 0 auto;
+  }
+  body[data-bw-view="calendar"] .calendar-panel,
+  body[data-bw-view="calendar"] .card.calendar-panel{
+    min-height: 0;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-scroll,
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-dow-row{
+    opacity: 1;
+    visibility: visible;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-loading-indicator,
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-loading-indicator[hidden]{
+    position: static;
+    inset: auto;
+    display: flex;
+    justify-content: flex-start;
+    order: 2;
+    padding: 8px 2px 10px;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-panel-sticky-zone{
+    order: 1;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-panel-body{
+    order: 3;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-sticky-header .cal-month-year,
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-sticky-header .cal-mode-wrap,
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-sticky-header .cal-today-btn{
+    opacity: 1;
+    pointer-events: auto;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--loading #calendarGrid{
+    min-height: 72px;
   }
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth,
@@ -36008,6 +36076,9 @@ body[data-bw-view] button.sidebar-reconcile__action{
 @media (max-width: 820px){
   body[data-bw-view] button.sidebar-reconcile__action{
     min-height: 44px;
+  }
+  body[data-bw-view="calendar"] button.sidebar-reconcile__action{
+    min-height: 32px;
   }
 }
 body[data-bw-view] #sidebarBodyMonth .total .k,

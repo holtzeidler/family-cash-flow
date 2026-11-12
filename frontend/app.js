@@ -2827,6 +2827,7 @@ function renderCashHealth() {
     setSidebarCashHealthCard(copy);
   }
   syncCashHealthCalendarChip();
+  bwCalendarTraceLayout("cash-health-painted");
 }
 
 async function refreshLowBalanceAlert() {
@@ -18780,23 +18781,19 @@ async function loadCalendarExtras() {
   const prev = shiftMonthStr(month, -1);
   const next = shiftMonthStr(month, 1);
   if (!prev || !next) return;
+  const fid = state.activeFamilyId;
   try {
-    const [prevTx, nextTx] = await Promise.all([
-      api(`/api/families/${state.activeFamilyId}/transactions?month=${encodeURIComponent(prev)}`, "GET"),
-      api(`/api/families/${state.activeFamilyId}/transactions?month=${encodeURIComponent(next)}`, "GET"),
+    const [prevTx, nextTx, prevExp, nextExp] = await Promise.all([
+      api(`/api/families/${fid}/transactions?month=${encodeURIComponent(prev)}`, "GET"),
+      api(`/api/families/${fid}/transactions?month=${encodeURIComponent(next)}`, "GET"),
+      api(`/api/families/${fid}/expected-calendar?month=${encodeURIComponent(prev)}`, "GET"),
+      api(`/api/families/${fid}/expected-calendar?month=${encodeURIComponent(next)}`, "GET"),
     ]);
     state.calendarExtraActualItems = [...(prevTx?.items || []), ...(nextTx?.items || [])];
+    state.calendarExtraExpectedItems = [...(prevExp?.items || []), ...(nextExp?.items || [])];
   } catch (_) {
     // Non-fatal; calendar will still render the base month.
     state.calendarExtraActualItems = [];
-  }
-  try {
-    const [prevExp, nextExp] = await Promise.all([
-      api(`/api/families/${state.activeFamilyId}/expected-calendar?month=${encodeURIComponent(prev)}`, "GET"),
-      api(`/api/families/${state.activeFamilyId}/expected-calendar?month=${encodeURIComponent(next)}`, "GET"),
-    ]);
-    state.calendarExtraExpectedItems = [...(prevExp?.items || []), ...(nextExp?.items || [])];
-  } catch (_) {
     state.calendarExtraExpectedItems = [];
   }
 }
@@ -19451,8 +19448,7 @@ function renderSidebarPendingTransactionsForMonth() {
       return;
     }
     if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
-    setTitle();
-    setPendingStatus("");
+    showEmpty(noneTitle);
     return;
   }
 
@@ -19941,7 +19937,7 @@ async function loadMonthAndCalendar() {
   const gen = ++calendarLoadGen;
   const stillCurrent = () => gen === calendarLoadGen;
   const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
-  const coherentFirstPaint = isMobileCalendarViewport();
+  const mobile = isMobileCalendarViewport();
   beginNeedsReviewMonthLoad(viewedYm);
   try {
     // Keep matching and adjusted dates until the month fetch replaces them so
@@ -19953,7 +19949,7 @@ async function loadMonthAndCalendar() {
     // On phones the panel overlay is already the loading state. Inserting the
     // green ribbon after empty day cards are on screen is what the recording
     // showed as "Loading forecast…" appearing late and shoving the calendar.
-    if (!coherentFirstPaint) ensureForecastStatusRibbon("Loading forecast…");
+    if (!mobile) ensureForecastStatusRibbon("Loading forecast…");
     bwCalendarTraceLayout("month-load-start");
 
     if (!state.activeFamilyId) {
@@ -19979,37 +19975,67 @@ async function loadMonthAndCalendar() {
     };
 
     const cashHealthPromise = runStep("low-balance", () => refreshLowBalanceAlert());
-    await runStep("daily-balances", () => loadCalendarMonthDaily(gen));
+    const dailyPromise = runStep("daily-balances", () => loadCalendarMonthDaily(gen));
+    const txPromise = runStep("transactions", () => loadTransactions(gen));
+    const expectedPromise = runStep("expected", () => loadExpectedCalendar(gen));
+    const extrasPromise = runStep("extras", () => loadCalendarExtras());
+    const upcomingPromise = runStep("upcoming", () => loadUpcomingTransactionsPanel());
+    const reconciledPromise = runStep("reconciled", () => loadReconciledDays(getCalendarViewYm()));
+    const verifiedPromise = runStep("verified", () => loadVerifiedBalances(getCalendarViewYm()));
+
+    if (!mobile) {
+      await dailyPromise;
+      if (!stillCurrent()) return;
+      if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
+        try {
+          computeMonthDailyBalancesLegacy();
+        } catch (_) {}
+      }
+      renderCalendar();
+      bwCalendarTraceLayout("daily-balances-painted");
+      if (stillCurrent()) updateCalendarEmptyStateBanner();
+      await Promise.all([
+        txPromise,
+        upcomingPromise,
+        expectedPromise,
+        extrasPromise,
+        reconciledPromise,
+        verifiedPromise,
+        cashHealthPromise,
+      ]);
+    } else {
+      // Phones: one coherent calendar once the month's balances and items exist.
+      // Do not wait for the 548-day upcoming list or forecast-confidence.
+      await Promise.all([
+        dailyPromise,
+        txPromise,
+        expectedPromise,
+        extrasPromise,
+        cashHealthPromise,
+        reconciledPromise,
+        verifiedPromise,
+      ]);
+    }
     if (!stillCurrent()) return;
     if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
       try {
         computeMonthDailyBalancesLegacy();
       } catch (_) {}
     }
-    if (!coherentFirstPaint) {
-      renderCalendar();
-      bwCalendarTraceLayout("daily-balances-painted");
-      if (stillCurrent()) updateCalendarEmptyStateBanner();
-    }
-
-    await Promise.all([
-      runStep("transactions", () => loadTransactions(gen)),
-      runStep("upcoming", () => loadUpcomingTransactionsPanel()),
-      runStep("expected", () => loadExpectedCalendar(gen)),
-      runStep("extras", () => loadCalendarExtras()),
-      runStep("reconciled", () => loadReconciledDays(getCalendarViewYm())),
-      runStep("verified", () => loadVerifiedBalances(getCalendarViewYm())),
-      cashHealthPromise,
-    ]);
     try {
       repairOutOfMonthBalanceContinuity();
     } catch (_) {}
-    if (!stillCurrent()) return;
     finishNeedsReviewMonthLoad(viewedYm);
     renderMonthSummaryTotalsFromState();
     renderCalendar();
     bwCalendarTraceLayout("coherent-painted");
     updateCalendarEmptyStateBanner();
+    if (mobile) {
+      setCalendarLoadingUi(false);
+      calendarInitialMonthReady = true;
+      bwCalendarTraceLayout("usable-calendar");
+      void upcomingPromise;
+    }
     await runStep("forecast-confidence", () => refreshForecastConfidence());
     if (!stillCurrent()) return;
     const pendingFocus = document.body?.dataset?.bwView === "calendar" ? takePendingCashHealthFocus() : null;
@@ -26232,21 +26258,19 @@ async function main() {
   try {
     syncSidebarCashHealthCardVisibility();
   } catch (_) {}
-  // Load accounts first, then wait for daily-balances. A client-side estimate here
-  // would paint the wrong numbers and force a second full calendar rebuild.
-  if (state.activeFamilyId) {
+  // Family-scoped forecast fetches only need the family id. Run accounts in
+  // parallel so phones are not blocked on a sequential accounts round-trip.
+  const accountsPromise = state.activeFamilyId
+    ? loadAccounts().catch((e) => {
+        show(familiesErr, (e && e.message) || "Failed to load accounts");
+      })
+    : Promise.resolve();
+  if (!isMobileCalendarViewport()) {
     try {
-      await loadAccounts();
-      if (!isMobileCalendarViewport()) {
-        try {
-          ensureForecastStatusRibbon("Loading forecast…");
-        } catch (_) {}
-      }
-    } catch (e) {
-      show(familiesErr, (e && e.message) || "Failed to load accounts");
-    }
+      ensureForecastStatusRibbon("Loading forecast…");
+    } catch (_) {}
   }
-  await loadMonthAndCalendar();
+  await Promise.all([accountsPromise, loadMonthAndCalendar()]);
   bwCalendarTrace("bootstrap-calendar-ready");
   try {
     updateCalendarEmptyStateBanner();
