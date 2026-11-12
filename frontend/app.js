@@ -17372,7 +17372,7 @@ function renderAccountsList(accounts) {
           <button type="button" class="settings-account-edit-btn" data-account-id="${a.id}">Edit</button>
         </div>
         <div class="settings-account-row__detail">${escapeHtml(typeLabel)} · Starting balance $${fmtMoney(a.starting_balance)} · ${escapeHtml(
-      fmtDateMDY(startDate),
+      fmtDateMedDisplay(startDate),
     )}</div>
       </div>
     `;
