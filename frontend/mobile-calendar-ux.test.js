@@ -257,6 +257,17 @@ assert.ok(ensureFn.indexOf("loadUpcomingTransactionsPanel()") >= 0, "list prefet
 var prefetchIdx = app.indexOf("const txListPrefetch");
 var calendarAwaitIdx = app.indexOf("await Promise.all([accountsPromise, loadMonthAndCalendar()])");
 assert.ok(prefetchIdx >= 0 && prefetchIdx < calendarAwaitIdx, "transactions list prefetch starts before the calendar wait");
+var mainFn = functionBody(app, "main");
+var txWaitIdx = mainFn.indexOf("await txListPrefetch");
+var mainCalendarIdx = mainFn.indexOf("await Promise.all([accountsPromise, loadMonthAndCalendar()])");
+assert.ok(
+  txWaitIdx >= 0 && mainCalendarIdx > txWaitIdx && mainFn.indexOf("isTransactionsView()") < txWaitIdx,
+  "Transactions rows settle before Forecast starts"
+);
+assert.ok(
+  mainFn.indexOf("isTransactionsOrReportsView()") >= 0 && mainFn.indexOf("isTransactionsOrReportsView()") < txWaitIdx,
+  "Reports still starts its list without waiting to begin Forecast"
+);
 var monthFn = functionBody(app, "loadMonthAndCalendar");
 assert.ok(monthFn.indexOf("upcomingPromise: mobile") >= 0, "Forecast still skips the 548-day upcoming fetch on phones");
 var renderCalFn = functionBody(app, "renderCalendar");

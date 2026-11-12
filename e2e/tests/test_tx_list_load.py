@@ -138,6 +138,7 @@ def _snapshot(page, width):
             listReady: timed('tx-list-ready'),
             listStart: timed('tx-list-prefetch-start'),
             family: timed('family-ready'),
+            monthLoad: timed('month-load-start'),
             calendar: timed('bootstrap-calendar-ready'),
             cashHealth: timed('cash-health-painted'),
             rangeTx: rangeTx.map((row) => ({ t: row.t, ms: row.ms, qs: row.qs, bytes: row.bytes })),
@@ -180,6 +181,8 @@ def _run_viewport(page, guard, email, width, height, name):
     assert len(snap["rangeTx"]) <= 2, "duplicate 548-day fetches: " + json.dumps(snap)
     if snap["calendar"] is not None:
         assert snap["listStart"] <= snap["calendar"], snap
+    if snap["monthLoad"] is not None:
+        assert snap["listReady"] <= snap["monthLoad"], "Forecast started before Transactions rows settled: " + json.dumps(snap)
 
     yearly = _row(page, "-$1,280.00", "Every year")
     semi = _row(page, "-$2,100.00", "Twice Yearly")
