@@ -148,11 +148,16 @@ assert.ok(loadBody.indexOf("schedulePrefetchAdjacentCalendarMonths()") >= 0, "ph
 assert.ok(loadBody.indexOf("cashHealthPromise") >= 0, "Cash Health still loads on the Forecast path");
 assert.ok(loadBody.indexOf("{ adjacent: false }") >= 0, "phones fetch the current month daily balances before adjacent months");
 assert.ok(loadBody.indexOf("showCashHealthPendingUi()") >= 0, "phones keep a compact Cash Health loading state until copy is ready");
+assert.ok(loadBody.indexOf("prefetchCashHealthDailyMonths()") >= 0, "phones start the 90-day daily months with the current calendar month");
+assert.ok(
+  loadBody.indexOf("prefetchCashHealthDailyMonths()") < loadBody.indexOf("await Promise.all([dailyPromise"),
+  "Cash Health daily months start with the current-month calendar requests"
+);
 assert.ok(loadBody.indexOf("applyCalendarStatusDecorations()") >= 0, "reconciled markers arrive without rebuilding the calendar");
 assert.ok(loadBody.indexOf("secondary-painted") >= 0, "phones mark when extras and Cash Health catch up");
 var usableIdx = loadBody.indexOf("usable-calendar");
-var secondaryStartIdx = loadBody.lastIndexOf("startSecondary()");
-assert.ok(usableIdx >= 0 && secondaryStartIdx > usableIdx, "phones start extras and Cash Health after the first usable calendar");
+var deferredIdx = loadBody.indexOf("startDeferredSecondary()");
+assert.ok(usableIdx >= 0 && deferredIdx > usableIdx, "phones defer extras until Cash Health has resolved");
 assert.ok(
   loadBody.indexOf('runStep("upcoming"') >= 0 && loadBody.indexOf("? Promise.resolve()") >= 0,
   "phones do not fetch the 548-day upcoming list on the first Forecast paint"
@@ -185,6 +190,7 @@ assert.ok(
   "Cash Health is in the first HTML layout, not hidden behind Monthly Cash Flow"
 );
 assert.ok(calendarHtml.indexOf("calendar-panel--loading") >= 0, "the calendar panel starts in its loading state");
+assert.ok(calendarHtml.indexOf("sidebar-cash-health--pending") >= 0, "Cash Health starts in a pending shell so empty sections stay hidden");
 assert.ok(calendarHtml.indexOf("sidebar-pending--empty") >= 0, "Needs Review starts compact when empty");
 assert.ok(
   /id="sidebarReconcileRow"[^>]*hidden/.test(calendarHtml) === false,
@@ -226,6 +232,31 @@ assert.ok(
 assert.ok(app.indexOf("cal-earlier-toggle") < 0, "phones do not hide earlier dates behind a control");
 assert.ok(app.indexOf("mobileCalendarShowEarlier") < 0, "earlier dates stay in the mobile list");
 assert.ok(app.indexOf("function placeMobileCalendarBeforeReveal(") >= 0, "initial today placement happens before reveal");
+assert.ok(app.indexOf("function markMobileCalendarPlaceReady(") >= 0, "today placement can keep the month out of flow until it is ready");
+assert.ok(
+  /calendar-panel--placing:not\(\.calendar-panel--place-ready\) \.calendar-scroll\{[\s\S]*?position:\s*absolute/.test(css),
+  "the full month is out of flow until today can be placed"
+);
+assert.ok(
+  /sidebar-cash-health--pending #sidebarPendingTxCard/.test(css),
+  "Needs Review stays hidden until Cash Health status is ready"
+);
+var expectedFn = functionBody(app, "loadExpectedTransactions");
+assert.ok(
+  expectedFn.indexOf("cash-health-skip-expected-refresh") >= 0,
+  "unchanged expected transactions do not restart Cash Health"
+);
+assert.ok(
+  expectedFn.indexOf("cash-health-invalidate-expected") >= 0,
+  "changed expected transactions still refresh Cash Health"
+);
+var refreshFn = functionBody(app, "refreshLowBalanceAlert");
+var copyIdx = refreshFn.indexOf("buildCashHealthCopy(summary, null)");
+var paintIdx = refreshFn.indexOf("renderCashHealth();", copyIdx);
+var runUpIdx = refreshFn.indexOf("loadCashHealthRunUpItems");
+assert.ok(copyIdx >= 0, "Cash Health status copy does not wait on run-up names");
+assert.ok(paintIdx >= 0 && runUpIdx > paintIdx, "run-up names load after Cash Health status paints");
+assert.ok(refreshFn.indexOf("void (async () => {") >= 0, "run-up details load without blocking the status paint");
 assert.ok(app.indexOf("keepMobileTodayInPlace") < 0, "today-follow observer stays gone");
 assert.ok(!/new ResizeObserver/.test(functionBody(app, "placeMobileCalendarBeforeReveal")), "placement does not observe later layout shifts");
 assert.ok(app.indexOf('id = "calCashHealthStrip"') >= 0, "phones get a compact Cash Health strip");

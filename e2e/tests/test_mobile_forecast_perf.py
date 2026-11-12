@@ -85,6 +85,21 @@ def _perf_snapshot(page):
             renders: trace.filter((row) => row.event === "renderCalendar").length,
             warmed: trace.filter((row) => row.event === "month-warmed").length,
             apiCount: api.length,
+            cashHealthGenBumps: trace.filter((row) => row.event === "cash-health-gen-bump").length,
+            skipExpectedRefresh: trace.some((row) => row.event === "cash-health-skip-expected-refresh"),
+            invalidateExpected: trace.some((row) => row.event === "cash-health-invalidate-expected"),
+            cashHealthPrefetch: (trace.find((row) => row.event === "cash-health-prefetch") || {}).extra || null,
+            duplicateDailyMonths: (() => {
+              const counts = {};
+              for (const row of api) {
+                if (String(row.path || "").indexOf("calendar-month-daily") < 0) continue;
+                const match = /(?:^|&)month=([^&]*)/.exec(String(row.qs || ""));
+                const ym = match ? decodeURIComponent(match[1]) : "";
+                if (!ym) continue;
+                counts[ym] = (counts[ym] || 0) + 1;
+              }
+              return Object.keys(counts).filter((ym) => counts[ym] > 1);
+            })(),
             apiBeforeUsableCount: apiBeforeUsable.length,
             apiBeforeUsable: apiBeforeUsable.map((row) => ({
               path: row.path,
@@ -131,8 +146,10 @@ def test_mobile_forecast_perf_login(page, seed, guard, width):
     assert snap["marks"]["usable"] or snap["marks"]["coherent"], snap
     assert snap["api"], snap
     assert snap["upcomingBeforeUsable"] is False, snap
-    if snap["marks"]["usable"] and snap["marks"]["cashHealth"]:
-        assert snap["marks"]["usable"] <= snap["marks"]["cashHealth"], snap
+    assert snap["duplicateDailyMonths"] == [], snap
+    assert snap["cashHealthGenBumps"] <= 1, snap
+    assert snap["skipExpectedRefresh"] is True, snap
+    assert snap["invalidateExpected"] is False, snap
     guard.assert_clean()
 
 
