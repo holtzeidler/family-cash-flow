@@ -2754,6 +2754,23 @@ function requestMonthExpectedCalendar(fid, ym) {
   );
 }
 
+/** Start the 90-day daily-balance months as soon as the family is known so Cash Health
+ *  does not wait behind extras. Shares in-flight requests with the calendar. */
+function prefetchCashHealthDailyMonths() {
+  if (!state.activeFamilyId) return [];
+  const mode = calendarMode?.value || "both";
+  const todayIso = toISODate(new Date());
+  const { startIso, endIso } = cashHealthWindow(todayIso);
+  const months = cashHealthMonthsInRange(startIso, endIso);
+  for (const ym of months) {
+    void requestCalendarMonthDaily(state.activeFamilyId, mode, ym);
+  }
+  try {
+    bwCalendarTrace("cash-health-prefetch", { months: months.join(",") });
+  } catch (_) {}
+  return months;
+}
+
 async function loadCashHealthWindowRows(fid, mode, startIso, endIso) {
   const months = cashHealthMonthsInRange(startIso, endIso);
   const monthDays = await Promise.all(
@@ -2897,13 +2914,17 @@ function renderCashHealth() {
     const ch = state.cashHealth;
     const copy = ch?.copy;
     if (!copy) {
-      if (!cashHealthUiPending) setSidebarLowBalanceBanner("", "off");
+      if (!cashHealthUiPending) {
+        setCashHealthShellPending(false);
+        setSidebarLowBalanceBanner("", "off");
+      }
       setLowBalanceResult("", true);
       syncCashHealthCalendarChip();
       syncCashHealthStrip(null);
       return;
     }
     cashHealthUiPending = false;
+    setCashHealthShellPending(false);
     const { summary } = ch;
     const warn = copy.tone !== "healthy";
     const alertsOn = readPrefAlertLowBalanceEnabled();
@@ -2958,14 +2979,28 @@ async function refreshLowBalanceAlert() {
     }
     lowBalanceLastQuery = { familyId: activeFid, min: minVal, max: null, mode: queryMode };
     const gen = ++cashHealthGen;
+    try {
+      bwCalendarTrace("cash-health-gen-bump", { gen });
+    } catch (_) {}
 
     const { startIso, endIso } = cashHealthWindow(todayIso);
     const rows = await loadCashHealthWindowRows(activeFid, mode, startIso, endIso);
     if (gen !== cashHealthGen) return;
     const summary = summarizeCashHealth(rows, { todayIso, minimum: minVal });
+    const copy = buildCashHealthCopy(summary, null);
+    state.cashHealth = {
+      familyId: activeFid,
+      summary,
+      expl: null,
+      copy,
+      refs: [],
+    };
+    cashHealthUiPending = false;
+    renderCashHealth();
+
     const range = cashHealthRunUpRange(summary, rows);
-    let expl = null;
-    if (range) {
+    if (!range) return;
+    void (async () => {
       let items = new Map();
       try {
         items = await loadCashHealthRunUpItems(activeFid, mode, range.startIso, range.endIso);
@@ -2973,19 +3008,19 @@ async function refreshLowBalanceAlert() {
         /* without item details the explanation falls back to the balance change */
       }
       if (gen !== cashHealthGen) return;
-      expl = explainCashHealthRunUp(range, items, rows);
-    }
-    state.cashHealth = {
-      familyId: activeFid,
-      summary,
-      expl,
-      copy: buildCashHealthCopy(summary, expl),
-      refs: cashHealthHighlightRefs(expl),
-    };
-    renderCashHealth();
+      if (!state.cashHealth || state.cashHealth.summary !== summary) return;
+      const expl = explainCashHealthRunUp(range, items, rows);
+      state.cashHealth.expl = expl;
+      state.cashHealth.refs = cashHealthHighlightRefs(expl);
+      try {
+        bwCalendarTrace("cash-health-run-up");
+      } catch (_) {}
+    })();
   } catch (e) {
     show(btErr, e.message || "Failed to compute balance threshold alerts");
     state.cashHealth = null;
+    cashHealthUiPending = false;
+    setCashHealthShellPending(false);
     setLowBalanceResult("", true);
     setSidebarLowBalanceBanner("", "off");
     setSidebarHighBalanceBanner("", "off");
@@ -18583,10 +18618,24 @@ async function loadExpectedTransactions() {
       renderSidebarPendingTransactionsForMonth();
     } catch (_) {}
     const sig = `${state.activeFamilyId}:${JSON.stringify(state.expectedTransactions)}`;
-    if (expectedTxLoadedSig !== null && expectedTxLoadedSig !== sig) invalidateLowBalanceAlertCache();
-    else requestCashHealthRecompute();
+    const prevSig = expectedTxLoadedSig;
     expectedTxLoadedSig = sig;
-    void refreshLowBalanceAlert();
+    if (prevSig !== null && prevSig !== sig) {
+      try {
+        bwCalendarTrace("cash-health-invalidate-expected");
+      } catch (_) {}
+      invalidateLowBalanceAlertCache();
+      void refreshLowBalanceAlert();
+    } else {
+      try {
+        bwCalendarTrace("cash-health-skip-expected-refresh");
+      } catch (_) {}
+      if (prevSig !== null && state.cashHealth && state.cashHealth.copy) {
+        try {
+          renderCashHealth();
+        } catch (_) {}
+      }
+    }
   } catch (e) {
     if (gen !== expectedTxLoadGen) return;
     tmExpectedListSettled = true;
@@ -20066,6 +20115,25 @@ function markMobileCalendarPlacing(on) {
   const panel = document.getElementById("calendarPanel");
   if (!panel) return;
   panel.classList.toggle("calendar-panel--placing", !!on);
+  if (!on) panel.classList.remove("calendar-panel--place-ready");
+}
+
+function markMobileCalendarPlaceReady(on) {
+  const panel = document.getElementById("calendarPanel");
+  if (!panel) return;
+  panel.classList.toggle("calendar-panel--place-ready", !!on);
+}
+
+function mobileCalendarOffsetInScroll(cell) {
+  const scroll = document.querySelector(".calendar-scroll");
+  if (!cell || !scroll) return 0;
+  return cell.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
+}
+
+function mobileCalendarScrollTopFromOffset(offset) {
+  const body = document.getElementById("calendarPanelBody");
+  const bodyTop = body ? body.getBoundingClientRect().top + (window.scrollY || 0) : 0;
+  return Math.max(0, bodyTop + Number(offset || 0) - fixedHeaderBottom() - mobileCashHealthStripReserve() - 8);
 }
 
 function revealMobileCalendarPlaced() {
@@ -20077,12 +20145,26 @@ function revealMobileCalendarPlaced() {
   markMobileCalendarPlacing(true);
   setCalendarLoadingUi(false);
   const kind = getCalendarViewYm() === toISODate(new Date()).slice(0, 7) ? "today" : "month";
-  placeMobileCalendarBeforeReveal(kind);
+  const cell = mobileCalendarPlaceCell();
+  const offset = mobileCalendarOffsetInScroll(cell);
+  markMobileCalendarPlaceReady(true);
+  if (!calendarMobileUserMoved) {
+    const placeStarted = typeof performance !== "undefined" ? performance.now() : Date.now();
+    setMobileCalendarScrollTop(mobileCalendarScrollTopFromOffset(offset));
+    try {
+      bwCalendarTrace("mobile-place-offset", {
+        iso: cell ? cell.getAttribute("data-iso") : "",
+        kind,
+        ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - placeStarted),
+      });
+    } catch (_) {}
+  }
+  syncCashHealthStripVisibility();
   return new Promise((resolve) => {
     const finish = () => {
       if (!calendarMobileUserMoved) placeMobileCalendarBeforeReveal(kind);
-      markMobileCalendarPlacing(false);
       syncCashHealthStripVisibility();
+      markMobileCalendarPlacing(false);
       resolve();
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(finish);
@@ -20285,15 +20367,21 @@ function paintCashHealthPendingStrip() {
   el.className = "cal-cash-health-strip cal-cash-health-strip--pending";
   el.setAttribute("aria-label", "Checking cash health");
   el.setAttribute("aria-busy", "true");
-  el.innerHTML = `<span class="cal-cash-health-strip__kicker">Checking cash health</span>`;
+  el.innerHTML = `<span class="cash-health-card__icon cash-health-card__icon--pending" aria-hidden="true"></span><span class="cal-cash-health-strip__kicker">Checking cash health</span><span class="cal-cash-health-strip__amount" aria-hidden="true">&nbsp;</span>`;
   observeCashHealthStrip();
   syncCashHealthStripVisibility();
+}
+
+function setCashHealthShellPending(on) {
+  const card = document.getElementById("sidebarCashHealthCard");
+  if (card) card.classList.toggle("sidebar-cash-health--pending", !!on);
 }
 
 function showCashHealthPendingUi() {
   if (!isMobileCalendarViewport()) return;
   if (state.cashHealth && state.cashHealth.copy) return;
   cashHealthUiPending = true;
+  setCashHealthShellPending(true);
   if (sidebarLowBalanceBanner) {
     sidebarLowBalanceBanner.innerHTML =
       '<div class="cash-outlook-card cash-health-card cash-health-card--pending" aria-busy="true"><span class="cash-health-card__body"><span class="cash-health-card__kicker">Checking cash health…</span></span></div>';
@@ -20523,15 +20611,23 @@ async function loadMonthAndCalendar(options) {
         ? Promise.resolve()
         : runStep("upcoming", () => loadUpcomingTransactionsPanel()),
     });
+    const startDeferredSecondary = () => ({
+      extrasPromise: runStep("extras", () => loadCalendarExtras()),
+      reconciledPromise: runStep("reconciled", () => loadReconciledDays(getCalendarViewYm())),
+      verifiedPromise: runStep("verified", () => loadVerifiedBalances(getCalendarViewYm())),
+      adjacentPromise: runStep("adjacent-daily", () => loadCalendarMonthDaily(gen, { adjacentOnly: true })),
+    });
 
+    let cashHealthPromise = Promise.resolve();
     if (!mobile) {
       const {
         extrasPromise,
-        cashHealthPromise,
+        cashHealthPromise: desktopCashHealthPromise,
         reconciledPromise,
         verifiedPromise,
         upcomingPromise,
       } = startSecondary();
+      cashHealthPromise = desktopCashHealthPromise;
       await dailyPromise;
       if (!stillCurrent()) return;
       if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
@@ -20553,6 +20649,8 @@ async function loadMonthAndCalendar(options) {
       ]);
     } else {
       showCashHealthPendingUi();
+      prefetchCashHealthDailyMonths();
+      cashHealthPromise = runStep("low-balance", () => refreshLowBalanceAlert());
       await Promise.all([dailyPromise, txPromise, expectedPromise]);
     }
     if (!stillCurrent()) return;
@@ -20577,26 +20675,29 @@ async function loadMonthAndCalendar(options) {
       await revealMobileCalendarPlaced();
       calendarInitialMonthReady = true;
       bwCalendarTraceLayout("usable-calendar");
-      const secondary = startSecondary();
-      void Promise.all([
-        secondary.extrasPromise,
-        secondary.cashHealthPromise,
-        secondary.reconciledPromise,
-        secondary.verifiedPromise,
-        secondary.adjacentPromise,
-      ]).then(() => {
+      const afterCashHealth = () => {
         if (!stillCurrent()) return;
-        try {
-          repairOutOfMonthBalanceContinuity();
-        } catch (_) {}
-        preserveMobileForecastScroll(() => {
-          applyCalendarStatusDecorations();
-          rememberCalendarMonthView(viewedYm);
+        const secondary = startDeferredSecondary();
+        schedulePrefetchAdjacentCalendarMonths();
+        void runStep("forecast-confidence", () => refreshForecastConfidence());
+        void Promise.all([
+          secondary.extrasPromise,
+          secondary.reconciledPromise,
+          secondary.verifiedPromise,
+          secondary.adjacentPromise,
+        ]).then(() => {
+          if (!stillCurrent()) return;
+          try {
+            repairOutOfMonthBalanceContinuity();
+          } catch (_) {}
+          preserveMobileForecastScroll(() => {
+            applyCalendarStatusDecorations();
+            rememberCalendarMonthView(viewedYm);
+          });
+          bwCalendarTraceLayout("secondary-painted");
         });
-        bwCalendarTraceLayout("secondary-painted");
-      });
-      schedulePrefetchAdjacentCalendarMonths();
-      void runStep("forecast-confidence", () => refreshForecastConfidence());
+      };
+      void cashHealthPromise.finally(afterCashHealth);
     } else {
       await runStep("forecast-confidence", () => refreshForecastConfidence());
     }

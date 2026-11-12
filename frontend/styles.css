@@ -33720,9 +33720,28 @@ body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
     min-height: 0;
   }
   body[data-bw-view="calendar"] .calendar-panel--loading .calendar-scroll,
-  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-dow-row,
-  body[data-bw-view="calendar"] .calendar-panel--placing .calendar-scroll,
-  body[data-bw-view="calendar"] .calendar-panel--placing .calendar-dow-row{
+  body[data-bw-view="calendar"] .calendar-panel--loading .calendar-dow-row{
+    opacity: 0;
+    visibility: hidden;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--placing:not(.calendar-panel--place-ready) .calendar-panel-body{
+    position: relative;
+    flex: 0 0 auto;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--placing:not(.calendar-panel--place-ready) .calendar-scroll{
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  body[data-bw-view="calendar"] .calendar-panel--placing .calendar-dow-row,
+  body[data-bw-view="calendar"] .calendar-panel--placing .calendar-scroll{
     opacity: 0;
     visibility: hidden;
   }
@@ -36046,9 +36065,15 @@ body[data-bw-view="calendar"] .cal-nav-leading .cal-fav-btn:hover{
     background: #166534;
   }
   body[data-bw-view="calendar"] .cal-cash-health-strip--pending.is-active{
+    min-height: 40px;
     background: #eef1ee;
     border-bottom-color: #d5ddd8;
     color: #334155;
+  }
+  body[data-bw-view="calendar"] .sidebar-cash-health--pending #sidebarPendingTxCard,
+  body[data-bw-view="calendar"] .sidebar-cash-health--pending #sidebarReconcileRow,
+  body[data-bw-view="calendar"] .sidebar-cash-health--pending #forecastConfidenceCard{
+    display: none;
   }
   body[data-bw-view="calendar"] .cash-health-card--pending{
     min-height: 72px;
