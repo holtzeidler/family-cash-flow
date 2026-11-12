@@ -67,13 +67,15 @@ class Settings(BaseSettings):
     # Public URL of the web app (no trailing slash), e.g. https://app.example.com or https://user.github.io/repo
     # Used in family invite emails. If unset, the API uses the Origin header from the browser when the owner sends an invite.
     APP_PUBLIC_BASE_URL: str = ""
-    # Neon (or other) host labels used to keep staging from writing to production.
-    # Staging writes are blocked when DATABASE_URL's host matches PRODUCTION_DATABASE_HOST.
+    # Neon (or other) host labels used to keep staging off production data.
+    # The staging API and staging cron refuse to start unless DATABASE_URL matches
+    # STAGING_DATABASE_HOST, and never on PRODUCTION_DATABASE_HOST or a retired staging host.
     # These must match the real Neon endpoints wired in Render (do not swap them):
-    #   production API → ep-ancient-union-…
-    #   staging API    → ep-polished-boat-…
+    #   production API → ep-ancient-union-… (production Neon project)
+    #   staging API    → the separate staging Neon project's endpoint
+    # STAGING_DATABASE_HOST is the endpoint ID without "-pooler", so pooled and direct URLs both match.
     PRODUCTION_DATABASE_HOST: str = "ep-ancient-union-and21kx9-pooler"
-    STAGING_DATABASE_HOST: str = "ep-polished-boat-ando6x8y-pooler"
+    STAGING_DATABASE_HOST: str = "ep-polished-morning-b5pd52j4"
     # Stripe Billing (Checkout + Customer Portal + webhooks). Leave empty to disable billing routes.
     # Use a restricted key (rk_…) when possible; never commit secrets. Staging and production need separate keys.
     STRIPE_SECRET_KEY: str = ""
@@ -1157,13 +1159,35 @@ def _host_label_matches(expected: str, ident: dict[str, str]) -> bool:
     return exp in hint or exp in raw
 
 
+# The first staging database was a Neon branch of production and held real
+# customer data. Staging must never use it again, even if a stale setting names it.
+_RETIRED_STAGING_DATABASE_HOSTS = ("ep-polished-boat-ando6x8y",)
+
+
+def _endpoint_label(label: str) -> str:
+    """Neon endpoint ID without -pooler, so pooled and direct hosts both match."""
+    value = (label or "").strip().lower()
+    return value[: -len("-pooler")] if value.endswith("-pooler") else value
+
+
+def _database_is_unsafe_for_staging(ident: dict[str, str]) -> bool:
+    return any(
+        _host_label_matches(_endpoint_label(label), ident)
+        for label in (settings.PRODUCTION_DATABASE_HOST, *_RETIRED_STAGING_DATABASE_HOSTS)
+    )
+
+
 def _database_looks_like_staging() -> bool:
-    """True when DATABASE_URL is the staging Neon branch (or another staging-named DB)."""
+    """True when DATABASE_URL is the staging database (or another staging-named DB).
+
+    Production and retired staging hosts are refused first, so a swapped or stale
+    STAGING_DATABASE_HOST cannot make them look like staging.
+    """
     ident = _database_identity()
-    if _host_label_matches(settings.STAGING_DATABASE_HOST, ident):
-        return True
-    if _host_label_matches(settings.PRODUCTION_DATABASE_HOST, ident):
+    if _database_is_unsafe_for_staging(ident):
         return False
+    if _host_label_matches(_endpoint_label(settings.STAGING_DATABASE_HOST), ident):
+        return True
     blob = f"{ident.get('database', '')} {ident.get('host_hint', '')}".lower()
     return "staging" in blob
 
@@ -1185,10 +1209,23 @@ def _staging_db_writes_allowed() -> bool:
     return _database_looks_like_staging()
 
 
+_STAGING_DATABASE_REFUSED = (
+    "Staging refused to start: DATABASE_URL is not the staging database. It matches production "
+    "or a retired staging host, or it does not match STAGING_DATABASE_HOST. Point DATABASE_URL at "
+    "the staging Neon project and set STAGING_DATABASE_HOST to its endpoint ID."
+)
+
+
+def assert_staging_database_isolated() -> None:
+    """Stop a staging process before it reads, migrates, or serves a non-staging database."""
+    if not _staging_db_writes_allowed():
+        raise RuntimeError(_STAGING_DATABASE_REFUSED)
+
+
 _STAGING_SHARED_DB_DETAIL = (
-    "This staging API is connected to the production Neon database. Writes are blocked. "
+    "This staging API is not connected to the staging database. Writes are blocked. "
     "On Render → family-cash-flow-api-staging → Environment, set DATABASE_URL to the "
-    "staging Neon host (ep-polished-boat-…), not the production host (ep-ancient-union-…)."
+    "staging Neon project and STAGING_DATABASE_HOST to its endpoint ID, never production (ep-ancient-union-…)."
 )
 _STAGING_LIVE_STRIPE_DETAIL = (
     "Staging is using a live Stripe key. Billing changes are blocked so live subscriptions "
@@ -2764,6 +2801,7 @@ def public_debug_config():
         "billing_product_code": PRODUCT_CODE,
         "billing_trial_days": TRIAL_DAYS,
         "staging_auth_restricted": _staging_auth_allowlist_enforced(),
+        "staging_auth_allowlist_configured": bool(_staging_auth_email_allowlist()),
         "deployment": "staging" if _is_staging_deployment() else settings.ENV,
         "database_name": _database_identity().get("database") or "",
         "database_host_kind": _database_identity().get("host_kind") or "",
@@ -3227,6 +3265,7 @@ def startup_populate_schema():
         jwt_secret=settings.JWT_SECRET,
         webhook_secret=settings.STRIPE_WEBHOOK_SECRET,
     )
+    assert_staging_database_isolated()
     # For a starter app we create tables on startup.
     # In a production app you'd typically use migrations (Alembic).
     if settings.DATABASE_URL.startswith("sqlite"):
@@ -5531,15 +5570,15 @@ def platform_overview(
     isolated = (not staging) or _database_looks_like_staging()
     if staging and not isolated:
         message = (
-            "This staging site is connected to the production Neon database. "
+            "This staging site is not connected to the staging database. "
             "Writes are blocked. In Render, set family-cash-flow-api-staging DATABASE_URL to the "
-            "ep-polished-boat-… host, not ep-ancient-union-…."
+            "staging Neon project, never production (ep-ancient-union-…)."
         )
     elif staging:
         message = (
             "This is staging. Changes here do not update balancewhiz.com. "
-            "If you recognize production emails, this database was copied from production — "
-            "those rows are copies, not the live accounts. Use test emails only."
+            "The staging database is a separate Neon project with test accounts only. "
+            "If you recognize a production customer here, stop and report it."
         )
     else:
         message = (
@@ -8402,18 +8441,7 @@ def _dedupe_expected_calendar_items(items: list[ExpectedCalendarItemOut]) -> lis
     return unique
 
 
-@app.get("/api/families/{family_id}/expected-calendar", response_model=ExpectedCalendarOut)
-def expected_calendar(
-    family_id: int,
-    month: str,
-    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
-    db=Depends(get_db),
-):
-    user_id = get_current_user_id(access_token)
-    require_family_member(db=db, family_id=family_id, user_id=user_id)
-
-    start_date, end_date = _month_range(month)
-
+def _expected_calendar_for_range(db, family_id: int, range_start: date, range_end_exclusive: date) -> list[ExpectedCalendarItemOut]:
     account_rows = db.execute(select(Account).where(Account.family_id == family_id)).scalars().all()
     accounts_by_id: dict[int, Account] = {a.id: a for a in account_rows}
 
@@ -8429,11 +8457,11 @@ def expected_calendar(
         ).where(
             ExpectedTransaction.family_id == family_id,
             or_(
-                (ExpectedTransactionOverride.occurrence_date >= start_date)
-                & (ExpectedTransactionOverride.occurrence_date < end_date),
+                (ExpectedTransactionOverride.occurrence_date >= range_start)
+                & (ExpectedTransactionOverride.occurrence_date < range_end_exclusive),
                 (ExpectedTransactionOverride.moved_to_date.is_not(None))
-                & (ExpectedTransactionOverride.moved_to_date >= start_date)
-                & (ExpectedTransactionOverride.moved_to_date < end_date),
+                & (ExpectedTransactionOverride.moved_to_date >= range_start)
+                & (ExpectedTransactionOverride.moved_to_date < range_end_exclusive),
             ),
         )
     ).scalars().all()
@@ -8447,8 +8475,8 @@ def expected_calendar(
         accounts_by_id=accounts_by_id,
         categories_by_id=categories_by_id,
         override_map=override_map,
-        range_start=start_date,
-        range_end_exclusive=end_date,
+        range_start=range_start,
+        range_end_exclusive=range_end_exclusive,
     )
 
     # If an override moved an occurrence from a different month into this one, the base
@@ -8460,11 +8488,11 @@ def expected_calendar(
             continue
         if ovr.cancelled:
             continue
-        if not (start_date <= ovr.moved_to_date < end_date):
+        if not (range_start <= ovr.moved_to_date < range_end_exclusive):
             continue
         # If the original occurrence is within this range, it is already handled by the
         # normal recurrence iteration above.
-        if start_date <= ovr.occurrence_date < end_date:
+        if range_start <= ovr.occurrence_date < range_end_exclusive:
             continue
 
         tx = expected_by_id.get(ovr.expected_transaction_id)
@@ -8514,7 +8542,45 @@ def expected_calendar(
 
     items = _dedupe_expected_calendar_items(items)
     items.sort(key=lambda it: (it.date, int(it.expected_transaction_id), it.occurrence_date))
-    return ExpectedCalendarOut(month=month, items=items)
+    return items
+
+
+@app.get("/api/families/{family_id}/expected-calendar", response_model=ExpectedCalendarOut)
+def expected_calendar(
+    family_id: int,
+    month: Annotated[Optional[str], Query(description="Calendar month (YYYY-MM).")] = None,
+    start_date: Annotated[Optional[date], Query(description="Inclusive range start (YYYY-MM-DD).")] = None,
+    end_date: Annotated[Optional[date], Query(description="Inclusive range end (YYYY-MM-DD).")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    if start_date is not None or end_date is not None:
+        if start_date is None or end_date is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="start_date and end_date are required together",
+            )
+        if end_date < start_date:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_date cannot be before start_date")
+        if (end_date - start_date).days + 1 > 1100:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Date range cannot exceed 36 months")
+        range_start = start_date
+        range_end_exclusive = end_date + timedelta(days=1)
+        month_out = start_date.strftime("%Y-%m")
+    elif month:
+        range_start, range_end_exclusive = _month_range(month)
+        month_out = month
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="month or start_date and end_date is required",
+        )
+
+    items = _expected_calendar_for_range(db, family_id, range_start, range_end_exclusive)
+    return ExpectedCalendarOut(month=month_out, items=items)
 
 
 @app.get("/api/families/{family_id}/reports/category-totals", response_model=CategoryTotalsReportOut)

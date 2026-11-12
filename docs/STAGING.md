@@ -9,7 +9,7 @@ Use staging to try changes with real deploy mechanics (static build, API, cookie
 | **Branch** | `main` | `staging` |
 | **Frontend** | GitHub Pages (`balancewhiz.com`) | Render static site `family-cash-flow-web-staging` |
 | **API** | Render `family-cash-flow-api` | Render `family-cash-flow-api-staging` |
-| **Database** | Neon production (`ep-ancient-union-…`) | Neon **staging branch** (`ep-polished-boat-…`) |
+| **Database** | Neon production (`ep-ancient-union-…`) | Separate **Neon staging project** (test accounts only) |
 | **Frontend build secret** | `API_BASE` | `API_BASE_STAGING` |
 
 GitHub Pages supports **one** live site per repo, so staging frontend lives on Render. Production stays on GitHub Pages + Render API (unchanged).
@@ -47,9 +47,9 @@ On **`family-cash-flow-api-staging`**, set (in addition to blueprint defaults):
 | `CORS_ORIGINS` | Staging frontend origin only, e.g. `https://staging.balancewhiz.com` (no path). Must be **`CORS_ORIGINS`** (plural) — `CORS_ORIGIN` is ignored. |
 | `APP_PUBLIC_BASE_URL` | Same as staging frontend URL (invite/reset links) |
 | `JWT_SECRET` | Generate a new secret (do not reuse production) |
-| `DATABASE_URL` | Neon **staging branch** pooled URL. Host must be `ep-polished-boat-ando6x8y-pooler…`, **not** production `ep-ancient-union-and21kx9-pooler…`. Both branches use database name `neondb` — the **host** is what separates them. |
-| `PRODUCTION_DATABASE_HOST` | `ep-ancient-union-and21kx9-pooler` — staging refuses writes if `DATABASE_URL` matches this host. |
-| `STAGING_DATABASE_HOST` | `ep-polished-boat-ando6x8y-pooler` — staging allows writes only when `DATABASE_URL` matches this host (or another host whose name includes `staging`). |
+| `DATABASE_URL` | Pooled URL of the separate **Neon staging project**. Never production (`ep-ancient-union-…`) and never the retired staging branch (`ep-polished-boat-…`, which held a copy of production data). Set the same value on `family-cash-flow-trial-reminders-staging`. |
+| `PRODUCTION_DATABASE_HOST` | `ep-ancient-union-and21kx9-pooler` — staging refuses to start if `DATABASE_URL` matches this host, pooled or direct. |
+| `STAGING_DATABASE_HOST` | The staging project's endpoint ID, without `-pooler` (Neon → staging project → Branches → Computes). Staging starts only when `DATABASE_URL` matches it (or a database whose name includes `staging`). The retired `ep-polished-boat-…` host is always refused, even if this variable still names it. |
 | `STAGING_AUTH_EMAIL_ALLOWLIST` | Comma-separated **test-only** emails allowed to register/login on staging (e.g. `you+staging@gmail.com`). Production accounts are rejected even if the staging DB was copied from prod. |
 | `RESEND_API_KEY` | Already set on staging. Used by the Resend SDK. Never commit or log the value. Temporary `POST /api/platform/email-test?template=welcome` (platform admin) previews a transactional template only to `tracy@balancewhiz.com`. Preview/test CTAs use `https://balancewhiz.com` (not staging) so Microsoft does not treat the send as phishing. Real transactional mail still uses `APP_PUBLIC_BASE_URL`. Use `template=design` for the generic design preview, `template=trial-ending` for the 3-day trial reminder, `template=plan-monthly` or `template=plan-annual` for the plan-selection confirmation, or `template=annual-renewal` for the annual renewal reminder, or `template=payment-failed-monthly` or `template=payment-failed-annual` for a failed payment, or `template=cancel-monthly` or `template=cancel-annual` for a scheduled cancellation, or `template=trial-expired` for a trial that ended without a plan,     or `template=subscription-ended` for a subscription Stripe ended after unpaid retries, or `template=reactivate-resumed` or `template=reactivate-restored` for the two reactivation confirmations, or `template=payment-method-updated` for a saved payment method change. Those previews do not run the reminder job, expire an account, fail a Stripe payment, cancel a subscription, charge a card, change a Stripe subscription, or update a payment method. The job is the staging cron `family-cash-flow-trial-reminders-staging` (twice a day). It sends the 3-day trial reminder and the 7-day annual renewal reminder, emails only addresses on `STAGING_AUTH_EMAIL_ALLOWLIST`, and refuses the production database. The annual reminder reads the Stripe renewal amount and date; the cron needs `STRIPE_SECRET_KEY` (same key as the staging API, not committed). |
 | `TRANSACTIONAL_REPLY_TO` | Optional. Defaults to `support@balancewhiz.com` (the public contact mailbox). Replies to transactional mail go here, not to `notifications@updates.balancewhiz.com`. |
@@ -213,7 +213,8 @@ Sign in on staging with a **dedicated test account**, not your main production e
 | “We're having trouble connecting” on account setup | Staging API `/api/debug/public-config`: `cors_middleware_enabled` must be `true`. Fix `CORS_ORIGINS` (plural), not `CORS_ORIGIN`; redeploy and recheck. |
 | Login works on prod, not staging | `CORS_ORIGINS` on staging API matches staging frontend origin exactly; `ENV=production` on staging API |
 | `API_BASE` / `__API_BASE__` in browser | Re-deploy staging static site after setting `API_BASE` on Render |
-| Staging shows production data | Staging API `DATABASE_URL` host must be **ep-polished-boat-…**, not **ep-ancient-union-…**. Both Neon branches are named `neondb`; the host is the separator. Platform Admin → Overview shows the connected host. Writes are blocked if the host is production. |
+| Staging shows production data | Staging API `DATABASE_URL` must be the separate Neon staging project, never **ep-ancient-union-…** or the retired **ep-polished-boat-…**. Platform Admin → Overview shows the connected host. |
+| Staging deploy fails with "Staging refused to start" | `DATABASE_URL` is production or the retired staging branch, or `STAGING_DATABASE_HOST` doesn't match the staging project's endpoint ID. Render keeps the previous deploy running. |
 | Production login works on staging | Set `STAGING_AUTH_EMAIL_ALLOWLIST` to test emails only; fix `DATABASE_URL` if prod data still appears |
 | CI fails on `staging` push | GitHub secret `API_BASE_STAGING` set in `staging` environment |
 | Login/signup sends you to production | Signup links must be relative (`/account-setup/`), not `https://balancewhiz.com/...` |

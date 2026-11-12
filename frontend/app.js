@@ -3403,6 +3403,49 @@ if (calendarNextMonth) {
   calendarNextMonth.addEventListener("click", () => shiftCalendarMonth(1));
 }
 
+function calendarMonthLongName(year, monthIndex) {
+  return new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "long" });
+}
+
+function scrollMobileCalendarToFirstInMonth() {
+  if (!isMobileCalendarViewport() || !calendarGrid) return;
+  const cell = calendarGrid.querySelector(".calendar--mobile .cal-cell:not(.cal-cell--out)");
+  if (!cell) return;
+  setMobileCalendarScrollTop(mobileCalendarScrollTopFor(cell));
+  try {
+    syncCashHealthStripVisibility();
+  } catch (_) {}
+  try {
+    bwCalendarTrace("mobile-month-continue", { iso: cell.getAttribute("data-iso") });
+  } catch (_) {}
+}
+
+async function goMobileCalendarAdjacentMonth(delta) {
+  if (!isMobileCalendarViewport()) return;
+  calendarMobileUserMoved = true;
+  await shiftCalendarMonth(delta);
+  scrollMobileCalendarToFirstInMonth();
+}
+
+function appendMobileCalendarMonthContinue(wrapper, year, monthIndex) {
+  if (!wrapper) return;
+  const nextName = calendarMonthLongName(year, monthIndex + 1);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "cal-month-continue";
+  btn.setAttribute("data-cal-month-continue", "1");
+  btn.setAttribute("aria-label", `Continue to ${nextName}`);
+  btn.innerHTML = `<span class="cal-month-continue__label">Continue to ${escapeHtml(
+    nextName
+  )}</span><span class="cal-month-continue__chevron" aria-hidden="true">›</span>`;
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void goMobileCalendarAdjacentMonth(1);
+  });
+  wrapper.appendChild(btn);
+}
+
 if (calendarGoToday) {
   calendarGoToday.addEventListener("click", async () => {
     const now = new Date();
@@ -22274,6 +22317,7 @@ function renderCalendar() {
     cells.push(cell);
   }
 
+  if (isMobileCalendarLayout) appendMobileCalendarMonthContinue(wrapper, year, monthIndex);
   calendarGrid.appendChild(wrapper);
   bindCalendarPanelClickRouting();
 

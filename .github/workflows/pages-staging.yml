@@ -21,6 +21,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check signup script syntax
+        run: |
+          node --check frontend/signup/signup.js
+          node --check frontend/signup/account-setup-finish-decision.js
+          node --check frontend/signup/account-setup-category.js
+
+      - name: Onboarding finish decisions
+        run: node frontend/signup/account-setup-finish-decision.test.js
+
+      - name: Required transaction category
+        run: node frontend/signup/account-setup-category.test.js
+
       - name: Cash Health summary
         run: |
           node --check frontend/cash-health-summary.js
@@ -30,6 +42,16 @@ jobs:
         run: |
           node --check frontend/needs-review.js
           node frontend/needs-review.test.js
+
+      - name: Sidebar reconcile
+        run: |
+          node --check frontend/sidebar-reconcile.js
+          node frontend/sidebar-reconcile.test.js
+
+      - name: Reconcile record tip
+        run: |
+          node --check frontend/reconcile-record-tip.js
+          node frontend/reconcile-record-tip.test.js
 
       - name: Transaction edit scope
         run: |

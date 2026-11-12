@@ -259,6 +259,20 @@ var calendarAwaitIdx = app.indexOf("await Promise.all([accountsPromise, loadMont
 assert.ok(prefetchIdx >= 0 && prefetchIdx < calendarAwaitIdx, "transactions list prefetch starts before the calendar wait");
 var monthFn = functionBody(app, "loadMonthAndCalendar");
 assert.ok(monthFn.indexOf("upcomingPromise: mobile") >= 0, "Forecast still skips the 548-day upcoming fetch on phones");
+var renderCalFn = functionBody(app, "renderCalendar");
+assert.ok(renderCalFn.indexOf("appendMobileCalendarMonthContinue(wrapper, year, monthIndex)") >= 0, "phones get a next-month control after the last date");
+assert.ok(renderCalFn.indexOf("if (isMobileCalendarLayout) appendMobileCalendarMonthContinue") >= 0, "desktop calendar does not get the next-month control");
+assert.ok(app.indexOf("function goMobileCalendarAdjacentMonth(") >= 0, "next-month control uses shared month navigation");
+assert.ok(functionBody(app, "goMobileCalendarAdjacentMonth").indexOf("shiftCalendarMonth(delta)") >= 0, "next-month control reuses month arrows");
+assert.ok(functionBody(app, "goMobileCalendarAdjacentMonth").indexOf("scrollMobileCalendarToFirstInMonth()") >= 0, "the new month lands on its first date");
+assert.ok(
+  /@media \(max-width: 768px\)[\s\S]*?\.calendar--mobile \.cal-month-continue\{[\s\S]*?min-height:\s*44px/.test(css),
+  "the next-month control is compact and phone-only"
+);
+assert.ok(
+  !/\.calendar:not\(\.calendar--mobile\)[\s\S]{0,80}\.cal-month-continue/.test(css),
+  "desktop calendar styles do not add a next-month control"
+);
 var refreshFn = functionBody(app, "refreshLowBalanceAlert");
 var copyIdx = refreshFn.indexOf("buildCashHealthCopy(summary, null)");
 var paintIdx = refreshFn.indexOf("renderCashHealth();", copyIdx);

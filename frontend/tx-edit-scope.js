@@ -93,8 +93,8 @@ function formatTxEditApplyScopeCopy({
   const instanceHint = dateMoved && openedLabel
     ? `Moves ${openedLabel} only. Later dates stay on the original schedule.`
     : openedLabel
-      ? `Updates ${openedLabel} only. Later dates stay as they are.`
-      : "Only this date changes. Later dates stay as they are.";
+      ? `Updates ${openedLabel} only.`
+      : "Updates this date only.";
 
   const seriesTitle = dateMoved
     ? "Change this and future scheduled dates"
@@ -103,11 +103,9 @@ function formatTxEditApplyScopeCopy({
     ? `Reschedules ${openedLabel} and later dates. Earlier dates stay.`
     : "Updates this date and every later occurrence in the series.";
 
-  let helper = "Choose whether to update just this occurrence or future ones too.";
+  let helper = "This transaction repeats. Choose which dates to update.";
   if (dateMoved && openedLabel && editedLabel) {
     helper = `You're moving ${openedLabel}. This does not have to change the rest of the series.`;
-  } else if (openedLabel) {
-    helper = `${openedLabel} is one date in a recurring series.`;
   }
 
   return {
