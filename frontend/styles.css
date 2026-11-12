@@ -31528,6 +31528,41 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     min-width: 0;
   }
 
+  .calendar--mobile .cal-month-continue{
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    min-height: 44px;
+    margin: 4px 0 2px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(4, 120, 87, 0.22);
+    background: rgba(4, 120, 87, 0.06);
+    color: rgba(11, 61, 46, 0.94);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.2;
+    cursor: pointer;
+  }
+  .calendar--mobile .cal-month-continue:hover,
+  .calendar--mobile .cal-month-continue:focus-visible{
+    background: rgba(4, 120, 87, 0.11);
+    border-color: rgba(4, 120, 87, 0.34);
+    outline: none;
+  }
+  .calendar--mobile .cal-month-continue__chevron{
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 500;
+  }
+
   .calendar--mobile .cal-cell[hidden]{
     display: none !important;
   }
