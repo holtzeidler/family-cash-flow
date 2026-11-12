@@ -7204,7 +7204,7 @@ function paintSidebarReconcileRow() {
       ? typeof formatSidebarReconcileDate === "function"
         ? formatSidebarReconcileDate(lastIso)
         : lastIso
-      : "Not reconciled yet";
+      : "Never";
   }
   if (sidebarReconcileBtn) {
     const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
