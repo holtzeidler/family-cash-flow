@@ -4066,23 +4066,24 @@ function setActiveTopView(view) {
   syncSidebarCashHealthCardVisibility();
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions" || v === "reimbursements");
   if (v === "transactions" || v === "reports") {
-    // Reports use the same upcoming actuals list to power the risk heatmap's
-    // "triggered by" detail; load lazily on view entry so we don't fetch on
-    // every page load.
-    void loadUpcomingTransactionsPanel().then(() => {
-      if (v === "reports") {
-        void refreshRiskCalendarMonth().catch(() => {});
-      }
-      if (v === "transactions") {
-        try {
-          if (sessionStorage.getItem("BW_OPEN_TX_UNCATEGORIZED") === "1") {
-            sessionStorage.removeItem("BW_OPEN_TX_UNCATEGORIZED");
-            if (typeof tmApplyQuickView === "function") tmApplyQuickView("uncategorized");
-            if (typeof tmRefetchAndRender === "function") void tmRefetchAndRender();
-          }
-        } catch (_) {}
-      }
-    });
+    // Wait for the family id. main() starts the same pair as soon as loadFamilies()
+    // finishes so this early view switch cannot fetch (or settle) with no family.
+    if (state.activeFamilyId) {
+      void ensureTransactionsListData().then(() => {
+        if (v === "reports") {
+          void refreshRiskCalendarMonth().catch(() => {});
+        }
+        if (v === "transactions") {
+          try {
+            if (sessionStorage.getItem("BW_OPEN_TX_UNCATEGORIZED") === "1") {
+              sessionStorage.removeItem("BW_OPEN_TX_UNCATEGORIZED");
+              if (typeof tmApplyQuickView === "function") tmApplyQuickView("uncategorized");
+              if (typeof tmRefetchAndRender === "function") void tmRefetchAndRender();
+            }
+          } catch (_) {}
+        }
+      });
+    }
   }
   if (navCalendarView) {
     navCalendarView.classList.toggle("is-active", v === "calendar");
@@ -4419,7 +4420,13 @@ let profileNameBaseline = { first: "", last: "" };
 // later `let` would still be uninitialized.
 let expectedTxLoadGen = 0;
 let expectedTxLoadedSig = null;
+let expectedTxInflight = null;
+let expectedTxInflightFid = 0;
+let expectedTxLoadedFid = 0;
 let upcomingLoadGen = 0;
+let upcomingInflight = null;
+let upcomingInflightKey = "";
+let upcomingLoadedFid = 0;
 // Empty arrays are the initial value AND a real zero-result response.
 // These flags are the only way to tell "still loading" from "loaded, nothing matched."
 let tmFamiliesLoaded = false;
@@ -4428,6 +4435,58 @@ let tmExpectedListSettled = false;
 
 function tmTransactionsListLoading() {
   return !tmActualListSettled || !tmExpectedListSettled;
+}
+
+function isTransactionsOrReportsView() {
+  try {
+    const forced = String(window.__BW_FORCE_VIEW || "").trim().toLowerCase();
+    if (forced === "transactions" || forced === "reports") return true;
+  } catch (_) {}
+  try {
+    const v = String(document.body?.dataset?.bwView || "").trim().toLowerCase();
+    if (v === "transactions" || v === "reports") return true;
+  } catch (_) {}
+  return false;
+}
+
+function resetTransactionsListFamilyState() {
+  expectedTxLoadedFid = 0;
+  upcomingLoadedFid = 0;
+  tmActualListSettled = false;
+  tmExpectedListSettled = false;
+}
+
+function upcomingListRequestKey(fid) {
+  const todayIso = upcomingStartDate?.value || toISODate(new Date());
+  const endIso = upcomingEndDate?.value || (() => {
+    const endCap = new Date();
+    endCap.setDate(endCap.getDate() + 548);
+    return toISODate(endCap);
+  })();
+  return `${Number(fid || 0)}|${todayIso}|${endIso}`;
+}
+
+/** Recurring series + 548-day actuals for the Transactions list. Safe to call twice: in-flight GETs share one request. */
+function ensureTransactionsListData() {
+  if (!state.activeFamilyId) return Promise.resolve();
+  try {
+    bwCalendarTrace("tx-list-prefetch-start");
+  } catch (_) {}
+  const fid = Number(state.activeFamilyId);
+  const expectedP =
+    tmExpectedListSettled && Number(expectedTxLoadedFid) === fid
+      ? Promise.resolve()
+      : loadExpectedTransactions();
+  const upcomingP =
+    tmActualListSettled && Number(upcomingLoadedFid) === fid
+      ? Promise.resolve()
+      : loadUpcomingTransactionsPanel();
+  const done = Promise.all([expectedP, upcomingP]).then(() => {
+    try {
+      bwCalendarTrace("tx-list-ready");
+    } catch (_) {}
+  });
+  return done;
 }
 
 try {
@@ -4506,7 +4565,8 @@ familySelect.addEventListener("change", async () => {
   closeFavoritesMenu();
   favoriteTransactions = [];
   favoriteTransactionsFamilyId = null;
-  await loadExpectedTransactions();
+  resetTransactionsListFamilyState();
+  void ensureTransactionsListData();
   await loadMonthAndCalendar();
   if (state.activeFamilyId) {
     try {
@@ -14732,9 +14792,13 @@ async function loadFamilies() {
   if (!state.activeFamilyId) {
     tmActualListSettled = true;
     tmExpectedListSettled = true;
+    expectedTxLoadedFid = 0;
+    upcomingLoadedFid = 0;
     try {
       renderUpcomingTransactionsFiltered();
     } catch (_) {}
+  } else if (familyChanged) {
+    resetTransactionsListFamilyState();
   }
   if (familyChanged) {
     invalidateBillingStatusCache();
@@ -18599,11 +18663,29 @@ async function repairOnboardingCategoryIds(items, kind) {
 }
 
 async function loadExpectedTransactions() {
+  const fid = Number(state.activeFamilyId || 0);
+  if (expectedTxInflight && Number(expectedTxInflightFid) === fid) {
+    return expectedTxInflight;
+  }
+  const run = loadExpectedTransactionsUncached();
+  expectedTxInflightFid = fid;
+  expectedTxInflight = run.finally(() => {
+    if (expectedTxInflight === run) {
+      expectedTxInflight = null;
+      expectedTxInflightFid = 0;
+    }
+  });
+  return expectedTxInflight;
+}
+
+async function loadExpectedTransactionsUncached() {
   if (!state.activeFamilyId) {
     if (tmFamiliesLoaded) tmExpectedListSettled = true;
     renderUpcomingTransactionsFiltered();
     return;
   }
+  const fid = Number(state.activeFamilyId);
+  if (Number(expectedTxLoadedFid) !== fid) tmExpectedListSettled = false;
   const gen = ++expectedTxLoadGen;
   if (tmTransactionsListLoading()) renderUpcomingTransactionsFiltered();
   try {
@@ -18612,6 +18694,7 @@ async function loadExpectedTransactions() {
     state.expectedTransactions = items || [];
     await repairOnboardingCategoryIds(state.expectedTransactions, "expected");
     if (gen !== expectedTxLoadGen) return;
+    expectedTxLoadedFid = fid;
     tmExpectedListSettled = true;
     renderUpcomingTransactionsFiltered();
     try {
@@ -19000,7 +19083,23 @@ async function loadTransactions(gen) {
 
 /** Actual transactions on or after today (for Transaction View list), chronological. */
 async function loadUpcomingTransactionsPanel() {
+  const key = upcomingListRequestKey(state.activeFamilyId);
+  if (upcomingInflight && upcomingInflightKey === key) return upcomingInflight;
+  const run = loadUpcomingTransactionsPanelUncached();
+  upcomingInflightKey = key;
+  upcomingInflight = run.finally(() => {
+    if (upcomingInflight === run) {
+      upcomingInflight = null;
+      upcomingInflightKey = "";
+    }
+  });
+  return upcomingInflight;
+}
+
+async function loadUpcomingTransactionsPanelUncached() {
   const gen = ++upcomingLoadGen;
+  const fid = Number(state.activeFamilyId || 0);
+  if (fid && Number(upcomingLoadedFid) !== fid) tmActualListSettled = false;
   if (tmTransactionsListLoading()) renderUpcomingTransactionsFiltered();
   try {
     if (!state.activeFamilyId) {
@@ -19023,6 +19122,7 @@ async function loadUpcomingTransactionsPanel() {
     state.upcomingActualItems = items;
     await repairOnboardingCategoryIds(state.upcomingActualItems, "actual");
     if (gen !== upcomingLoadGen) return;
+    upcomingLoadedFid = fid;
     tmActualListSettled = true;
     renderUpcomingTransactionsFiltered();
   } catch (e) {
@@ -26930,6 +27030,10 @@ async function main() {
   try {
     syncSidebarCashHealthCardVisibility();
   } catch (_) {}
+  // Transactions/Reports: start the list as soon as the family id exists.
+  // Do not wait for Forecast calendar, extras, or projection.
+  const txListPrefetch =
+    state.activeFamilyId && isTransactionsOrReportsView() ? ensureTransactionsListData() : null;
   // Family-scoped forecast fetches only need the family id. Run accounts in
   // parallel so phones are not blocked on a sequential accounts round-trip.
   const accountsPromise = state.activeFamilyId
@@ -26977,7 +27081,11 @@ async function main() {
         }
       } catch (_) {}
     }
-    await loadExpectedTransactions();
+    if (txListPrefetch) {
+      void txListPrefetch;
+    } else {
+      await loadExpectedTransactions();
+    }
   }
   // Desktop may still need a color pass after categories. On phones this extra
   // innerHTML rebuild is a visible jump after the coherent first paint.

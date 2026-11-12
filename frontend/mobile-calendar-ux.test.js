@@ -241,7 +241,7 @@ assert.ok(
   /sidebar-cash-health--pending #sidebarPendingTxCard/.test(css),
   "Needs Review stays hidden until Cash Health status is ready"
 );
-var expectedFn = functionBody(app, "loadExpectedTransactions");
+var expectedFn = functionBody(app, "loadExpectedTransactionsUncached");
 assert.ok(
   expectedFn.indexOf("cash-health-skip-expected-refresh") >= 0,
   "unchanged expected transactions do not restart Cash Health"
@@ -250,6 +250,15 @@ assert.ok(
   expectedFn.indexOf("cash-health-invalidate-expected") >= 0,
   "changed expected transactions still refresh Cash Health"
 );
+assert.ok(app.indexOf("function ensureTransactionsListData(") >= 0, "transactions list has a shared prefetch");
+var ensureFn = functionBody(app, "ensureTransactionsListData");
+assert.ok(ensureFn.indexOf("loadExpectedTransactions()") >= 0, "list prefetch loads recurring series");
+assert.ok(ensureFn.indexOf("loadUpcomingTransactionsPanel()") >= 0, "list prefetch loads 548-day actuals on every viewport");
+var prefetchIdx = app.indexOf("const txListPrefetch");
+var calendarAwaitIdx = app.indexOf("await Promise.all([accountsPromise, loadMonthAndCalendar()])");
+assert.ok(prefetchIdx >= 0 && prefetchIdx < calendarAwaitIdx, "transactions list prefetch starts before the calendar wait");
+var monthFn = functionBody(app, "loadMonthAndCalendar");
+assert.ok(monthFn.indexOf("upcomingPromise: mobile") >= 0, "Forecast still skips the 548-day upcoming fetch on phones");
 var refreshFn = functionBody(app, "refreshLowBalanceAlert");
 var copyIdx = refreshFn.indexOf("buildCashHealthCopy(summary, null)");
 var paintIdx = refreshFn.indexOf("renderCashHealth();", copyIdx);
