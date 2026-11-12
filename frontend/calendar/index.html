@@ -34,13 +34,16 @@
 <script>
       window.API_BASE = "__API_BASE__";
       window.__BW_FORCE_VIEW = "calendar";
+      try {
+        if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      } catch (e) {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=938" />
+    <link rel="stylesheet" href="../styles.css?v=939" />
   </head>
-  <body>
+  <body data-bw-view="calendar">
     <h1 class="sr-only">Forecast calendar</h1>
     <div class="container">
       <div id="familiesErr" class="error"></div>
@@ -88,7 +91,7 @@
 
             <div id="viewOnlyBanner" class="view-only-banner" hidden role="status"></div>
 
-            <section id="sidebarCashHealthCard" class="card sidebar-section sidebar-cash-health" hidden aria-label="Cash Health">
+            <section id="sidebarCashHealthCard" class="card sidebar-section sidebar-cash-health" aria-label="Cash Health">
               <div class="sidebar-section-head sidebar-cash-health__head">
                 <h2 id="cashOutlookTitle">Cash Health</h2>
                 <span id="cashHealthHorizon" class="sidebar-cash-health__horizon" hidden></span>
@@ -337,8 +340,8 @@
 
         <div class="main-column">
           <div id="calendarViewPanel" class="app-view">
-            <div class="card calendar-panel" id="calendarPanel">
-              <div class="calendar-loading-indicator" id="calendarLoadingIndicator" hidden aria-live="polite">
+            <div class="card calendar-panel calendar-panel--loading" id="calendarPanel" aria-busy="true">
+              <div class="calendar-loading-indicator" id="calendarLoadingIndicator" aria-live="polite">
                 <div class="calendar-loading-indicator__inner" role="status" aria-label="Loading calendar">
                   <span class="calendar-spinner" aria-hidden="true"></span>
                   <span>Loading…</span>
@@ -1827,7 +1830,7 @@
     <script src="../sidebar-reconcile.js?v=4"></script>
     <script src="../tx-edit-scope.js?v=4"></script>
     <script src="../reconcile-record-tip.js?v=5"></script>
-    <script src="../app.js?v=610"></script>
+    <script src="../app.js?v=611"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=28" defer></script>
   </body>

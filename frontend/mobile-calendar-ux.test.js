@@ -112,16 +112,14 @@ assert.ok(
 );
 var dailyIdx = loadBody.indexOf('runStep("daily-balances"');
 var parallelIdx = loadBody.indexOf("await Promise.all([");
-var ribbonAfterDaily = loadBody.indexOf("updateCalendarEmptyStateBanner()", dailyIdx);
-assert.ok(dailyIdx >= 0 && ribbonAfterDaily >= 0 && parallelIdx >= 0, "load sequence markers exist");
-assert.ok(
-  dailyIdx < ribbonAfterDaily && ribbonAfterDaily < parallelIdx,
-  "Loading forecast ribbon clears after daily-balances, before secondary fetches"
-);
+assert.ok(dailyIdx >= 0 && parallelIdx >= 0, "load sequence markers exist");
+assert.ok(dailyIdx < parallelIdx, "daily balances still start before secondary fetches");
+assert.ok(loadBody.indexOf("coherentFirstPaint") >= 0, "phones wait for a coherent first calendar paint");
+assert.ok(loadBody.indexOf('cashHealthPromise') >= 0, "Cash Health loads with the month, not after the first paint");
+assert.ok(loadBody.indexOf("scheduleMobileForecastTop()") < 0, "month load does not keep issuing top-pin scroll commands");
 assert.ok(loadBody.indexOf("maybeShowForecastReadyPopup()") >= 0, "first-forecast welcome still waits on the full load");
 var busyOffIdx = loadBody.indexOf("setCalendarLoadingUi(false)");
 assert.ok(busyOffIdx > parallelIdx, "aria-busy stays on through secondary fetches");
-assert.ok(loadBody.indexOf("scheduleMobileForecastTop()") >= 0, "mobile forecast pins to the top after the first usable paint");
 assert.ok(loadBody.indexOf("scheduleMobileCalendarLanding()") < 0, "month load does not auto-scroll to today");
 assert.ok(loadBody.indexOf("maybeScrollMobileCalendarToToday()") < 0, "month load does not re-aim at today as data arrives");
 var mainFn = functionBody(app, "main");
@@ -133,10 +131,36 @@ assert.ok(
 assert.ok(app.indexOf("function keepMobileTodayInPlace(") < 0, "today-follow observer is gone");
 assert.ok(app.indexOf("function maybeScrollMobileCalendarToToday(") < 0, "auto-land on today is gone");
 assert.ok(app.indexOf('history.scrollRestoration = "manual"') >= 0, "calendar owns the first scroll position");
+var calendarHtml = fs.readFileSync(path.join(__dirname, "calendar", "index.html"), "utf8");
+assert.ok(calendarHtml.indexOf('data-bw-view="calendar"') >= 0, "calendar HTML first-paints as the forecast view");
+assert.ok(
+  /id="sidebarCashHealthCard"[^>]*hidden/.test(calendarHtml) === false,
+  "Cash Health is in the first HTML layout, not hidden behind Monthly Cash Flow"
+);
+assert.ok(calendarHtml.indexOf("calendar-panel--loading") >= 0, "the calendar panel starts in its loading state");
+assert.ok(calendarHtml.indexOf('id="calendarLoadingIndicator" hidden') < 0, "the loading overlay is visible on first paint");
+assert.ok(calendarHtml.indexOf('history.scrollRestoration = "manual"') >= 0, "Safari is told not to restore a mid-month scroll before app.js runs");
 
 var topFn = functionBody(app, "pinMobileForecastTop");
-assert.ok(topFn.indexOf("scrollTo") >= 0, "Safari restore is corrected back to the top");
+assert.ok(topFn.indexOf("scrollTo") >= 0, "bfcache restore can still be corrected back to the top");
 assert.ok(topFn.indexOf("calendarMobileUserMoved") >= 0, "a user scroll is not overwritten");
+assert.ok(app.indexOf("function scheduleMobileForecastTop(") < 0, "init does not schedule repeated top pins");
+
+var detailFn = functionBody(app, "setCalendarDetailMode");
+assert.ok(detailFn.indexOf("monthDailyBalances") >= 0, "toggle does not paint an empty month during script init");
+
+var renderFn = functionBody(app, "renderCalendar");
+assert.ok(renderFn.indexOf("renderCalendar-skipped-empty") >= 0, "mobile loading does not paint empty date cards");
+
+var loadingFn = functionBody(app, "setCalendarLoadingUi");
+assert.ok(loadingFn.indexOf("calendarLoadingIndicator") >= 0, "the overlay indicator tracks the panel loading class");
+
+var visFn = functionBody(app, "syncSidebarCashHealthCardVisibility");
+assert.ok(visFn.indexOf("activeFamilyId") < 0, "Cash Health stays in layout before the family id arrives");
+
+var navIife = app.slice(app.indexOf("(function scrollActiveNavTabIntoView()"), app.indexOf("main().catch"));
+assert.ok(navIife.indexOf("scrollIntoView") >= 0 && navIife.indexOf("Never use Element.scrollIntoView") >= 0, "active tab scrolling does not pan the document");
+assert.ok(navIife.indexOf("tabs.scrollTo") >= 0, "active tab only scrolls the tab strip");
 
 var todayFn = functionBody(app, "scrollMobileCalendarToToday");
 assert.ok(todayFn.indexOf("mobileCalendarScrollTopFor") >= 0, "the Today control still scrolls to today");
@@ -153,6 +177,7 @@ assert.ok(tourEnded.indexOf("calendarMobileUserMoved = true") >= 0, "ending the 
 var showBody = functionBody(app, "maybeShowForecastReadyPopup");
 assert.ok(showBody.indexOf("preventScroll: true") >= 0, "welcome focus does not scroll the forecast");
 
+assert.ok(/body\[data-bw-view="calendar"\]\{[\s\S]*?overflow-anchor:\s*none/.test(css), "inserting Cash Health does not overflow-anchor the page down to today");
 assert.ok(
   /body\[data-bw-view="calendar"\] \.sidebar-cash-health__alerts\{[\s\S]*?min-height:\s*56px/.test(css),
   "mobile Cash Health slot is reserved before the banner fills in"

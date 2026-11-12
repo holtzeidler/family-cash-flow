@@ -2723,7 +2723,9 @@ function syncSidebarCashHealthCardVisibility() {
   if (!sidebarCashHealthCard) return;
   const v = document.body?.dataset?.bwView;
   const showOnView = v === "calendar" || v === "transactions" || v === "reports" || v === "settings" || v === "reimbursements";
-  sidebarCashHealthCard.hidden = !showOnView || !state.activeFamilyId;
+  // Keep the calendar Cash Health shell in layout before family id arrives.
+  // Hiding it first-paints Monthly Cash Flow at the top on iPhone Safari.
+  sidebarCashHealthCard.hidden = !showOnView;
 }
 
 function cashHealthStatusIconHtml(tone) {
@@ -4316,7 +4318,11 @@ function setCalendarDetailMode(mode) {
   } catch (_) {}
   // Detailed-only state should not leak into simplified view.
   if (m !== "detailed" && state.calendarExpandedDays) state.calendarExpandedDays.clear();
-  renderCalendar();
+  // Do not paint an empty month during script init. iPhone Safari will restore
+  // scroll against those placeholder cards and then fill them in.
+  if (state.monthDailyBalances && state.monthDailyBalances.size > 0) {
+    renderCalendar();
+  }
 }
 
 try {
@@ -19639,7 +19645,6 @@ async function loadCalendarMonthDaily(gen) {
 
 /** Phones open the forecast at the top (Cash Health). Today / date focus / the tour still scroll on purpose. */
 let calendarMobileUserMoved = false;
-let calendarMobileTopTimer = null;
 
 try {
   const isCalPage =
@@ -19662,6 +19667,30 @@ function bwCalendarTrace(event, extra) {
       console.debug("[bw-calendar]", event, extra || "");
     }
   } catch (_) {}
+}
+
+function bwCalendarTraceLayout(event) {
+  let extra = {};
+  try {
+    extra = {
+      y: Math.round(window.scrollY || 0),
+      vx: window.visualViewport ? Math.round(window.visualViewport.offsetTop || 0) : 0,
+      w: window.innerWidth,
+      chHidden: !!(sidebarCashHealthCard && sidebarCashHealthCard.hidden),
+      chTop:
+        sidebarCashHealthCard && !sidebarCashHealthCard.hidden
+          ? Math.round(sidebarCashHealthCard.getBoundingClientRect().top)
+          : null,
+      cells: calendarGrid ? calendarGrid.querySelectorAll(".cal-cell").length : 0,
+      txLines: calendarGrid ? calendarGrid.querySelectorAll(".cal-day-tx-line").length : 0,
+      chip: !!(calendarGrid && calendarGrid.querySelector(".cal-cash-health-chip")),
+      busy: !!(
+        document.getElementById("calendarPanel") &&
+        document.getElementById("calendarPanel").classList.contains("calendar-panel--loading")
+      ),
+    };
+  } catch (_) {}
+  bwCalendarTrace(event, extra);
 }
 
 function noteUserMovedCalendar(e) {
@@ -19698,22 +19727,22 @@ window.addEventListener("pageshow", (e) => {
   pinMobileForecastTop();
 });
 
-function scheduleMobileForecastTop() {
-  if (!isMobileCalendarViewport() || calendarMobileUserMoved) return;
-  if (calendarMobileTopTimer) {
-    clearTimeout(calendarMobileTopTimer);
-    calendarMobileTopTimer = null;
-  }
-  const run = () => {
-    calendarMobileTopTimer = null;
-    pinMobileForecastTop();
-  };
-  if (typeof requestAnimationFrame === "function") {
-    requestAnimationFrame(() => requestAnimationFrame(run));
-  } else {
-    calendarMobileTopTimer = window.setTimeout(run, 32);
-  }
-}
+(function watchMobileForecastInit() {
+  try {
+    if (!isMobileCalendarViewport()) return;
+    let lastY = Math.round(window.scrollY || 0);
+    const onScroll = () => {
+      const y = Math.round(window.scrollY || 0);
+      if (y === lastY) return;
+      lastY = y;
+      bwCalendarTraceLayout(calendarInitialMonthReady ? "scroll-after-ready" : "scroll-during-init");
+    };
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("scroll", onScroll, { passive: true });
+    }
+  } catch (_) {}
+})();
 
 /** Explicit Today control — not used on initial load. */
 function scrollMobileCalendarToToday() {
@@ -19891,6 +19920,8 @@ function setCalendarLoadingUi(on) {
     panel.classList.toggle("calendar-panel--loading", !!on);
     panel.setAttribute("aria-busy", on ? "true" : "false");
   }
+  const indicator = document.getElementById("calendarLoadingIndicator");
+  if (indicator) indicator.hidden = !on;
   for (const el of [calendarPrevMonth, calendarNextMonth, calendarGoToday, calendarMonthNum, calendarYear, calendarMode]) {
     if (el) el.disabled = !!on;
   }
@@ -19910,20 +19941,20 @@ async function loadMonthAndCalendar() {
   const gen = ++calendarLoadGen;
   const stillCurrent = () => gen === calendarLoadGen;
   const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
+  const coherentFirstPaint = isMobileCalendarViewport();
   beginNeedsReviewMonthLoad(viewedYm);
   try {
     // Keep matching and adjusted dates until the month fetch replaces them so
     // Last Reconciled cannot flash back to an older matching-only date.
-    // Keep the current grid until daily-balances return — wiping txs/balances
-    // here flashes an empty month and holds the green ribbon over a client
-    // estimate while six secondary requests still have not started.
     if (!stillCurrent()) return;
-    // The green forecast ribbon is the loading message. #calendarErr is the
-    // red error slot, so a loading state must not appear there as well.
     if (calendarErr && String(calendarErr.textContent || "").trim() === "Loading forecast…") {
       show(calendarErr, "");
     }
-    ensureForecastStatusRibbon("Loading forecast…");
+    // On phones the panel overlay is already the loading state. Inserting the
+    // green ribbon after empty day cards are on screen is what the recording
+    // showed as "Loading forecast…" appearing late and shoving the calendar.
+    if (!coherentFirstPaint) ensureForecastStatusRibbon("Loading forecast…");
+    bwCalendarTraceLayout("month-load-start");
 
     if (!state.activeFamilyId) {
       if (stillCurrent()) finishNeedsReviewMonthLoad(viewedYm);
@@ -19947,7 +19978,7 @@ async function loadMonthAndCalendar() {
       }
     };
 
-    // Forecast numbers first — everything else is secondary chrome.
+    const cashHealthPromise = runStep("low-balance", () => refreshLowBalanceAlert());
     await runStep("daily-balances", () => loadCalendarMonthDaily(gen));
     if (!stillCurrent()) return;
     if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
@@ -19955,12 +19986,11 @@ async function loadMonthAndCalendar() {
         computeMonthDailyBalancesLegacy();
       } catch (_) {}
     }
-    renderCalendar();
-    bwCalendarTrace("daily-balances-painted");
-    scheduleMobileForecastTop();
-    // Daily balances are the forecast. Drop the banner now; txs/reconcile/etc.
-    // continue in the background without blocking the calendar.
-    if (stillCurrent()) updateCalendarEmptyStateBanner();
+    if (!coherentFirstPaint) {
+      renderCalendar();
+      bwCalendarTraceLayout("daily-balances-painted");
+      if (stillCurrent()) updateCalendarEmptyStateBanner();
+    }
 
     await Promise.all([
       runStep("transactions", () => loadTransactions(gen)),
@@ -19969,6 +19999,7 @@ async function loadMonthAndCalendar() {
       runStep("extras", () => loadCalendarExtras()),
       runStep("reconciled", () => loadReconciledDays(getCalendarViewYm())),
       runStep("verified", () => loadVerifiedBalances(getCalendarViewYm())),
+      cashHealthPromise,
     ]);
     try {
       repairOutOfMonthBalanceContinuity();
@@ -19977,9 +20008,8 @@ async function loadMonthAndCalendar() {
     finishNeedsReviewMonthLoad(viewedYm);
     renderMonthSummaryTotalsFromState();
     renderCalendar();
-    bwCalendarTrace("secondary-painted");
+    bwCalendarTraceLayout("coherent-painted");
     updateCalendarEmptyStateBanner();
-    await runStep("low-balance", () => refreshLowBalanceAlert());
     await runStep("forecast-confidence", () => refreshForecastConfidence());
     if (!stillCurrent()) return;
     const pendingFocus = document.body?.dataset?.bwView === "calendar" ? takePendingCashHealthFocus() : null;
@@ -20002,6 +20032,7 @@ async function loadMonthAndCalendar() {
     if (stillCurrent()) {
       setCalendarLoadingUi(false);
       calendarInitialMonthReady = true;
+      bwCalendarTraceLayout("month-load-ready");
       try {
         maybeShowForecastReadyPopup();
       } catch (_) {}
@@ -20826,6 +20857,16 @@ function dedupeCalendarDayTransactions(expectedItems, actualTxs) {
 
 function renderCalendar() {
   if (!calendarGrid) return;
+  if (
+    isMobileCalendarViewport() &&
+    !(state.monthDailyBalances && state.monthDailyBalances.size > 0)
+  ) {
+    const panel = document.getElementById("calendarPanel");
+    if (panel && panel.classList.contains("calendar-panel--loading")) {
+      bwCalendarTrace("renderCalendar-skipped-empty");
+      return;
+    }
+  }
   bwCalendarTrace("renderCalendar");
   calendarGrid.innerHTML = "";
   const calendarDow = document.getElementById("calendarDow");
@@ -26158,7 +26199,7 @@ async function main() {
     return;
   }
   bwDispatchMilestone("first-login");
-  bwCalendarTrace("bootstrap-start");
+  bwCalendarTraceLayout("bootstrap-start");
   await loadFamilies();
   if (!state.activeFamilyId) {
     try {
@@ -26196,9 +26237,11 @@ async function main() {
   if (state.activeFamilyId) {
     try {
       await loadAccounts();
-      try {
-        ensureForecastStatusRibbon("Loading forecast…");
-      } catch (_) {}
+      if (!isMobileCalendarViewport()) {
+        try {
+          ensureForecastStatusRibbon("Loading forecast…");
+        } catch (_) {}
+      }
     } catch (e) {
       show(familiesErr, (e && e.message) || "Failed to load accounts");
     }
@@ -26240,10 +26283,13 @@ async function main() {
     }
     await loadExpectedTransactions();
   }
-  // Defensive re-render after secondary loads.
-  try {
-    renderCalendar();
-  } catch (_) {}
+  // Desktop may still need a color pass after categories. On phones this extra
+  // innerHTML rebuild is a visible jump after the coherent first paint.
+  if (!isMobileCalendarViewport()) {
+    try {
+      renderCalendar();
+    } catch (_) {}
+  }
   try {
     updateCalendarEmptyStateBanner();
   } catch (_) {}
@@ -26359,9 +26405,13 @@ function wireForecastPreferencesUi() {
 
 (function scrollActiveNavTabIntoView() {
   var tab = document.querySelector(".top-nav__tab.is-active");
-  if (!tab || window.innerWidth > 768) return;
+  var tabs = document.querySelector(".top-nav__tabs");
+  if (!tab || !tabs || window.innerWidth > 768) return;
+  // Never use Element.scrollIntoView here: iPhone Safari pans the document.
   try {
-    tab.scrollIntoView({ inline: "nearest", block: "nearest" });
+    var left = tab.offsetLeft - 12;
+    if (typeof tabs.scrollTo === "function") tabs.scrollTo({ left: Math.max(0, left), behavior: "auto" });
+    else tabs.scrollLeft = Math.max(0, left);
   } catch (_) {}
 })();
 
