@@ -31526,6 +31526,31 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     min-width: 0;
   }
 
+  .calendar--mobile .cal-earlier-toggle{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    border-radius: 14px;
+    background: #f8fafb;
+    color: rgba(51, 65, 85, 0.88);
+    font-size: 0.86rem;
+    font-weight: 650;
+    line-height: 1.2;
+    box-sizing: border-box;
+  }
+  .calendar--mobile .cal-earlier-toggle:hover,
+  .calendar--mobile .cal-earlier-toggle:focus-visible{
+    background: #fff;
+    border-color: rgba(11, 61, 46, 0.16);
+  }
+  .calendar--mobile .cal-cell[hidden]{
+    display: none !important;
+  }
+
   .calendar--mobile .cal-cell.cal-cell--out{
     display: none;
   }

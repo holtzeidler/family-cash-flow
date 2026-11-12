@@ -117,6 +117,10 @@ assert.ok(dailyIdx >= 0 && txIdx >= 0 && parallelIdx >= 0, "load sequence marker
 assert.ok(dailyIdx < parallelIdx && txIdx < parallelIdx, "daily balances and transactions start together");
 assert.ok(loadBody.indexOf("const mobile = isMobileCalendarViewport()") >= 0, "phones wait for a coherent first calendar paint");
 assert.ok(loadBody.indexOf("usable-calendar") >= 0, "phones mark a usable calendar as soon as the month can paint");
+assert.ok(loadBody.indexOf("month-cache-hit") >= 0, "cached months paint without another loading spinner");
+assert.ok(loadBody.indexOf("allowCache") >= 0, "month snapshots are reused only when navigating months");
+assert.ok(app.indexOf("loadMonthAndCalendar({ allowCache: true })") >= 0, "month buttons reuse warmed adjacent months");
+assert.ok(loadBody.indexOf("schedulePrefetchAdjacentCalendarMonths()") >= 0, "phones warm adjacent months after the first usable paint");
 assert.ok(loadBody.indexOf("cashHealthPromise") >= 0, "Cash Health loads with the month, not after the first paint");
 assert.ok(loadBody.indexOf("scheduleMobileForecastTop()") < 0, "month load does not keep issuing top-pin scroll commands");
 assert.ok(loadBody.indexOf("maybeShowForecastReadyPopup()") >= 0, "first-forecast welcome still waits on the full load");
@@ -171,8 +175,11 @@ assert.ok(navIife.indexOf("scrollIntoView") >= 0 && navIife.indexOf("Never use E
 assert.ok(navIife.indexOf("tabs.scrollTo") >= 0, "active tab only scrolls the tab strip");
 
 var todayFn = functionBody(app, "scrollMobileCalendarToToday");
-assert.ok(todayFn.indexOf("mobileCalendarScrollTopFor") >= 0, "the Today control still scrolls to today");
-assert.ok(app.indexOf("scrollMobileCalendarToToday()") >= 0, "the Today button calls the explicit today scroller");
+assert.ok(todayFn.indexOf("mobileCalendarScrollTopFor") >= 0, "desktop Today still has a today scroller");
+assert.ok(app.indexOf("cal-earlier-toggle") >= 0, "phones can reveal dates before today without auto-scrolling");
+assert.ok(app.indexOf("mobileCalendarShowEarlier = false") >= 0, "month changes start the current month at today again");
+var dailyReq = functionBody(app, "requestCalendarMonthDaily");
+assert.ok(dailyReq.indexOf("calendarMonthDailyCache.get") >= 0, "daily-balance requests reuse cached months");
 
 var skipFn = functionBody(app, "ensureForecastReadyModal");
 assert.ok(skipFn.indexOf("scheduleMobileForecastTop()") < 0, "skipping the welcome does not move the page");

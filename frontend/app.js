@@ -246,8 +246,20 @@ async function api(path, method = "GET", body) {
       }, perAttemptTimeoutMs);
     }
     try {
+      const attemptStart = typeof performance !== "undefined" ? performance.now() : Date.now();
       res = await fetch(fullPath, ctrl ? { ...fetchOptions, signal: ctrl.signal } : fetchOptions);
       if (timeoutId) window.clearTimeout(timeoutId);
+      try {
+        window.__bwApiTrace = window.__bwApiTrace || [];
+        window.__bwApiTrace.push({
+          path: String(path || "").split("?")[0],
+          qs: String(path || "").split("?")[1] || "",
+          method,
+          ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - attemptStart),
+          status: res && res.status,
+          t: typeof performance !== "undefined" ? Math.round(performance.now()) : Date.now(),
+        });
+      } catch (_) {}
       break;
     } catch (err) {
       if (timeoutId) window.clearTimeout(timeoutId);
@@ -1050,6 +1062,9 @@ let lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
 /** calendar-month-daily responses, shared by the calendar and Cash Health so both read the same rows. */
 const calendarMonthDailyCache = new Map();
 const calendarMonthDailyInflight = new Map();
+/** Full month snapshots so Nov→Dec can paint without another network round. */
+const calendarMonthViewCache = new Map();
+const calendarMonthWarmInflight = new Set();
 let cashHealthItemsCache = new Map();
 let cashHealthGen = 0;
 
@@ -2624,6 +2639,8 @@ function calendarMonthDailyKey(fid, mode, ym) {
 function clearCashHealthData() {
   calendarMonthDailyCache.clear();
   calendarMonthDailyInflight.clear();
+  calendarMonthViewCache.clear();
+  calendarMonthWarmInflight.clear();
   cashHealthItemsCache = new Map();
   cashHealthGen += 1;
 }
@@ -2636,6 +2653,8 @@ function rememberCalendarMonthDaily(fid, mode, ym, days) {
   if (prev && prev.sig !== sig) {
     // The forecast changed without an explicit invalidation, so every other cached month is suspect too.
     calendarMonthDailyCache.clear();
+    calendarMonthViewCache.clear();
+    calendarMonthWarmInflight.clear();
     cashHealthItemsCache = new Map();
     requestCashHealthRecompute();
   }
@@ -2645,6 +2664,13 @@ function rememberCalendarMonthDaily(fid, mode, ym, days) {
 /** One request per month at a time; Cash Health and the calendar share it while it is in flight. */
 function requestCalendarMonthDaily(fid, mode, ym) {
   const key = calendarMonthDailyKey(fid, mode, ym);
+  const cached = calendarMonthDailyCache.get(key);
+  if (cached && Array.isArray(cached.days) && cached.days.length) {
+    try {
+      bwCalendarTrace("daily-cache-hit", { ym });
+    } catch (_) {}
+    return Promise.resolve({ days: cached.days });
+  }
   const pending = calendarMonthDailyInflight.get(key);
   if (pending) return pending;
   const req = api(
@@ -3233,7 +3259,8 @@ async function onCalendarPickerChange() {
   const ym = `${y}-${String(Number(m)).padStart(2, "0")}`;
   calendarMonth.value = ym;
   if (monthInput) monthInput.value = ym;
-  await loadMonthAndCalendar();
+  mobileCalendarShowEarlier = false;
+  await loadMonthAndCalendar({ allowCache: true });
 }
 
 async function shiftCalendarMonth(delta) {
@@ -3248,13 +3275,14 @@ async function shiftCalendarMonth(delta) {
   const next = `${ny}-${String(nm).padStart(2, "0")}`;
   applyCalendarMonthToPickers(next);
   if (monthInput) monthInput.value = next;
-  await loadMonthAndCalendar();
+  mobileCalendarShowEarlier = false;
+  await loadMonthAndCalendar({ allowCache: true });
 }
 
 if (monthInput) {
   monthInput.addEventListener("change", async () => {
     if (monthInput.value) applyCalendarMonthToPickers(monthInput.value);
-    await loadMonthAndCalendar();
+    await loadMonthAndCalendar({ allowCache: true });
   });
 }
 
@@ -3277,12 +3305,23 @@ if (calendarGoToday) {
     const y = now.getFullYear();
     const m = now.getMonth() + 1;
     const ym = `${y}-${String(m).padStart(2, "0")}`;
+    const already = getCalendarViewYm() === ym;
     applyCalendarMonthToPickers(ym);
     if (monthInput) monthInput.value = ym;
-    await loadMonthAndCalendar();
-    try {
-      scrollMobileCalendarToToday();
-    } catch (_) {}
+    mobileCalendarShowEarlier = false;
+    calendarMobileUserMoved = true;
+    if (already && isMobileCalendarViewport()) {
+      try {
+        renderCalendar();
+      } catch (_) {}
+      return;
+    }
+    await loadMonthAndCalendar({ allowCache: true });
+    if (!isMobileCalendarViewport()) {
+      try {
+        scrollMobileCalendarToToday();
+      } catch (_) {}
+    }
   });
 }
 
@@ -4357,6 +4396,7 @@ if (calendarMode) {
 familySelect.addEventListener("change", async () => {
   state.activeFamilyId = Number(familySelect.value);
   resetReconciledDateCache();
+  invalidateCalendarMonthDaily();
   invalidateBillingStatusCache();
   riskCalendarViewYm = "";
   lastRiskCalendarDaily = [];
@@ -7260,6 +7300,146 @@ async function saveBalanceCheckIn() {
 function invalidateCalendarMonthDaily() {
   calendarMonthDailyCache.clear();
   calendarMonthDailyInflight.clear();
+  calendarMonthViewCache.clear();
+  calendarMonthWarmInflight.clear();
+}
+
+function dailyBalanceMapFromDays(days) {
+  const next = new Map();
+  if (!Array.isArray(days)) return next;
+  for (const row of days) {
+    const iso = normalizeIsoDate(row.date);
+    if (!iso || row.end == null) continue;
+    const start = Number(row.start);
+    const txNet = Number(row.tx_net);
+    const end = Number(row.end);
+    next.set(iso, {
+      start: Number.isFinite(start) ? start : 0,
+      txNet: Number.isFinite(txNet) ? txNet : 0,
+      end: Number.isFinite(end) ? end : 0,
+      verified: !!row.verified,
+      verifiedAmount: row.verified_amount != null ? Number(row.verified_amount) : null,
+      projectedEnd: row.projected_end != null ? Number(row.projected_end) : null,
+    });
+  }
+  return next;
+}
+
+function calendarMonthViewSnapshot() {
+  return {
+    daily: new Map(state.monthDailyBalances || []),
+    actualItems: Array.isArray(state.monthActualItems) ? state.monthActualItems.slice() : [],
+    expectedItems: Array.isArray(state.monthExpectedItems) ? state.monthExpectedItems.slice() : [],
+    extraActual: Array.isArray(state.calendarExtraActualItems) ? state.calendarExtraActualItems.slice() : [],
+    extraExpected: Array.isArray(state.calendarExtraExpectedItems) ? state.calendarExtraExpectedItems.slice() : [],
+    reconciled: state.reconciledDates instanceof Set ? [...state.reconciledDates] : [],
+    verified: state.verifiedBalances instanceof Map ? [...state.verifiedBalances] : [],
+  };
+}
+
+function applyCalendarMonthViewSnapshot(row) {
+  if (!row) return;
+  state.monthDailyBalances = new Map(row.daily || []);
+  state.monthActualItems = Array.isArray(row.actualItems) ? row.actualItems.slice() : [];
+  state.monthExpectedItems = Array.isArray(row.expectedItems) ? row.expectedItems.slice() : [];
+  state.calendarExtraActualItems = Array.isArray(row.extraActual) ? row.extraActual.slice() : [];
+  state.calendarExtraExpectedItems = Array.isArray(row.extraExpected) ? row.extraExpected.slice() : [];
+  state.reconciledDates = new Set(row.reconciled || []);
+  state.verifiedBalances = new Map(row.verified || []);
+  try {
+    recomputeLastReconciledIso();
+    paintSidebarReconcileRow();
+  } catch (_) {}
+}
+
+function calendarMonthViewKey(ym) {
+  return `${Number(state.activeFamilyId || 0)}|${String(ym || "").trim()}`;
+}
+
+function rememberCalendarMonthView(ym) {
+  const key = calendarMonthViewKey(ym);
+  if (!String(ym || "").trim() || !state.activeFamilyId) return;
+  calendarMonthViewCache.set(key, calendarMonthViewSnapshot());
+}
+
+function schedulePrefetchAdjacentCalendarMonths() {
+  if (!isMobileCalendarViewport()) return;
+  const ym = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : "";
+  if (!ym) return;
+  const run = () => {
+    void warmCalendarMonthView(shiftMonthStr(ym, 1));
+    void warmCalendarMonthView(shiftMonthStr(ym, -1));
+  };
+  try {
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(run, { timeout: 800 });
+      return;
+    }
+  } catch (_) {}
+  window.setTimeout(run, 80);
+}
+
+async function warmCalendarMonthView(ym) {
+  const month = String(ym || "").trim();
+  if (!month || !state.activeFamilyId) return;
+  const key = calendarMonthViewKey(month);
+  if (calendarMonthViewCache.has(key) || calendarMonthWarmInflight.has(key)) return;
+  calendarMonthWarmInflight.add(key);
+  const fid = state.activeFamilyId;
+  const mode = calendarMode?.value || "both";
+  const prev = shiftMonthStr(month, -1);
+  const next = shiftMonthStr(month, 1);
+  try {
+    const [primary, prevDaily, nextDaily, txs, expected, prevTx, nextTx, prevExp, nextExp, reconciled, verified] =
+      await Promise.all([
+        requestCalendarMonthDaily(fid, mode, month),
+        prev ? requestCalendarMonthDaily(fid, mode, prev) : Promise.resolve({ days: [] }),
+        next ? requestCalendarMonthDaily(fid, mode, next) : Promise.resolve({ days: [] }),
+        api(`/api/families/${fid}/transactions?month=${encodeURIComponent(month)}`, "GET"),
+        api(`/api/families/${fid}/expected-calendar?month=${encodeURIComponent(month)}`, "GET"),
+        prev ? api(`/api/families/${fid}/transactions?month=${encodeURIComponent(prev)}`, "GET") : Promise.resolve({}),
+        next ? api(`/api/families/${fid}/transactions?month=${encodeURIComponent(next)}`, "GET") : Promise.resolve({}),
+        prev ? api(`/api/families/${fid}/expected-calendar?month=${encodeURIComponent(prev)}`, "GET") : Promise.resolve({}),
+        next ? api(`/api/families/${fid}/expected-calendar?month=${encodeURIComponent(next)}`, "GET") : Promise.resolve({}),
+        api(`/api/families/${fid}/reconciled-days?month=${encodeURIComponent(month)}`, "GET"),
+        api(`/api/families/${fid}/verified-balances?month=${encodeURIComponent(month)}`, "GET"),
+      ]);
+    const daily = dailyBalanceMapFromDays([
+      ...(primary?.days || []),
+      ...(prevDaily?.days || []),
+      ...(nextDaily?.days || []),
+    ]);
+    const verifiedMap = [];
+    for (const it of verified?.items || []) {
+      const iso = normalizeIsoDate(it.date);
+      if (!iso) continue;
+      verifiedMap.push([
+        iso,
+        {
+          amount: Number(it.amount),
+          projected_amount: it.projected_amount != null ? Number(it.projected_amount) : null,
+          unexplained_difference:
+            it.unexplained_difference != null ? Number(it.unexplained_difference) : null,
+        },
+      ]);
+    }
+    calendarMonthViewCache.set(key, {
+      daily,
+      actualItems: txs?.items || [],
+      expectedItems: expected?.items || [],
+      extraActual: [...(prevTx?.items || []), ...(nextTx?.items || [])],
+      extraExpected: [...(prevExp?.items || []), ...(nextExp?.items || [])],
+      reconciled: reconciled?.dates || [],
+      verified: verifiedMap,
+    });
+    try {
+      bwCalendarTrace("month-warmed", { ym: month });
+    } catch (_) {}
+  } catch (_) {
+    /* prefetch is optional */
+  } finally {
+    calendarMonthWarmInflight.delete(key);
+  }
 }
 
 function applyClientDailyBalancesNow() {
@@ -19641,6 +19821,8 @@ async function loadCalendarMonthDaily(gen) {
 
 /** Phones open the forecast at the top (Cash Health). Today / date focus / the tour still scroll on purpose. */
 let calendarMobileUserMoved = false;
+/** Current month on phones starts at today; earlier days stay available behind an explicit control. */
+let mobileCalendarShowEarlier = false;
 
 try {
   const isCalPage =
@@ -19810,13 +19992,19 @@ async function openCashHealthDate() {
 /** Show a day and its listed payments; the highlight stays until the user works in the calendar. */
 async function focusCalendarDate(iso, refs = []) {
   calendarMobileUserMoved = true;
+  try {
+    const todayIso = toISODate(new Date());
+    if (iso && iso < todayIso && String(iso).slice(0, 7) === todayIso.slice(0, 7)) {
+      mobileCalendarShowEarlier = true;
+    }
+  } catch (_) {}
   const focus = { iso, refs: new Set(refs) };
   state.cashHealthFocus = focus;
   const ym = iso.slice(0, 7);
   if (getCalendarViewYm() !== ym) {
     applyCalendarMonthToPickers(ym);
     if (monthInput) monthInput.value = ym;
-    await loadMonthAndCalendar();
+    await loadMonthAndCalendar({ allowCache: true });
   } else {
     renderCalendar();
   }
@@ -19933,12 +20121,12 @@ function setCalendarLoadingUi(on) {
   }
 }
 
-async function loadMonthAndCalendar() {
+async function loadMonthAndCalendar(options) {
   const gen = ++calendarLoadGen;
   const stillCurrent = () => gen === calendarLoadGen;
   const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
   const mobile = isMobileCalendarViewport();
-  beginNeedsReviewMonthLoad(viewedYm);
+  const allowCache = !!(options && options.allowCache);
   try {
     // Keep matching and adjusted dates until the month fetch replaces them so
     // Last Reconciled cannot flash back to an older matching-only date.
@@ -19953,15 +20141,32 @@ async function loadMonthAndCalendar() {
     bwCalendarTraceLayout("month-load-start");
 
     if (!state.activeFamilyId) {
+      beginNeedsReviewMonthLoad(viewedYm);
       if (stillCurrent()) finishNeedsReviewMonthLoad(viewedYm);
       renderMonthSummaryTotalsFromState();
       if (stillCurrent()) updateCalendarEmptyStateBanner();
       return;
     }
 
+    const cachedView = allowCache ? calendarMonthViewCache.get(calendarMonthViewKey(viewedYm)) : null;
+    if (cachedView) {
+      applyCalendarMonthViewSnapshot(cachedView);
+      finishNeedsReviewMonthLoad(viewedYm);
+      renderMonthSummaryTotalsFromState();
+      renderCalendar();
+      updateCalendarEmptyStateBanner();
+      setCalendarLoadingUi(false);
+      calendarInitialMonthReady = true;
+      bwCalendarTraceLayout("month-cache-hit");
+      if (mobile) schedulePrefetchAdjacentCalendarMonths();
+      return;
+    }
+
+    beginNeedsReviewMonthLoad(viewedYm);
     setCalendarLoadingUi(true);
     const loadErrors = [];
     const runStep = async (label, fn) => {
+      const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
       try {
         await fn();
       } catch (e) {
@@ -19971,6 +20176,10 @@ async function loadMonthAndCalendar() {
             console.warn(`[calendar] ${label} failed`, e && e.message ? e.message : e);
           }
         } catch (_) {}
+      } finally {
+        bwCalendarTrace("step:" + label, {
+          ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - t0),
+        });
       }
     };
 
@@ -20030,11 +20239,13 @@ async function loadMonthAndCalendar() {
     renderCalendar();
     bwCalendarTraceLayout("coherent-painted");
     updateCalendarEmptyStateBanner();
+    rememberCalendarMonthView(viewedYm);
     if (mobile) {
       setCalendarLoadingUi(false);
       calendarInitialMonthReady = true;
       bwCalendarTraceLayout("usable-calendar");
       void upcomingPromise;
+      schedulePrefetchAdjacentCalendarMonths();
     }
     await runStep("forecast-confidence", () => refreshForecastConfidence());
     if (!stillCurrent()) return;
@@ -21504,9 +21715,45 @@ function renderCalendar() {
     }
 
     bindCalendarCellAddTxClick(cell, iso);
+    if (
+      isMobileCalendarLayout &&
+      !mobileCalendarShowEarlier &&
+      getCalendarViewYm() === toISODate(new Date()).slice(0, 7) &&
+      iso < toISODate(new Date())
+    ) {
+      cell.hidden = true;
+      cell.classList.add("cal-cell--earlier");
+    }
     wrapper.appendChild(cell);
     revealClippedCalendarTxLabels(cell);
     cells.push(cell);
+  }
+
+  if (isMobileCalendarLayout && !mobileCalendarShowEarlier) {
+    const todayIso = toISODate(new Date());
+    if (getCalendarViewYm() === todayIso.slice(0, 7)) {
+      const hiddenCount = cells.filter((c) => c.hidden).length;
+      if (hiddenCount > 0) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "cal-earlier-toggle";
+        const monthLabel = first.toLocaleDateString(undefined, { month: "long" });
+        btn.textContent = `Earlier in ${monthLabel}`;
+        btn.setAttribute("aria-label", `Show earlier dates in ${monthLabel}`);
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          mobileCalendarShowEarlier = true;
+          calendarMobileUserMoved = true;
+          try {
+            renderCalendar();
+          } catch (_) {}
+        });
+        const todayCell = wrapper.querySelector(".cal-cell--today") || cells.find((c) => !c.hidden);
+        if (todayCell) wrapper.insertBefore(btn, todayCell);
+        else wrapper.insertBefore(btn, wrapper.firstChild);
+      }
+    }
   }
 
   calendarGrid.appendChild(wrapper);
