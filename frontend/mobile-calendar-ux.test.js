@@ -189,6 +189,22 @@ assert.ok(app.indexOf("mobileCalendarShowEarlier") < 0, "earlier dates stay in t
 assert.ok(app.indexOf("function placeMobileCalendarBeforeReveal(") >= 0, "initial today placement happens before reveal");
 assert.ok(app.indexOf("keepMobileTodayInPlace") < 0, "today-follow observer stays gone");
 assert.ok(!/new ResizeObserver/.test(functionBody(app, "placeMobileCalendarBeforeReveal")), "placement does not observe later layout shifts");
+assert.ok(app.indexOf('id = "calCashHealthStrip"') >= 0, "phones get a compact Cash Health strip");
+assert.ok(app.indexOf("function syncCashHealthStrip(") >= 0, "the compact strip paints from the same Cash Health copy");
+assert.ok(app.indexOf("mobileCashHealthStripReserve") >= 0, "today sits below the compact strip");
+assert.ok(
+  /new IntersectionObserver/.test(functionBody(app, "observeCashHealthStrip")),
+  "the strip hides with one observer while the full Cash Health card is on screen"
+);
+assert.ok(!/new ResizeObserver/.test(functionBody(app, "observeCashHealthStrip")), "the strip does not observe layout shifts");
+assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-cash-health-strip\.is-active\{[\s\S]*?position:\s*fixed/.test(css),
+  "the compact strip stays under the nav without a nested scroller"
+);
+assert.ok(
+  /body\[data-bw-view="calendar"\]:has\(\.bw-tour-tooltip--open\) \.cal-cash-health-strip/.test(css),
+  "the compact strip yields to the guided tour"
+);
 var dailyReq = functionBody(app, "requestCalendarMonthDaily");
 assert.ok(dailyReq.indexOf("calendarMonthDailyCache.get") >= 0, "daily-balance requests reuse cached months");
 
