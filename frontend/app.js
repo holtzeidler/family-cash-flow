@@ -3259,7 +3259,6 @@ async function onCalendarPickerChange() {
   const ym = `${y}-${String(Number(m)).padStart(2, "0")}`;
   calendarMonth.value = ym;
   if (monthInput) monthInput.value = ym;
-  mobileCalendarShowEarlier = false;
   await loadMonthAndCalendar({ allowCache: true });
 }
 
@@ -3275,7 +3274,6 @@ async function shiftCalendarMonth(delta) {
   const next = `${ny}-${String(nm).padStart(2, "0")}`;
   applyCalendarMonthToPickers(next);
   if (monthInput) monthInput.value = next;
-  mobileCalendarShowEarlier = false;
   await loadMonthAndCalendar({ allowCache: true });
 }
 
@@ -3308,20 +3306,11 @@ if (calendarGoToday) {
     const already = getCalendarViewYm() === ym;
     applyCalendarMonthToPickers(ym);
     if (monthInput) monthInput.value = ym;
-    mobileCalendarShowEarlier = false;
     calendarMobileUserMoved = true;
-    if (already && isMobileCalendarViewport()) {
-      try {
-        renderCalendar();
-      } catch (_) {}
-      return;
-    }
-    await loadMonthAndCalendar({ allowCache: true });
-    if (!isMobileCalendarViewport()) {
-      try {
-        scrollMobileCalendarToToday();
-      } catch (_) {}
-    }
+    if (!already) await loadMonthAndCalendar({ allowCache: true });
+    try {
+      scrollMobileCalendarToToday();
+    } catch (_) {}
   });
 }
 
@@ -19821,8 +19810,6 @@ async function loadCalendarMonthDaily(gen) {
 
 /** Phones open the forecast at the top (Cash Health). Today / date focus / the tour still scroll on purpose. */
 let calendarMobileUserMoved = false;
-/** Current month on phones starts at today; earlier days stay available behind an explicit control. */
-let mobileCalendarShowEarlier = false;
 
 try {
   const isCalPage =
@@ -19872,7 +19859,7 @@ function bwCalendarTraceLayout(event) {
 }
 
 function noteUserMovedCalendar(e) {
-  if (calendarMobileUserMoved) return;
+  if (calendarMobileUserMoved || !calendarInitialMonthReady) return;
   try {
     if (e && e.target && typeof e.target.closest === "function" && e.target.closest(".modal-overlay, .bw-tour-tooltip")) {
       return;
@@ -19901,7 +19888,7 @@ function pinMobileForecastTop() {
 
 window.addEventListener("pageshow", (e) => {
   if (!e || !e.persisted) return;
-  calendarMobileUserMoved = false;
+  if (calendarInitialMonthReady || calendarMobileUserMoved) return;
   pinMobileForecastTop();
 });
 
@@ -19922,20 +19909,15 @@ window.addEventListener("pageshow", (e) => {
   } catch (_) {}
 })();
 
-/** Explicit Today control — not used on initial load. */
-function scrollMobileCalendarToToday() {
-  if (!isMobileCalendarViewport()) return;
-  calendarMobileUserMoved = true;
-  const todayIso = toISODate(new Date());
-  if (getCalendarViewYm() !== todayIso.slice(0, 7)) return;
-  const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
-  if (!cell) return;
-  window.scrollTo({ top: mobileCalendarScrollTopFor(cell), behavior: "auto" });
-  bwCalendarTrace("mobile-today", { iso: todayIso });
-}
-
 function fixedHeaderBottom() {
   let bottom = 0;
+  const nav = document.querySelector(".top-nav");
+  if (nav) bottom = Math.max(bottom, Math.round(nav.getBoundingClientRect().bottom));
+  try {
+    const css = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-top-nav-offset"));
+    if (Number.isFinite(css)) bottom = Math.max(bottom, Math.round(css));
+  } catch (_) {}
+  if (bottom) return bottom;
   for (const el of document.elementsFromPoint(window.innerWidth / 2, 1)) {
     const pos = getComputedStyle(el).position;
     if (pos === "fixed" || pos === "sticky") bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
@@ -19943,11 +19925,86 @@ function fixedHeaderBottom() {
   return bottom;
 }
 
-/** Scroll position that puts a day just below the fixed header, with the Cash Health chip above today. */
+/** Scroll position that puts a day just below the fixed header. */
 function mobileCalendarScrollTopFor(cell) {
-  const prev = cell.previousElementSibling;
-  const anchor = prev && prev.classList.contains("cal-cash-health-chip") ? prev : cell;
-  return Math.max(0, anchor.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 12);
+  if (!cell) return 0;
+  return Math.max(0, cell.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 12);
+}
+
+function setMobileCalendarScrollTop(top) {
+  const y = Math.max(0, Math.round(Number(top) || 0));
+  const root = document.scrollingElement || document.documentElement;
+  try {
+    root.scrollTop = y;
+  } catch (_) {}
+  try {
+    if (document.body && document.body !== root) document.body.scrollTop = y;
+  } catch (_) {}
+  if (Math.abs((window.scrollY || 0) - y) > 1) {
+    window.scrollTo(0, y);
+  }
+}
+
+function mobileCalendarPlaceCell() {
+  if (!isMobileCalendarViewport() || !calendarGrid) return null;
+  const todayIso = toISODate(new Date());
+  if (getCalendarViewYm() === todayIso.slice(0, 7)) {
+    return calendarGrid.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
+  }
+  return calendarGrid.querySelector(".calendar--mobile .cal-cell:not(.cal-cell--out), .cal-cell:not(.cal-cell--out)");
+}
+
+/** One silent placement before the calendar is revealed. Not used after the user can see dates. */
+function placeMobileCalendarBeforeReveal(kind) {
+  if (!isMobileCalendarViewport() || calendarMobileUserMoved) return false;
+  if (document.querySelector(".bw-tour-tooltip--open, .modal-overlay--open")) return false;
+  if (state.cashHealthFocus || peekPendingCashHealthFocus()) return false;
+  const cell = mobileCalendarPlaceCell();
+  if (!cell) return false;
+  void cell.offsetHeight;
+  setMobileCalendarScrollTop(mobileCalendarScrollTopFor(cell));
+  bwCalendarTrace(kind === "month" ? "mobile-place-month" : "mobile-place-today", {
+    iso: cell.getAttribute("data-iso"),
+  });
+  return true;
+}
+
+function markMobileCalendarPlacing(on) {
+  const panel = document.getElementById("calendarPanel");
+  if (!panel) return;
+  panel.classList.toggle("calendar-panel--placing", !!on);
+}
+
+function revealMobileCalendarPlaced() {
+  if (!isMobileCalendarViewport()) {
+    setCalendarLoadingUi(false);
+    markMobileCalendarPlacing(false);
+    return Promise.resolve();
+  }
+  markMobileCalendarPlacing(true);
+  setCalendarLoadingUi(false);
+  const kind = getCalendarViewYm() === toISODate(new Date()).slice(0, 7) ? "today" : "month";
+  placeMobileCalendarBeforeReveal(kind);
+  return new Promise((resolve) => {
+    const finish = () => {
+      if (!calendarMobileUserMoved) placeMobileCalendarBeforeReveal(kind);
+      markMobileCalendarPlacing(false);
+      resolve();
+    };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(finish);
+    else finish();
+  });
+}
+
+/** Explicit Today control — not used on initial load. */
+function scrollMobileCalendarToToday() {
+  calendarMobileUserMoved = true;
+  const todayIso = toISODate(new Date());
+  if (getCalendarViewYm() !== todayIso.slice(0, 7)) return;
+  const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
+  if (!cell) return;
+  setMobileCalendarScrollTop(mobileCalendarScrollTopFor(cell));
+  bwCalendarTrace("mobile-today", { iso: todayIso });
 }
 
 const CASH_HEALTH_FOCUS_KEY = "BW_CASH_HEALTH_FOCUS";
@@ -19992,12 +20049,6 @@ async function openCashHealthDate() {
 /** Show a day and its listed payments; the highlight stays until the user works in the calendar. */
 async function focusCalendarDate(iso, refs = []) {
   calendarMobileUserMoved = true;
-  try {
-    const todayIso = toISODate(new Date());
-    if (iso && iso < todayIso && String(iso).slice(0, 7) === todayIso.slice(0, 7)) {
-      mobileCalendarShowEarlier = true;
-    }
-  } catch (_) {}
   const focus = { iso, refs: new Set(refs) };
   state.cashHealthFocus = focus;
   const ym = iso.slice(0, 7);
@@ -20163,9 +20214,11 @@ async function loadMonthAndCalendar(options) {
       applyCalendarMonthViewSnapshot(cachedView);
       finishNeedsReviewMonthLoad(viewedYm);
       renderMonthSummaryTotalsFromState();
+      if (mobile) markMobileCalendarPlacing(true);
       renderCalendar();
       updateCalendarEmptyStateBanner();
-      setCalendarLoadingUi(false);
+      if (mobile) await revealMobileCalendarPlaced();
+      else setCalendarLoadingUi(false);
       calendarInitialMonthReady = true;
       bwCalendarTraceLayout("month-cache-hit");
       if (mobile) schedulePrefetchAdjacentCalendarMonths();
@@ -20246,12 +20299,13 @@ async function loadMonthAndCalendar(options) {
     } catch (_) {}
     finishNeedsReviewMonthLoad(viewedYm);
     renderMonthSummaryTotalsFromState();
+    if (mobile) markMobileCalendarPlacing(true);
     renderCalendar();
     bwCalendarTraceLayout("coherent-painted");
     updateCalendarEmptyStateBanner();
     rememberCalendarMonthView(viewedYm);
     if (mobile) {
-      setCalendarLoadingUi(false);
+      await revealMobileCalendarPlaced();
       calendarInitialMonthReady = true;
       bwCalendarTraceLayout("usable-calendar");
       void upcomingPromise;
@@ -21725,45 +21779,9 @@ function renderCalendar() {
     }
 
     bindCalendarCellAddTxClick(cell, iso);
-    if (
-      isMobileCalendarLayout &&
-      !mobileCalendarShowEarlier &&
-      getCalendarViewYm() === toISODate(new Date()).slice(0, 7) &&
-      iso < toISODate(new Date())
-    ) {
-      cell.hidden = true;
-      cell.classList.add("cal-cell--earlier");
-    }
     wrapper.appendChild(cell);
     revealClippedCalendarTxLabels(cell);
     cells.push(cell);
-  }
-
-  if (isMobileCalendarLayout && !mobileCalendarShowEarlier) {
-    const todayIso = toISODate(new Date());
-    if (getCalendarViewYm() === todayIso.slice(0, 7)) {
-      const hiddenCount = cells.filter((c) => c.hidden).length;
-      if (hiddenCount > 0) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "cal-earlier-toggle";
-        const monthLabel = first.toLocaleDateString(undefined, { month: "long" });
-        btn.textContent = `Earlier in ${monthLabel}`;
-        btn.setAttribute("aria-label", `Show earlier dates in ${monthLabel}`);
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          mobileCalendarShowEarlier = true;
-          calendarMobileUserMoved = true;
-          try {
-            renderCalendar();
-          } catch (_) {}
-        });
-        const todayCell = wrapper.querySelector(".cal-cell--today") || cells.find((c) => !c.hidden);
-        if (todayCell) wrapper.insertBefore(btn, todayCell);
-        else wrapper.insertBefore(btn, wrapper.firstChild);
-      }
-    }
   }
 
   calendarGrid.appendChild(wrapper);
