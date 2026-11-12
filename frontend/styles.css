@@ -7382,6 +7382,16 @@ body[data-bw-view="settings"] .settings-pane[data-settings-pane="preferences"] .
   opacity: 0.55;
   transition: opacity 0.14s ease;
 }
+.calendar-panel--loading .calendar-loading-indicator[hidden]{
+  display: flex !important;
+}
+@media (max-width: 768px){
+  .calendar-panel--loading .calendar-scroll,
+  .calendar-panel--loading .calendar-dow-row{
+    opacity: 0;
+    visibility: hidden;
+  }
+}
 .calendar-panel--loading .calendar-sticky-header .cal-month-year,
 .calendar-panel--loading .calendar-sticky-header .cal-mode-wrap,
 .calendar-panel--loading .calendar-sticky-header .cal-today-btn{
@@ -10738,6 +10748,10 @@ body[data-bw-view="reports"] .reports-mobile-nav__select:focus-visible{
 }
 
 /* Forecast (calendar): fixed narrow sidebar + fluid calendar (not 50/50 fr split) */
+html:has(body[data-bw-view="calendar"]),
+body[data-bw-view="calendar"]{
+  overflow-anchor: none;
+}
 body[data-bw-view="calendar"] .app-layout{
   grid-template-columns: clamp(218px, 18vw, 238px) minmax(0, 1fr);
   gap: 14px;
