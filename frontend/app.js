@@ -3277,6 +3277,9 @@ if (calendarGoToday) {
     applyCalendarMonthToPickers(ym);
     if (monthInput) monthInput.value = ym;
     await loadMonthAndCalendar();
+    try {
+      scrollMobileCalendarToToday();
+    } catch (_) {}
   });
 }
 
@@ -9372,7 +9375,7 @@ function tmLargestExpenseInRange(startIso, endIso) {
     const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
     if (!nextIso || nextIso < startIso || nextIso > endIso) continue;
     const a = Math.abs(Number(eff.amount) || 0);
-    const label = actualTransactionPrimaryLabel(tx);
+    const label = actualTransactionPrimaryLabel(expectedListDisplayTx(tx, eff));
     if (!best || a > best.amt) best = { amt: a, iso: nextIso, label };
   }
   return best;
@@ -17180,6 +17183,7 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
       }
       if (instanceExpectedTxId) instanceExpectedTxId.value = String(tx.id);
       if (txEditNotes) txEditNotes.value = tx.notes || "";
+      txEditDescriptionSnapshot = String(tx.description || "").trim().slice(0, 500);
       {
         const k = tx && tx.kind ? String(tx.kind) : "expense";
         const radio = document.querySelector(`input[type="radio"][name="txEditKind"][value="${k}"]`);
@@ -17207,7 +17211,8 @@ async function openExpectedEditModalAsync(tx, opts = {}) {
         account: acct?.name || "",
         kind: tx.kind,
         amount: tx.amount,
-        description: tx.description || "",
+        description:
+          String(tx.next_occurrence_description || tx.description || "").trim() || "",
         notes: tx.notes || "",
         reimbursable: !!tx.reimbursable,
         variable: !!tx.variable,
@@ -17592,8 +17597,13 @@ function effectiveNextOccurrenceListFields(tx) {
   const description =
     tx && tx.next_occurrence_description != null && String(tx.next_occurrence_description).trim() !== ""
       ? String(tx.next_occurrence_description).trim()
-      : String((tx && tx.description) || "").trim() || "(no description)";
+      : String((tx && tx.description) || "").trim();
   return { amount, variable, kind, description };
+}
+
+function expectedListDisplayTx(tx, eff) {
+  const desc = String(eff?.description || "").trim();
+  return { ...(tx || {}), description: desc === "(no description)" ? "" : desc };
 }
 
 /** Prefer API override-aware date; fall back to client schedule math for older backends. */
@@ -17739,7 +17749,8 @@ function renderUpcomingTransactionsFiltered() {
         const cid = Number(tx?.category_id);
         if (!Number.isFinite(cid) || String(cid) !== catIdSel) continue;
       }
-      if (q && ![eff.description, catName, tx?.notes].some(matchesQuery)) continue;
+      const primary = actualTransactionPrimaryLabel(expectedListDisplayTx(tx, eff));
+      if (q && ![primary, eff.description, catName, tx?.notes].some(matchesQuery)) continue;
       rows.push({ sortIso: nextIso, type: "expected", tx, nextIso });
     }
   }
@@ -17871,7 +17882,7 @@ function renderUpcomingTransactionsFiltered() {
     cDesc.className = "tm-col tm-col--desc";
     const d1 = document.createElement("div");
     d1.className = `tm-desc${String(eff.kind) === "income" ? " tm-desc--income" : ""}`;
-    const primary = actualTransactionPrimaryLabel(tx);
+    const primary = actualTransactionPrimaryLabel(expectedListDisplayTx(tx, eff));
     d1.textContent = primary;
     const d2 = document.createElement("div");
     d2.className = "tm-meta";
@@ -18142,7 +18153,7 @@ function renderRecurringFilteredList() {
     left.className = "left";
     const descEl = document.createElement("div");
     descEl.className = `desc ${kindFgClass(eff.kind)}`;
-    descEl.textContent = actualTransactionPrimaryLabel(tx);
+    descEl.textContent = actualTransactionPrimaryLabel(expectedListDisplayTx(tx, eff));
 
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
@@ -19626,52 +19637,94 @@ async function loadCalendarMonthDaily(gen) {
   paintSidebarReconcileRow();
 }
 
-/** Phones open the current month at today once per page load; any user input turns this off. */
-let calendarMobileTodayScroll = "pending";
-for (const evt of ["touchstart", "wheel", "keydown", "mousedown"]) {
-  window.addEventListener(
-    evt,
-    () => {
-      calendarMobileTodayScroll = "off";
-    },
-    { capture: true, once: true, passive: true }
-  );
+/** Phones open the forecast at the top (Cash Health). Today / date focus / the tour still scroll on purpose. */
+let calendarMobileUserMoved = false;
+let calendarMobileTopTimer = null;
+
+try {
+  const isCalPage =
+    (typeof window !== "undefined" && window.__BW_FORCE_VIEW === "calendar") ||
+    document.body?.dataset?.bwView === "calendar";
+  if (isCalPage && typeof history !== "undefined" && "scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+} catch (_) {}
+
+function bwCalendarTrace(event, extra) {
+  try {
+    if (typeof performance !== "undefined" && performance.mark) performance.mark("bw:" + event);
+    const row = { event, t: typeof performance !== "undefined" ? performance.now() : Date.now() };
+    if (extra) row.extra = extra;
+    window.__bwCalendarTrace = window.__bwCalendarTrace || [];
+    window.__bwCalendarTrace.push(row);
+    const q = typeof location !== "undefined" ? String(location.search || "") : "";
+    if (q.indexOf("bwTrace=1") >= 0 && window.console && console.debug) {
+      console.debug("[bw-calendar]", event, extra || "");
+    }
+  } catch (_) {}
 }
 
-function maybeScrollMobileCalendarToToday() {
-  if (calendarMobileTodayScroll === "off") return;
-  const stop = () => {
-    calendarMobileTodayScroll = "off";
-  };
-  const isMobile = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 768px)").matches;
-  let navType = "";
+function noteUserMovedCalendar(e) {
+  if (calendarMobileUserMoved) return;
   try {
-    navType = performance.getEntriesByType("navigation")[0]?.type || "";
+    if (e && e.target && typeof e.target.closest === "function" && e.target.closest(".modal-overlay, .bw-tour-tooltip")) {
+      return;
+    }
   } catch (_) {}
-  const todayIso = toISODate(new Date());
-  if (!isMobile || navType === "back_forward" || getCalendarViewYm() !== todayIso.slice(0, 7)) return stop();
-  if (document.querySelector(".bw-tour-tooltip--open, .modal-overlay--open:not(#bwForecastReadyModal)")) return stop();
-  if (state.cashHealthFocus || peekPendingCashHealthFocus()) return stop();
-  if (calendarMobileTodayScroll === "pending" && window.scrollY > 0) return stop();
-  const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
-  if (!cell) return;
-  const top = mobileCalendarScrollTopFor(cell);
-  if (calendarMobileTodayScroll === "pending" && top < window.innerHeight * 0.4) return stop();
-  if (Math.abs(window.scrollY - top) > 1) window.scrollTo({ top, behavior: "auto" });
-  if (calendarMobileTodayScroll === "pending") {
-    calendarMobileTodayScroll = "scrolled";
-    keepMobileTodayInPlace();
+  calendarMobileUserMoved = true;
+}
+
+for (const evt of ["touchstart", "wheel", "keydown", "mousedown"]) {
+  window.addEventListener(evt, noteUserMovedCalendar, { capture: true, passive: true });
+}
+
+function isMobileCalendarViewport() {
+  return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 768px)").matches;
+}
+
+function pinMobileForecastTop() {
+  if (!isMobileCalendarViewport() || calendarMobileUserMoved) return;
+  if (document.querySelector(".bw-tour-tooltip--open, .modal-overlay--open")) return;
+  if (state.cashHealthFocus || peekPendingCashHealthFocus()) return;
+  if (window.scrollY > 0) {
+    window.scrollTo({ top: 0, behavior: "auto" });
+    bwCalendarTrace("mobile-top", { y: 0 });
   }
 }
 
-/** Later renders can change the height of the days above today, so follow them briefly. */
-function keepMobileTodayInPlace() {
-  const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => maybeScrollMobileCalendarToToday()) : null;
-  if (ro) ro.observe(document.body);
-  window.setTimeout(() => {
-    if (ro) ro.disconnect();
-    if (calendarMobileTodayScroll === "scrolled") calendarMobileTodayScroll = "off";
-  }, 6000);
+window.addEventListener("pageshow", (e) => {
+  if (!e || !e.persisted) return;
+  calendarMobileUserMoved = false;
+  pinMobileForecastTop();
+});
+
+function scheduleMobileForecastTop() {
+  if (!isMobileCalendarViewport() || calendarMobileUserMoved) return;
+  if (calendarMobileTopTimer) {
+    clearTimeout(calendarMobileTopTimer);
+    calendarMobileTopTimer = null;
+  }
+  const run = () => {
+    calendarMobileTopTimer = null;
+    pinMobileForecastTop();
+  };
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => requestAnimationFrame(run));
+  } else {
+    calendarMobileTopTimer = window.setTimeout(run, 32);
+  }
+}
+
+/** Explicit Today control — not used on initial load. */
+function scrollMobileCalendarToToday() {
+  if (!isMobileCalendarViewport()) return;
+  calendarMobileUserMoved = true;
+  const todayIso = toISODate(new Date());
+  if (getCalendarViewYm() !== todayIso.slice(0, 7)) return;
+  const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
+  if (!cell) return;
+  window.scrollTo({ top: mobileCalendarScrollTopFor(cell), behavior: "auto" });
+  bwCalendarTrace("mobile-today", { iso: todayIso });
 }
 
 function fixedHeaderBottom() {
@@ -19731,7 +19784,7 @@ async function openCashHealthDate() {
 
 /** Show a day and its listed payments; the highlight stays until the user works in the calendar. */
 async function focusCalendarDate(iso, refs = []) {
-  calendarMobileTodayScroll = "off";
+  calendarMobileUserMoved = true;
   const focus = { iso, refs: new Set(refs) };
   state.cashHealthFocus = focus;
   const ym = iso.slice(0, 7);
@@ -19826,16 +19879,8 @@ function syncCashHealthCalendarChip() {
   wrap.insertBefore(chip, todayCell);
 }
 
-// The tour scrolls to each highlighted control; on phones, bring today back unless it is already in view.
 window.addEventListener("bw-tour-ended", () => {
-  const isMobile = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 768px)").matches;
-  const todayIso = toISODate(new Date());
-  if (!isMobile || getCalendarViewYm() !== todayIso.slice(0, 7)) return;
-  const cell = calendarGrid?.querySelector(`.cal-cell--today[data-iso="${todayIso}"]`);
-  if (!cell) return;
-  const cellTop = cell.getBoundingClientRect().top;
-  if (cellTop >= fixedHeaderBottom() && cellTop < window.innerHeight * 0.6) return;
-  window.scrollTo({ top: mobileCalendarScrollTopFor(cell), behavior: "auto" });
+  calendarMobileUserMoved = true;
 });
 
 let calendarLoadingGuardTimer = null;
@@ -19911,6 +19956,8 @@ async function loadMonthAndCalendar() {
       } catch (_) {}
     }
     renderCalendar();
+    bwCalendarTrace("daily-balances-painted");
+    scheduleMobileForecastTop();
     // Daily balances are the forecast. Drop the banner now; txs/reconcile/etc.
     // continue in the background without blocking the calendar.
     if (stillCurrent()) updateCalendarEmptyStateBanner();
@@ -19930,12 +19977,11 @@ async function loadMonthAndCalendar() {
     finishNeedsReviewMonthLoad(viewedYm);
     renderMonthSummaryTotalsFromState();
     renderCalendar();
+    bwCalendarTrace("secondary-painted");
     updateCalendarEmptyStateBanner();
-    maybeScrollMobileCalendarToToday();
     await runStep("low-balance", () => refreshLowBalanceAlert());
     await runStep("forecast-confidence", () => refreshForecastConfidence());
     if (!stillCurrent()) return;
-    maybeScrollMobileCalendarToToday();
     const pendingFocus = document.body?.dataset?.bwView === "calendar" ? takePendingCashHealthFocus() : null;
     if (pendingFocus) void focusCalendarDate(pendingFocus.iso, pendingFocus.refs);
     if (loadErrors.length && (!state.monthDailyBalances || state.monthDailyBalances.size === 0)) {
@@ -20630,7 +20676,7 @@ function renderVariableTodosForMonth() {
 
     const descEl = document.createElement("div");
     descEl.className = `desc ${kindFgClass(it.kind)}`;
-    descEl.textContent = truncate(forecastTransactionPrimaryLabel(it), 32);
+    descEl.textContent = truncate(it.description || "(expected)", 32);
 
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
@@ -20661,7 +20707,6 @@ function getExpectedSeriesMeta(expectedId) {
   return (state.expectedTransactions || []).find((t) => Number(t.id) === Number(expectedId));
 }
 
-/** Description for recurring save payloads (label field removed from modal). */
 function expectedSaveDescription() {
   const inst = selectedExpectedInstance;
   if (inst && inst.description != null && String(inst.description).trim() !== "") {
@@ -20703,6 +20748,7 @@ function selectExpectedInstance(item) {
     if (radio) radio.checked = true;
   }
   if (txEditAmount) txEditAmount.value = Number(item.amount);
+  txEditDescriptionSnapshot = String(item.description || "").trim().slice(0, 500);
   if (txEditNotes) txEditNotes.value = item.notes && String(item.notes).trim() ? String(item.notes).trim() : "";
   syncTxEditHiddenAccount(item.account_id != null ? item.account_id : "");
   setCategoryFieldValue("txEditCategoryId", item.category_id);
@@ -20780,6 +20826,7 @@ function dedupeCalendarDayTransactions(expectedItems, actualTxs) {
 
 function renderCalendar() {
   if (!calendarGrid) return;
+  bwCalendarTrace("renderCalendar");
   calendarGrid.innerHTML = "";
   const calendarDow = document.getElementById("calendarDow");
   document.getElementById("calendarBalanceCaption")?.remove();
@@ -25692,7 +25739,7 @@ function maybeShowForecastReadyPopup() {
   try {
     modal.classList.add("modal-overlay--open");
     modal.setAttribute("aria-hidden", "false");
-    modal.querySelector("#bwForecastReadyStartTourBtn")?.focus?.();
+    modal.querySelector("#bwForecastReadyStartTourBtn")?.focus?.({ preventScroll: true });
   } catch (_) {}
 }
 
@@ -26111,6 +26158,7 @@ async function main() {
     return;
   }
   bwDispatchMilestone("first-login");
+  bwCalendarTrace("bootstrap-start");
   await loadFamilies();
   if (!state.activeFamilyId) {
     try {
@@ -26140,24 +26188,23 @@ async function main() {
     applyCheckoutReturnFromUrl();
   } catch (_) {}
   setDefaultMonth();
-  // Load accounts first, then paint the forecast. Do not await categories / expected
-  // series / onboarding recovery before the calendar — those can hang and leave an
-  // empty day grid on screen (loadAccounts used to paint early).
+  try {
+    syncSidebarCashHealthCardVisibility();
+  } catch (_) {}
+  // Load accounts first, then wait for daily-balances. A client-side estimate here
+  // would paint the wrong numbers and force a second full calendar rebuild.
   if (state.activeFamilyId) {
     try {
       await loadAccounts();
-      if (Array.isArray(state.accounts) && state.accounts.length > 0) {
-        try {
-          computeMonthDailyBalancesLegacy();
-          renderCalendar();
-          ensureForecastStatusRibbon("Loading forecast…");
-        } catch (_) {}
-      }
+      try {
+        ensureForecastStatusRibbon("Loading forecast…");
+      } catch (_) {}
     } catch (e) {
       show(familiesErr, (e && e.message) || "Failed to load accounts");
     }
   }
   await loadMonthAndCalendar();
+  bwCalendarTrace("bootstrap-calendar-ready");
   try {
     updateCalendarEmptyStateBanner();
   } catch (_) {}
@@ -26240,8 +26287,10 @@ async function main() {
         }
       });
     }
-    await refreshLowBalanceAlert();
-    await refreshForecastConfidence();
+    if (!calendarInitialMonthReady) {
+      await refreshLowBalanceAlert();
+      await refreshForecastConfidence();
+    }
   }
 
   wireForecastPreferencesUi();

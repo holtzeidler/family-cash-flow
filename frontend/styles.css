@@ -33615,6 +33615,13 @@ body[data-bw-view="reports"] .sidebar .card[data-sidebar-key="month"]{
   body[data-bw-view="transactions"] .sidebar .card[data-sidebar-key="month"]{
     margin-top: 0;
   }
+  /* Reserve the Cash Health / Monthly Cash Flow slots so they fill in without shoving the calendar. */
+  body[data-bw-view="calendar"] .sidebar-cash-health__alerts{
+    min-height: 56px;
+  }
+  body[data-bw-view="calendar"] #totals{
+    min-height: 84px;
+  }
 }
 body[data-bw-view="calendar"] #sidebarBodyMonth,
 body[data-bw-view="transactions"] #sidebarBodyMonth,
