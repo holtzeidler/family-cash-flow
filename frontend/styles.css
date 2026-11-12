@@ -31522,7 +31522,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   .calendar--mobile{
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -31542,15 +31542,53 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
-    padding: 12px 12px 10px;
+    padding: 10px 12px 8px;
     border-radius: 14px;
+  }
+
+  .calendar--mobile .cal-cell.cal-cell--no-tx{
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 64px !important;
+    padding: 14px 14px;
+  }
+  .calendar--mobile .cal-cell.cal-cell--no-tx .cal-daynum{
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .calendar--mobile .cal-cell.cal-cell--no-tx .cal-daynum::after{
+    content: none;
+    display: none;
+  }
+  .calendar--mobile .cal-cell.cal-cell--no-tx .cal-cell-fill,
+  .calendar--mobile .cal-cell.cal-cell--no-tx .cal-forecast-note,
+  .calendar--mobile .cal-cell.cal-cell--no-tx .cal-day-start-balance,
+  .calendar--mobile .cal-cell.cal-cell--no-tx .cal-day-txns{
+    display: none !important;
+  }
+  .calendar--mobile .cal-cell.cal-cell--no-tx .cal-cell-stack{
+    display: contents;
+  }
+  .calendar--mobile .cal-cell.cal-cell--no-tx .cal-ledger-metrics,
+  .calendar--mobile .cal-cell.cal-cell--no-tx:not(.cal-cell--out):not(.cal-cell--before-start) .cal-ledger-metrics.cal-day-balance-hit{
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-height: 0;
+    border-radius: 8px;
   }
 
   .calendar--mobile .cal-daynum{
     justify-content: space-between;
     gap: 7px;
-    margin-bottom: 8px;
-    padding-bottom: 8px;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
   }
 
   .calendar--mobile .cal-daynum::before{
@@ -31593,13 +31631,13 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-cell-stack{
-    gap: 8px;
+    gap: 4px;
     min-width: 0;
     max-width: 100%;
   }
 
   .calendar--mobile .cal-day-txns{
-    gap: 5px;
+    gap: 4px;
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
@@ -31615,7 +31653,7 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
     --cal-tx-out-color: rgba(168, 62, 62, 0.82);
     position: relative;
     min-height: 0;
-    padding: 5px 8px 5px 13px;
+    padding: 6px 8px 6px 13px;
     border-radius: 8px;
     font-weight: 600;
     font-style: normal;
@@ -31713,8 +31751,8 @@ body[data-bw-view="settings"] .settings-nav--flat .settings-nav-item.is-active::
   }
 
   .calendar--mobile .cal-ledger-metrics{
-    margin-top: 4px;
-    padding-top: 8px;
+    margin-top: 2px;
+    padding-top: 6px;
     border-top: 1px solid rgba(17, 24, 39, 0.04);
     align-items: stretch;
     text-align: left;

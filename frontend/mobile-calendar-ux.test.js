@@ -46,6 +46,30 @@ assert.ok(
   "mobile day cards can shrink to the viewport"
 );
 assert.ok(
+  /\.calendar--mobile \.cal-cell\.cal-cell--no-tx\{[\s\S]*?flex-direction:\s*row/.test(css),
+  "empty mobile days put the date and projected balance on one row"
+);
+assert.ok(
+  /\.calendar--mobile \.cal-cell\.cal-cell--no-tx\{[\s\S]*?min-height:\s*64px/.test(css),
+  "empty mobile days stay compact"
+);
+assert.ok(
+  /\.calendar--mobile \.cal-cell\.cal-cell--no-tx \.cal-day-txns\{[\s\S]*?display:\s*none/.test(css),
+  "empty mobile days do not keep a blank transaction area"
+);
+assert.ok(
+  /\.calendar--mobile \.cal-cell\.cal-cell--no-tx \.cal-daynum::after\{[\s\S]*?display:\s*none/.test(css),
+  "empty mobile days drop the date divider"
+);
+assert.ok(
+  /\.calendar--mobile \.cal-cell-stack\{[\s\S]*?gap:\s*4px/.test(css),
+  "populated mobile days use tighter vertical gaps"
+);
+assert.ok(
+  !/\.calendar:not\(\.calendar--mobile\) \.cal-cell\.cal-cell--no-tx\{[\s\S]*?flex-direction:\s*row/.test(css),
+  "desktop empty days keep the existing column layout"
+);
+assert.ok(
   /padding-right:\s*0;[\s\S]{0,180}justify-content:\s*flex-start;[\s\S]{0,80}text-align:\s*left;/.test(css) &&
     css.indexOf(".modal--tx-add .tx-add-form .form-row-h__label") >= 0,
   "mobile add-transaction labels left-align with their fields"

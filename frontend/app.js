@@ -251,12 +251,14 @@ async function api(path, method = "GET", body) {
       if (timeoutId) window.clearTimeout(timeoutId);
       try {
         window.__bwApiTrace = window.__bwApiTrace || [];
+        const contentLength = res && res.headers ? Number(res.headers.get("content-length")) : NaN;
         window.__bwApiTrace.push({
           path: String(path || "").split("?")[0],
           qs: String(path || "").split("?")[1] || "",
           method,
           ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - attemptStart),
           status: res && res.status,
+          bytes: Number.isFinite(contentLength) ? contentLength : null,
           t: typeof performance !== "undefined" ? Math.round(performance.now()) : Date.now(),
         });
       } catch (_) {}
@@ -19978,10 +19980,12 @@ function placeMobileCalendarBeforeReveal(kind) {
   if (state.cashHealthFocus || peekPendingCashHealthFocus()) return false;
   const cell = mobileCalendarPlaceCell();
   if (!cell) return false;
+  const placeStarted = typeof performance !== "undefined" ? performance.now() : Date.now();
   void cell.offsetHeight;
   setMobileCalendarScrollTop(mobileCalendarScrollTopFor(cell));
   bwCalendarTrace(kind === "month" ? "mobile-place-month" : "mobile-place-today", {
     iso: cell.getAttribute("data-iso"),
+    ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - placeStarted),
   });
   return true;
 }
@@ -21298,6 +21302,7 @@ function renderCalendar() {
       return;
     }
   }
+  const renderStarted = typeof performance !== "undefined" ? performance.now() : Date.now();
   bwCalendarTrace("renderCalendar");
   calendarGrid.innerHTML = "";
   const calendarDow = document.getElementById("calendarDow");
@@ -21960,6 +21965,10 @@ function renderCalendar() {
   ensureCalendarBalanceStripFitOnResize();
   scheduleFitCalendarBalanceStripFonts();
   syncCashHealthCalendarChip();
+  bwCalendarTrace("renderCalendar-done", {
+    ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - renderStarted),
+    cells: cells.length,
+  });
 }
 
 function readStoredMinBalanceThresholdForReports() {
@@ -26624,14 +26633,22 @@ async function main() {
   setDefaultChartStart();
   syncChartRangeDisplay();
   setDefaultAccountStartDate();
+  const authStarted = typeof performance !== "undefined" ? performance.now() : Date.now();
   await loadMe();
+  bwCalendarTrace("auth-ready", {
+    ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - authStarted),
+  });
   if (state.needsOnboarding) {
     window.location.replace("/account-setup/?resume=1");
     return;
   }
   bwDispatchMilestone("first-login");
+  const familyStarted = typeof performance !== "undefined" ? performance.now() : Date.now();
   bwCalendarTraceLayout("bootstrap-start");
   await loadFamilies();
+  bwCalendarTrace("family-ready", {
+    ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - familyStarted),
+  });
   if (!state.activeFamilyId) {
     try {
       await api("/api/families", "POST", { name: "My Family" });
