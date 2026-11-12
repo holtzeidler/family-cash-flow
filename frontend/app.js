@@ -4492,6 +4492,17 @@ function isTransactionsOrReportsView() {
   return false;
 }
 
+function isTransactionsView() {
+  try {
+    const forced = String(window.__BW_FORCE_VIEW || "").trim().toLowerCase();
+    if (forced) return forced === "transactions";
+  } catch (_) {}
+  try {
+    return String(document.body?.dataset?.bwView || "").trim().toLowerCase() === "transactions";
+  } catch (_) {}
+  return false;
+}
+
 function resetTransactionsListFamilyState() {
   expectedTxLoadedFid = 0;
   upcomingLoadedFid = 0;
@@ -4524,11 +4535,19 @@ function ensureTransactionsListData() {
     tmActualListSettled && Number(upcomingLoadedFid) === fid
       ? Promise.resolve()
       : loadUpcomingTransactionsPanel();
-  const done = Promise.all([expectedP, upcomingP]).then(() => {
-    try {
-      bwCalendarTrace("tx-list-ready");
-    } catch (_) {}
-  });
+  // A failed list request still settles, so Forecast is not left waiting.
+  const done = Promise.all([expectedP, upcomingP]).then(
+    () => {
+      try {
+        bwCalendarTrace("tx-list-ready");
+      } catch (_) {}
+    },
+    () => {
+      try {
+        bwCalendarTrace("tx-list-ready");
+      } catch (_) {}
+    }
+  );
   return done;
 }
 
@@ -4609,7 +4628,12 @@ familySelect.addEventListener("change", async () => {
   favoriteTransactions = [];
   favoriteTransactionsFamilyId = null;
   resetTransactionsListFamilyState();
-  void ensureTransactionsListData();
+  const familyTxList = ensureTransactionsListData();
+  if (isTransactionsView()) {
+    try {
+      await familyTxList;
+    } catch (_) {}
+  }
   await loadMonthAndCalendar();
   if (state.activeFamilyId) {
     try {
@@ -27074,8 +27098,9 @@ async function main() {
   try {
     syncSidebarCashHealthCardVisibility();
   } catch (_) {}
-  // Transactions/Reports: start the list as soon as the family id exists.
-  // Do not wait for Forecast calendar, extras, or projection.
+  // Transactions and Reports start the list as soon as the family id exists.
+  // Transactions lets those rows render before Forecast. Reports still starts
+  // Forecast immediately, because its charts depend on those calculations.
   const txListPrefetch =
     state.activeFamilyId && isTransactionsOrReportsView() ? ensureTransactionsListData() : null;
   // Family-scoped forecast fetches only need the family id. Run accounts in
@@ -27088,6 +27113,11 @@ async function main() {
   if (!isMobileCalendarViewport()) {
     try {
       ensureForecastStatusRibbon("Loading forecast…");
+    } catch (_) {}
+  }
+  if (isTransactionsView() && txListPrefetch) {
+    try {
+      await txListPrefetch;
     } catch (_) {}
   }
   await Promise.all([accountsPromise, loadMonthAndCalendar()]);
