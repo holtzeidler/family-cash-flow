@@ -45,7 +45,7 @@ def _today_metrics(page):
     return page.evaluate(
         """() => {
           const cell = document.querySelector(".cal-cell--today");
-          const firstCell = document.querySelector(".cal-cell");
+          const firstCell = document.querySelector(".cal-cell:not([hidden])");
           const panel = document.getElementById("calendarPanel");
           const ch = document.querySelector("#sidebarCashHealthCard");
           const mcf = document.querySelector('.sidebar .card[data-sidebar-key="month"]');
@@ -68,6 +68,20 @@ def _today_metrics(page):
             usableMs: timed("usable-calendar") || timed("coherent-painted"),
             bootstrapMs: timed("bootstrap-start"),
             todayIso: cell && cell.getAttribute("data-iso"),
+            firstVisibleIso: firstCell && firstCell.getAttribute("data-iso"),
+            earlierToggle: !!document.querySelector(".cal-earlier-toggle"),
+            cacheHits: events.filter((e) => e === "month-cache-hit").length,
+            dailyCacheHits: events.filter((e) => e === "daily-cache-hit").length,
+            warmed: events.filter((e) => e === "month-warmed").length,
+            api: (window.__bwApiTrace || []).map((row) => ({
+              path: row.path,
+              qs: row.qs,
+              ms: row.ms,
+              status: row.status,
+            })),
+            steps: trace
+              .filter((row) => String(row.event || "").indexOf("step:") === 0)
+              .map((row) => ({ event: row.event, ms: row.extra && row.extra.ms })),
             busy: !!(panel && panel.classList.contains("calendar-panel--loading")),
             restoration: String(history.scrollRestoration || ""),
             toCount: log.filter((row) => row.kind === "to").length,
@@ -166,6 +180,11 @@ def test_mobile_login_lands_once(page, seed, guard, width):
         assert after_settle["firstCellTop"] < 844, after_settle
     if after_settle["calendarTop"] is not None:
         assert after_settle["calendarTop"] < 700, after_settle
+    if after_settle["todayIso"] and after_settle["firstVisibleIso"]:
+        assert after_settle["firstVisibleIso"] == after_settle["todayIso"], after_settle
+    assert after_settle["earlierToggle"] is True, after_settle
+    if after_settle["todayTop"] is not None:
+        assert after_settle["todayTop"] < 844, after_settle
     expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
     expect(page.get_by_role("heading", name="Monthly Cash Flow")).to_have_count(0)
     assert not after_settle["welcomeOpen"]
@@ -239,15 +258,63 @@ def test_desktop_login_paints_progressively(page, seed, guard):
     guard.assert_clean()
 
 
-@pytest.mark.smoke_title("Mobile Today control scrolls to today")
+@pytest.mark.smoke_title("Mobile Today control returns to today without scrolling")
 def test_mobile_today_button_scrolls_to_today(page, seed, guard):
     page.set_viewport_size({"width": 390, "height": 844})
     page.add_init_script(SCROLL_HOOK)
     login(page, seed["active"]["email"], seed["active"]["password"])
     expect(page.get_by_role("heading", name="Cash Health")).to_be_visible()
     expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    expect(page.locator(".cal-earlier-toggle")).to_be_visible()
+    page.locator(".cal-earlier-toggle").click()
+    expect(page.locator(".cal-earlier-toggle")).to_have_count(0)
     page.locator("#calendarGoToday").click()
-    page.wait_for_timeout(500)
+    page.wait_for_timeout(200)
     metrics = _today_metrics(page)
-    assert metrics["landCount"] >= 1 or (metrics["todayTop"] is not None and metrics["todayTop"] < 220), metrics
+    assert metrics["firstVisibleIso"] == metrics["todayIso"], metrics
+    assert metrics["earlierToggle"] is True, metrics
+    assert metrics["landCount"] == 0, metrics
+    assert metrics["y"] <= 24, metrics
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Cached next month paints without a loading spinner")
+def test_mobile_cached_next_month_is_instant(page, seed, guard):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.add_init_script(SCROLL_HOOK)
+    login(page, seed["active"]["email"], seed["active"]["password"])
+    expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    page.wait_for_function(
+        """() => {
+          const ym = document.getElementById("calendarMonth") && document.getElementById("calendarMonth").value;
+          if (!ym) return false;
+          const parts = ym.split("-").map(Number);
+          const next = parts[1] === 12
+            ? `${parts[0] + 1}-01`
+            : `${parts[0]}-${String(parts[1] + 1).padStart(2, "0")}`;
+          return (window.__bwCalendarTrace || []).some((row) => row.event === "month-warmed" && row.extra && row.extra.ym === next);
+        }""",
+        timeout=8000,
+    )
+    before = _today_metrics(page)
+    started = time.perf_counter()
+    page.locator("#calendarNextMonth").click()
+    page.wait_for_function(
+        """() => {
+          const ym = document.getElementById("calendarMonth") && document.getElementById("calendarMonth").value;
+          const panel = document.getElementById("calendarPanel");
+          return ym && ym.slice(5) !== '11' && panel && !panel.classList.contains("calendar-panel--loading");
+        }""",
+        timeout=8000,
+    )
+    elapsed_ms = int((time.perf_counter() - started) * 1000)
+    after = _today_metrics(page)
+    _write_trace(
+        "chromium-month-switch.json",
+        {"before": before, "after": after, "elapsedMs": elapsed_ms},
+    )
+    assert after["y"] <= 24, after
+    assert after["cacheHits"] >= 1, after
+    assert elapsed_ms < 1500, {"elapsed_ms": elapsed_ms, "after": after}
+    expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
     guard.assert_clean()
