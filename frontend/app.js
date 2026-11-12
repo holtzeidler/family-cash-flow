@@ -20173,6 +20173,21 @@ function cashHealthStripShouldShow() {
   return !cashHealthCardInViewport();
 }
 
+function revealMobileCashHealthDetails() {
+  const card = document.getElementById("sidebarCashHealthCard");
+  if (!card) return;
+  calendarMobileUserMoved = true;
+  const top = Math.max(0, card.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 8);
+  window.scrollTo({ top, behavior: "auto" });
+  syncCashHealthStripVisibility();
+}
+
+function cashHealthStripAriaLabel(copy) {
+  if (!copy) return "Show Cash Health details";
+  const bits = [cashHealthStripKicker(copy), copy.amountText, copy.whenLabel, "Show Cash Health details"];
+  return bits.filter(Boolean).join(". ");
+}
+
 function ensureCashHealthStrip() {
   let el = cashHealthStripEl();
   if (el) return el;
@@ -20183,17 +20198,7 @@ function ensureCashHealthStrip() {
   el.hidden = true;
   el.addEventListener("click", (e) => {
     e.preventDefault();
-    const copy = state.cashHealth?.copy;
-    if (copy && copy.tone !== "healthy" && copy.actionIso) {
-      void openCashHealthDate();
-      return;
-    }
-    const card = document.getElementById("sidebarCashHealthCard");
-    if (!card) return;
-    calendarMobileUserMoved = true;
-    const top = Math.max(0, card.getBoundingClientRect().top + window.scrollY - fixedHeaderBottom() - 8);
-    window.scrollTo({ top, behavior: "auto" });
-    syncCashHealthStripVisibility();
+    revealMobileCashHealthDetails();
   });
   document.body.appendChild(el);
   return el;
@@ -20212,7 +20217,7 @@ function syncCashHealthStrip(copy) {
   const amount = escapeHtml(src.amountText || "");
   const when = escapeHtml(src.whenLabel || "");
   el.className = `cal-cash-health-strip cal-cash-health-strip--${src.tone || "healthy"}`;
-  el.setAttribute("aria-label", src.ariaLabel || "Cash Health");
+  el.setAttribute("aria-label", cashHealthStripAriaLabel(src));
   el.innerHTML = `${cashHealthStatusIconHtml(src.tone)}<span class="cal-cash-health-strip__kicker">${kicker}</span>${
     amount ? `<span class="cal-cash-health-strip__amount">${amount}</span>` : ""
   }${when ? `<span class="cal-cash-health-strip__when">${when}</span>` : ""}`;

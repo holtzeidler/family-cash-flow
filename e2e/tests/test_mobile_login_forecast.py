@@ -111,6 +111,16 @@ def _today_metrics(page):
             stripBottom: stripRect ? Math.round(stripRect.bottom) : null,
             stripInView: !!(stripRect && stripRect.top >= navBottom - 1 && stripRect.bottom <= window.innerHeight),
             stripText: strip ? String(strip.textContent || "").replace(/\\s+/g, " ").trim() : "",
+            stripTone: strip ? (
+              strip.classList.contains("cal-cash-health-strip--negative") ? "negative"
+              : strip.classList.contains("cal-cash-health-strip--below") ? "below"
+              : strip.classList.contains("cal-cash-health-strip--healthy") ? "healthy"
+              : ""
+            ) : "",
+            stripRole: strip ? String(strip.tagName || "").toLowerCase() : "",
+            stripType: strip ? String(strip.getAttribute("type") || "") : "",
+            stripAria: strip ? String(strip.getAttribute("aria-label") || "") : "",
+            stripHeight: stripRect ? Math.round(stripRect.height) : null,
             duplicateCashHealth: !!(strip && !strip.hidden && strip.classList.contains("is-active") && ch && !ch.hidden && (() => {
               const rect = ch.getBoundingClientRect();
               return rect.bottom > navBottom + 4 && rect.top < window.innerHeight - 8;
@@ -149,6 +159,126 @@ def _today_metrics(page):
           };
         }"""
     )
+
+
+def _parse_rgb(value):
+    text = str(value or "")
+    nums = [int(part) for part in re.findall(r"\d+", text)[:3]]
+    if len(nums) != 3:
+        return None
+    return tuple(nums)
+
+
+def _rel_lum(rgb):
+    def lin(channel):
+        c = channel / 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = rgb
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+
+def _contrast(fg, bg):
+    if not fg or not bg:
+        return 0
+    lighter = max(_rel_lum(fg), _rel_lum(bg))
+    darker = min(_rel_lum(fg), _rel_lum(bg))
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _strip_styles(page):
+    return page.evaluate(
+        """() => {
+          const el = document.getElementById("calCashHealthStrip");
+          if (!el) return null;
+          const kicker = el.querySelector(".cal-cash-health-strip__kicker");
+          const amount = el.querySelector(".cal-cash-health-strip__amount");
+          const when = el.querySelector(".cal-cash-health-strip__when");
+          const icon = el.querySelector(".cash-health-card__icon");
+          const cs = getComputedStyle(el);
+          const kickerCs = kicker ? getComputedStyle(kicker) : null;
+          const amountCs = amount ? getComputedStyle(amount) : null;
+          const whenCs = when ? getComputedStyle(when) : null;
+          const iconCs = icon ? getComputedStyle(icon) : null;
+          const rect = el.getBoundingClientRect();
+          const tone = el.classList.contains("cal-cash-health-strip--negative") ? "negative"
+            : el.classList.contains("cal-cash-health-strip--below") ? "below"
+            : el.classList.contains("cal-cash-health-strip--healthy") ? "healthy"
+            : "";
+          return {
+            tone,
+            tag: String(el.tagName || "").toLowerCase(),
+            type: String(el.getAttribute("type") || ""),
+            aria: String(el.getAttribute("aria-label") || ""),
+            text: String(el.textContent || "").replace(/\\s+/g, " ").trim(),
+            hidden: !!el.hidden,
+            active: el.classList.contains("is-active"),
+            height: Math.round(rect.height),
+            bg: cs.backgroundColor,
+            color: cs.color,
+            kickerWeight: kickerCs ? String(kickerCs.fontWeight) : "",
+            kickerColor: kickerCs ? kickerCs.color : "",
+            amountColor: amountCs ? amountCs.color : "",
+            whenColor: whenCs ? whenCs.color : "",
+            iconColor: iconCs ? iconCs.color : "",
+            iconWidth: iconCs ? iconCs.width : "",
+          };
+        }"""
+    )
+
+
+def _paint_strip_tone(page, tone):
+    return page.evaluate(
+        """(tone) => {
+          const el = document.getElementById("calCashHealthStrip");
+          if (!el) return null;
+          el.className = `cal-cash-health-strip cal-cash-health-strip--${tone} is-active`;
+          el.hidden = false;
+          const kicker = el.querySelector(".cal-cash-health-strip__kicker");
+          const amount = el.querySelector(".cal-cash-health-strip__amount");
+          const when = el.querySelector(".cal-cash-health-strip__when");
+          const icon = el.querySelector(".cash-health-card__icon");
+          if (icon) {
+            icon.className = `cash-health-card__icon cash-health-card__icon--${tone}`;
+            if (tone === "healthy") {
+              icon.innerHTML = "";
+            } else if (!icon.querySelector("svg")) {
+              icon.innerHTML = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" focusable="false"><path d="M8 2.2L14.2 13.4H1.8L8 2.2z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"></path><path d="M8 6.5v3.1M8 11.4v.01" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"></path></svg>';
+            }
+          }
+          if (tone === "healthy") {
+            if (kicker) kicker.textContent = "Looking good";
+            if (amount) amount.textContent = "$1,240";
+            if (when) when.textContent = "";
+          } else if (tone === "negative") {
+            if (kicker) kicker.textContent = "Negative";
+            if (amount) amount.textContent = "-$120";
+            if (when) when.textContent = "today";
+          } else {
+            if (kicker) kicker.textContent = "Below minimum";
+            if (amount) amount.textContent = "$800";
+            if (when) when.textContent = "today";
+          }
+          return true;
+        }""",
+        tone,
+    )
+
+
+def _assert_strip_tone_styles(styles, tone):
+    assert styles, styles
+    assert styles["tone"] == tone, styles
+    assert styles["tag"] == "button", styles
+    assert styles["type"] == "button", styles
+    assert int(styles["kickerWeight"] or 0) >= 600, styles
+    assert styles["height"] is not None and styles["height"] <= 40, styles
+    bg = _parse_rgb(styles["bg"])
+    for color in (styles["kickerColor"], styles["amountColor"], styles["color"]):
+        ratio = _contrast(_parse_rgb(color), bg)
+        assert ratio >= 4.5, {"tone": tone, "ratio": ratio, "styles": styles}
+    if styles["whenColor"] and tone != "healthy":
+        ratio = _contrast(_parse_rgb(styles["whenColor"]), bg)
+        assert ratio >= 4.5, {"tone": tone, "whenRatio": ratio, "styles": styles}
 
 
 def _assert_today_with_strip(metrics):
@@ -216,6 +346,12 @@ def test_mobile_login_lands_once(page, seed, guard, width):
     assert after_settle["datesHidden"] is False, after_settle
     assert after_settle["placeCount"] >= 1, after_settle
     _assert_today_with_strip(after_settle)
+    _assert_strip_tone_styles(_strip_styles(page), "below")
+    assert after_settle["stripRole"] == "button", after_settle
+    assert after_settle["stripType"] == "button", after_settle
+    assert "Show Cash Health details" in after_settle["stripAria"], after_settle
+    if after_settle["stripHeight"] is not None:
+        assert after_settle["stripHeight"] <= 40, after_settle
     if after_settle["todayIso"] and after_settle["firstInMonthIso"]:
         assert after_settle["firstInMonthIso"] < after_settle["todayIso"], after_settle
     if after_settle["todayTop"] is not None:
@@ -420,4 +556,41 @@ def test_mobile_cached_next_month_is_instant(page, seed, guard):
         assert after["stripActive"] is True, after
     assert elapsed_ms < 1500, {"elapsed_ms": elapsed_ms, "after": after}
     expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Mobile Cash Health strip tones stay compact and tappable")
+@pytest.mark.parametrize("width", [320, 375, 390])
+def test_mobile_cash_health_strip_tones(page, seed, guard, width):
+    page.set_viewport_size({"width": width, "height": 844})
+    page.add_init_script(SCROLL_HOOK)
+    login(page, seed["active"]["email"], seed["active"]["password"])
+    expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    _assert_today_with_strip(_today_metrics(page))
+
+    below = _strip_styles(page)
+    _assert_strip_tone_styles(below, "below")
+    assert "Below minimum" in below["text"], below
+    TRACE_DIR.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=str(TRACE_DIR / f"chromium-{width}-strip-below.png"), full_page=False)
+
+    _paint_strip_tone(page, "healthy")
+    healthy = _strip_styles(page)
+    _assert_strip_tone_styles(healthy, "healthy")
+    assert "Looking good" in healthy["text"], healthy
+    page.screenshot(path=str(TRACE_DIR / f"chromium-{width}-strip-healthy.png"), full_page=False)
+
+    _paint_strip_tone(page, "negative")
+    negative = _strip_styles(page)
+    _assert_strip_tone_styles(negative, "negative")
+    assert "Negative" in negative["text"], negative
+    page.screenshot(path=str(TRACE_DIR / f"chromium-{width}-strip-negative.png"), full_page=False)
+
+    _paint_strip_tone(page, "below")
+    page.locator("#calCashHealthStrip").click()
+    page.wait_for_timeout(120)
+    after_click = _today_metrics(page)
+    assert after_click["cashHealthInView"] is True, after_click
+    assert after_click["stripActive"] is False, after_click
+    assert after_click["duplicateCashHealth"] is False, after_click
     guard.assert_clean()

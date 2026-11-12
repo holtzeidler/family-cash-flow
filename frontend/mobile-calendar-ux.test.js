@@ -202,6 +202,28 @@ assert.ok(
   "the compact strip stays under the nav without a nested scroller"
 );
 assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-cash-health-strip\.is-active\{[\s\S]*?max-height:\s*40px/.test(css),
+  "the compact strip stays within 40px"
+);
+assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-cash-health-strip--below\.is-active\{[\s\S]*?background:\s*#f6e6c0/.test(css),
+  "below-minimum uses a subtle amber strip"
+);
+assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-cash-health-strip--negative\.is-active\{[\s\S]*?background:\s*#f8d7da/.test(css),
+  "negative balances use a stronger red strip"
+);
+assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-cash-health-strip\.is-active\{[\s\S]*?background:\s*#eef6f0/.test(css),
+  "healthy Cash Health uses a calm green strip"
+);
+assert.ok(
+  /body\[data-bw-view="calendar"\] \.cal-cash-health-strip__kicker\{[\s\S]*?font-weight:\s*600/.test(css),
+  "Below minimum is semibold"
+);
+assert.ok(app.indexOf("function revealMobileCashHealthDetails(") >= 0, "tapping the strip reveals Cash Health details");
+assert.ok(app.indexOf('el.type = "button"') >= 0 && app.indexOf('id = "calCashHealthStrip"') >= 0, "the strip is a button");
+assert.ok(
   /body\[data-bw-view="calendar"\]:has\(\.bw-tour-tooltip--open\) \.cal-cash-health-strip/.test(css),
   "the compact strip yields to the guided tour"
 );
