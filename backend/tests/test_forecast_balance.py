@@ -763,3 +763,182 @@ def test_moving_taxes_onto_a_different_bill_keeps_both():
             by_date.setdefault(it["date"], []).append(it["description"])
         assert by_date.get("2026-10-03", []) == []
         assert sorted(by_date["2026-10-07"]) == ["Taxes", "Travel"]
+
+
+def _paycheck_on_the_15th(client, email: str):
+    created = signup_verified(
+        client,
+        email=email,
+        password="SmokeOnly1!",
+        first_name="Smoke",
+        last_name="Paycheck",
+    )
+    assert created.status_code == 200
+    families = client.get("/api/families")
+    assert families.status_code == 200, families.text
+    family_id = families.json()[0]["id"]
+    account = client.post(
+        f"/api/families/{family_id}/accounts",
+        json={
+            "name": "Checking",
+            "type": "checking",
+            "starting_balance": "10000.00",
+            "starting_balance_date": "2026-10-01",
+        },
+    )
+    assert account.status_code == 200, account.text
+    account_id = account.json()["id"]
+    expected = client.post(
+        f"/api/families/{family_id}/expected-transactions",
+        json={
+            "account_id": account_id,
+            "start_date": "2026-10-15",
+            "recurrence": "monthly",
+            "kind": "income",
+            "amount": "5456.75",
+            "description": "Holt Paycheck",
+            "bg_color": "#d1d5db",
+        },
+    )
+    assert expected.status_code == 200, expected.text
+    return family_id, account_id, expected.json()["id"]
+
+
+def _paychecks_on(client, family_id, day: str):
+    res = client.get(
+        f"/api/families/{family_id}/expected-calendar",
+        params={"month": day[:7]},
+    )
+    assert res.status_code == 200, res.text
+    return [
+        it
+        for it in res.json()["items"]
+        if it["date"] == day and it["description"] == "Holt Paycheck"
+    ]
+
+
+def test_one_date_amount_edit_replaces_that_paycheck_only():
+    """Editing one paycheck date must not add a second paycheck or change later dates."""
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _paycheck_on_the_15th(
+            client, "bw-smoke-paycheck-one-date@example.com"
+        )
+        updated = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/2026-11-15",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "income",
+                "amount": "4805.35",
+                "description": "Holt Paycheck",
+                "bg_color": "#e7d0d0",
+            },
+        )
+        assert updated.status_code == 200, updated.text
+
+        november = _paychecks_on(client, family_id, "2026-11-15")
+        assert [(it["amount"], it["occurrence_date"]) for it in november] == [
+            ("4805.35", "2026-11-15")
+        ]
+        december = _paychecks_on(client, family_id, "2026-12-15")
+        assert [it["amount"] for it in december] == ["5456.75"]
+
+        series = client.get(f"/api/families/{family_id}/expected-transactions")
+        assert series.status_code == 200, series.text
+        paychecks = [row for row in series.json() if row["description"] == "Holt Paycheck"]
+        assert len(paychecks) == 1
+        assert _money(paychecks[0]["amount"]) == Decimal("5456.75")
+
+        posted = client.get(
+            f"/api/families/{family_id}/transactions",
+            params={"month": "2026-11"},
+        )
+        assert posted.status_code == 200, posted.text
+        assert posted.json()["items"] == []
+
+
+def test_one_date_amount_edit_does_not_reveal_a_hidden_copy_on_that_day():
+    """A paycheck already parked on this day must not reappear when this date's amount changes."""
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _paycheck_on_the_15th(
+            client, "bw-smoke-paycheck-stacked@example.com"
+        )
+        moved = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/2026-10-15",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "income",
+                "amount": "5456.75",
+                "description": "Holt Paycheck",
+                "moved_to_date": "2026-11-15",
+            },
+        )
+        assert moved.status_code == 200, moved.text
+        assert len(_paychecks_on(client, family_id, "2026-11-15")) == 1
+
+        updated = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/2026-11-15",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "income",
+                "amount": "4805.35",
+                "description": "Holt Paycheck",
+                "bg_color": "#e7d0d0",
+            },
+        )
+        assert updated.status_code == 200, updated.text
+
+        november = _paychecks_on(client, family_id, "2026-11-15")
+        assert [it["amount"] for it in november] == ["4805.35"], november
+        december = _paychecks_on(client, family_id, "2026-12-15")
+        assert [it["amount"] for it in december] == ["5456.75"]
+        october = _paychecks_on(client, family_id, "2026-10-15")
+        assert october == []
+
+        daily = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-11"},
+        )
+        assert daily.status_code == 200, daily.text
+        days = {row["date"]: row for row in daily.json()["days"]}
+        assert _money(days["2026-11-15"]["tx_net"]) == Decimal("4805.35")
+
+        series = client.get(f"/api/families/{family_id}/expected-transactions")
+        assert series.status_code == 200, series.text
+        assert len([row for row in series.json() if row["description"] == "Holt Paycheck"]) == 1
+
+
+def test_one_date_amount_edit_keeps_a_different_paycheck_already_on_that_day():
+    with TestClient(app) as client:
+        family_id, account_id, expected_id = _paycheck_on_the_15th(
+            client, "bw-smoke-paycheck-distinct@example.com"
+        )
+        moved = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/2026-10-15",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "income",
+                "amount": "100.00",
+                "description": "Holt Paycheck",
+                "moved_to_date": "2026-11-15",
+            },
+        )
+        assert moved.status_code == 200, moved.text
+
+        updated = client.post(
+            f"/api/families/{family_id}/expected-transactions/{expected_id}/instances/2026-11-15",
+            json={
+                "action": "update",
+                "account_id": account_id,
+                "kind": "income",
+                "amount": "4805.35",
+                "description": "Holt Paycheck",
+            },
+        )
+        assert updated.status_code == 200, updated.text
+
+        november = sorted(it["amount"] for it in _paychecks_on(client, family_id, "2026-11-15"))
+        assert november == ["100.00", "4805.35"]
