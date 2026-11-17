@@ -8188,7 +8188,13 @@ def _absorb_collapsed_copies_when_date_changes(
     previous_identity: tuple[Optional[int], TransactionKind, int],
     new_identity: tuple[Optional[int], TransactionKind, int],
 ) -> list[dict]:
-    if new_display_date is None or new_display_date == previous_display_date:
+    """Remove other copies of this series that were the same payment on the edited day.
+
+    Changing only this date's amount used to leave the hidden copy in place.
+    The calendar then drew it as a second paycheck, because the amounts no longer matched.
+    Later dates in the series are left alone.
+    """
+    if new_display_date is None:
         return []
     recorded = _absorb_identical_occurrences_on_date(
         db,
@@ -8197,15 +8203,16 @@ def _absorb_collapsed_copies_when_date_changes(
         keep_occurrence=occurrence_date,
         identity=previous_identity,
     )
-    recorded.extend(
-        _absorb_identical_occurrences_on_date(
-            db,
-            tx,
-            display_date=new_display_date,
-            keep_occurrence=occurrence_date,
-            identity=new_identity,
+    if new_display_date != previous_display_date:
+        recorded.extend(
+            _absorb_identical_occurrences_on_date(
+                db,
+                tx,
+                display_date=new_display_date,
+                keep_occurrence=occurrence_date,
+                identity=new_identity,
+            )
         )
-    )
     return recorded
 
 
