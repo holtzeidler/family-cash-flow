@@ -37,6 +37,7 @@ if ! "$VENV_PY/playwright" install chromium; then
 fi
 
 FORECAST_LOG="$ROOT/e2e/.smoke-run/forecast.log"
+INTEGRITY_LOG="$ROOT/e2e/.smoke-run/integrity.log"
 LIFECYCLE_LOG="$ROOT/e2e/.smoke-run/lifecycle.log"
 SMOKE_LOG="$ROOT/e2e/.smoke-run/playwright.log"
 mkdir -p "$ROOT/e2e/.smoke-run"
@@ -44,6 +45,10 @@ mkdir -p "$ROOT/e2e/.smoke-run"
 echo "Checking forecast math..."
 "$PY" -m pytest "$ROOT/backend/tests/test_forecast_balance.py" "$ROOT/backend/tests/test_smoke_guard.py" -q --tb=short >"$FORECAST_LOG" 2>&1
 FORECAST_CODE=$?
+
+echo "Checking financial integrity..."
+"$PY" -m pytest "$ROOT/backend/tests/test_financial_integrity.py" -q --tb=short >"$INTEGRITY_LOG" 2>&1
+INTEGRITY_CODE=$?
 
 echo "Checking lifecycle emails..."
 "$PY" -m pytest "$ROOT/backend/tests/test_trial_lifecycle_emails.py" -q --tb=short >"$LIFECYCLE_LOG" 2>&1
@@ -63,6 +68,12 @@ else
   printf 'FORECAST MATH\n\n✗ Projected balance\n\n'
   FAIL=1
 fi
+if [[ $INTEGRITY_CODE -eq 0 ]]; then
+  printf 'FINANCIAL INTEGRITY\n\n✓ One-date edits, series edits, deletes, moves, and adjustments\n\n'
+else
+  printf 'FINANCIAL INTEGRITY\n\n✗ One-date edits, series edits, deletes, moves, and adjustments\n\n'
+  FAIL=1
+fi
 if [[ -f "$ROOT/e2e/.smoke-run/summary.txt" ]]; then
   cat "$ROOT/e2e/.smoke-run/summary.txt"
 else
@@ -79,7 +90,7 @@ else
   FAIL=1
 fi
 
-if [[ $FORECAST_CODE -ne 0 || $LIFECYCLE_CODE -ne 0 || $SMOKE_CODE -ne 0 ]]; then
+if [[ $FORECAST_CODE -ne 0 || $INTEGRITY_CODE -ne 0 || $LIFECYCLE_CODE -ne 0 || $SMOKE_CODE -ne 0 ]]; then
   FAIL=1
   echo
   echo "Technical details"
@@ -87,6 +98,11 @@ if [[ $FORECAST_CODE -ne 0 || $LIFECYCLE_CODE -ne 0 || $SMOKE_CODE -ne 0 ]]; the
   if [[ $FORECAST_CODE -ne 0 ]]; then
     echo "Forecast math"
     cat "$FORECAST_LOG"
+    echo
+  fi
+  if [[ $INTEGRITY_CODE -ne 0 ]]; then
+    echo "Financial integrity"
+    cat "$INTEGRITY_LOG"
     echo
   fi
   if [[ $LIFECYCLE_CODE -ne 0 ]]; then

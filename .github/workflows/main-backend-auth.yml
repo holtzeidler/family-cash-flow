@@ -63,6 +63,9 @@ jobs:
       - name: Starter categories
         run: python -m pytest backend/tests/test_default_categories.py -q
 
+      - name: Financial integrity
+        run: python -m pytest backend/tests/test_financial_integrity.py -q
+
   frontend:
     runs-on: ubuntu-latest
     steps:
