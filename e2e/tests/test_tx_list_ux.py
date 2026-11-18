@@ -11,6 +11,54 @@ from support import login
 from test_core_workflows import _register_checking
 
 
+def _sidebar_layout(page):
+    return page.evaluate(
+        """() => {
+          const box = (sel) => {
+            const el = document.querySelector(sel);
+            if (!el || el.hidden || !el.getClientRects().length) return null;
+            const r = el.getBoundingClientRect();
+            return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width };
+          };
+          const rows = [...document.querySelectorAll("#sidebarBodyMonth .total")].filter((el) => el.getClientRects().length).map((el) => {
+            const k = el.querySelector(".k").getBoundingClientRect();
+            const v = el.querySelector(".v").getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            return { left: k.left, right: v.right, top: r.top, bottom: r.bottom };
+          });
+          const sidebar = box(".sidebar");
+          return {
+            warningKicker: box(".cash-health-card__kicker"),
+            warningFigure: box(".cash-health-card__nav") || box(".cash-health-card__figure"),
+            alerts: box("#sidebarBalanceThresholdAlerts"),
+            review: box("#sidebarPendingTxCard"),
+            label: box(".sidebar-reconcile__label"),
+            date: box("#sidebarReconcileDetail"),
+            button: box("#sidebarReconcileBtn"),
+            rows,
+            sidebarRight: sidebar ? sidebar.right : null,
+          };
+        }"""
+    )
+
+
+def _assert_sidebar_spacing(layout):
+    if layout["warningKicker"] and layout["warningFigure"]:
+        assert layout["warningFigure"]["top"] >= layout["warningKicker"]["bottom"] - 1, layout
+        assert layout["warningKicker"]["right"] <= layout["sidebarRight"] + 1, layout
+    if layout["alerts"] and layout["review"]:
+        assert layout["review"]["top"] >= layout["alerts"]["bottom"] + 6, layout
+    assert layout["date"]["top"] - layout["label"]["bottom"] >= 4, layout
+    assert layout["button"]["top"] - layout["date"]["bottom"] >= 8, layout
+    assert len(layout["rows"]) >= 3, layout["rows"]
+    lefts = [round(row["left"]) for row in layout["rows"]]
+    rights = [round(row["right"]) for row in layout["rows"]]
+    assert max(lefts) - min(lefts) <= 1, layout["rows"]
+    assert max(rights) - min(rights) <= 1, layout["rows"]
+    heights = [row["bottom"] - row["top"] for row in layout["rows"]]
+    assert min(heights) >= 24, layout["rows"]
+
+
 @pytest.mark.smoke_title("Transactions list is dated in order and the sidebar date is not cramped")
 def test_transactions_list_order_and_sidebar_date(page, guard):
     page.set_viewport_size({"width": 1280, "height": 900})
@@ -73,7 +121,13 @@ def test_transactions_list_order_and_sidebar_date(page, guard):
         }"""
     )
     assert boxes["dateTop"] >= boxes["labelBottom"] - 1, boxes
+    expect(page.locator("#sidebarPendingTitle")).to_have_text("Needs Review")
     expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
+    _assert_sidebar_spacing(_sidebar_layout(page))
+    page.set_viewport_size({"width": 900, "height": 900})
+    expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
+    _assert_sidebar_spacing(_sidebar_layout(page))
+    page.set_viewport_size({"width": 1280, "height": 900})
     expect(page.locator("#totals")).to_contain_text("Income")
     expect(page.locator("#sidebarMonthLow")).to_contain_text("Lowest balance this month")
     expect(page.locator("#sidebarMonthLowValue")).to_contain_text("$")

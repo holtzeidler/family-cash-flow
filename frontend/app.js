@@ -20328,8 +20328,8 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.hidden = !text;
   };
   const showEmpty = (title, { success = false } = {}) => {
-    if (sidebarPendingTitle) sidebarPendingTitle.textContent = title;
-    setPendingStatus("");
+    setTitle();
+    setPendingStatus(title);
     if (sidebarPendingTxCard) {
       sidebarPendingTxCard.classList.add("sidebar-pending--empty");
       if (success) sidebarPendingTxCard.classList.add("sidebar-pending--success");
