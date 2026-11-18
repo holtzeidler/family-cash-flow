@@ -257,7 +257,8 @@ assert.ok(
 assert.ok(app.indexOf("function ensureTransactionsListData(") >= 0, "transactions list has a shared prefetch");
 var ensureFn = functionBody(app, "ensureTransactionsListData");
 assert.ok(ensureFn.indexOf("loadExpectedTransactions()") >= 0, "list prefetch loads recurring series");
-assert.ok(ensureFn.indexOf("loadUpcomingTransactionsPanel()") >= 0, "list prefetch loads 548-day actuals on every viewport");
+assert.ok(ensureFn.indexOf("loadTransactionLedger(") >= 0, "list prefetch loads server-side transaction ledger");
+assert.ok(ensureFn.indexOf("loadUpcomingTransactionsPanel()") >= 0, "list prefetch still warms helper actuals");
 var prefetchIdx = app.indexOf("const txListPrefetch");
 var calendarPromiseIdx = app.indexOf("const calendarPromise = landingOnReports");
 assert.ok(prefetchIdx >= 0 && calendarPromiseIdx > prefetchIdx, "transactions list prefetch starts before the calendar wait");

@@ -23818,6 +23818,24 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   font-weight: 500;
   color: rgba(75, 85, 99, 0.62);
 }
+.tm__loadMoreWrap{
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 10px 4px;
+}
+.tm__loadMoreBtn{
+  align-self: center;
+  min-width: 8.5rem;
+}
+.tm__horizonNote{
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: rgba(75, 85, 99, 0.62);
+  text-align: center;
+}
 
 .tm__table{
   border-radius: 11px;
@@ -24036,6 +24054,12 @@ body[data-bw-view="reports"] .cash-health-status--balance .cash-health-status__l
   border-color: rgba(100, 116, 139, 0.12);
   background: rgba(248, 250, 252, 0.92);
   color: rgba(71, 85, 105, 0.72);
+  font-weight: 600;
+}
+.tm-badge--scheduled{
+  border-color: rgba(100, 116, 139, 0.14);
+  background: rgba(241, 245, 249, 0.95);
+  color: rgba(71, 85, 105, 0.78);
   font-weight: 600;
 }
 .tm-badge--variable{
@@ -24393,6 +24417,12 @@ body[data-bw-view="transactions"] .tm__field label{
   background: rgba(241, 245, 249, 0.75);
   color: rgba(71, 85, 105, 0.64);
   font-weight: 580;
+}
+.tm-badge--scheduled{
+  border-color: rgba(100, 116, 139, 0.16);
+  background: rgba(241, 245, 249, 0.92);
+  color: rgba(51, 65, 85, 0.78);
+  font-weight: 600;
 }
 .tm-badge--variable{
   border-color: rgba(217, 119, 6, 0.35);

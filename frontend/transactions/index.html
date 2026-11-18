@@ -447,7 +447,7 @@
                     <div class="tm__searchRow">
                       <div class="tm__field tm__field--search">
                         <label for="tmSearch" class="sr-only">Search transactions</label>
-                        <input id="tmSearch" type="search" placeholder="Search description, notes, or category" autocomplete="off" />
+                        <input id="tmSearch" type="search" placeholder="Search description, notes, category, or amount" autocomplete="off" />
                       </div>
                       <button
                         type="button"
@@ -461,15 +461,23 @@
                     </div>
                   </div>
                   <div class="tm__controlDeck__row tm__controlDeck__row--chips">
+                    <div class="tm__chips" role="toolbar" aria-label="When filters">
+                      <button type="button" class="tm-chip is-active" data-tm-when="all">
+                        <span class="tm-chip__label">All</span>
+                      </button>
+                      <button type="button" class="tm-chip" data-tm-when="past">
+                        <span class="tm-chip__label">Past</span>
+                      </button>
+                      <button type="button" class="tm-chip" data-tm-when="upcoming">
+                        <span class="tm-chip__label">Upcoming</span>
+                      </button>
+                    </div>
                     <div class="tm__chips" role="toolbar" aria-label="Quick filters">
                       <button type="button" class="tm-chip" data-tm-view="uncategorized">
                         <span class="tm-chip__label">Uncategorized</span><span class="tm-chip__count" aria-hidden="true"></span>
                       </button>
                       <button type="button" class="tm-chip" data-tm-view="recurring">
                         <span class="tm-chip__label">Recurring</span><span class="tm-chip__count" aria-hidden="true"></span>
-                      </button>
-                      <button type="button" class="tm-chip" data-tm-view="upcoming30">
-                        <span class="tm-chip__label">Upcoming</span><span class="tm-chip__count" aria-hidden="true"></span>
                       </button>
                       <button type="button" class="tm-chip" data-tm-view="annual">
                         <span class="tm-chip__label">Annual bills</span><span class="tm-chip__count" aria-hidden="true"></span>
@@ -514,8 +522,6 @@
                       <option value="all" selected>All</option>
                       <option value="uncategorized">Uncategorized</option>
                       <option value="recurring">Recurring</option>
-                      <option value="upcoming">Upcoming</option>
-                      <option value="past">Past</option>
                     </select>
                   </div>
                   <div class="tm__field">
@@ -595,6 +601,10 @@
                   <div class="tm-table__action" aria-hidden="true"> </div>
                 </div>
                 <div class="tm-table__body" id="txListMain" aria-live="polite"></div>
+                <div class="tm__loadMoreWrap" id="tmLoadMoreWrap" hidden>
+                  <button type="button" class="secondary tm__loadMoreBtn" id="tmLoadMoreBtn">Load more</button>
+                  <p class="tm__horizonNote" id="tmHorizonNote" hidden></p>
+                </div>
               </div>
             </section>
 

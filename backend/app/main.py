@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import csv
 import hashlib
 import secrets
@@ -2627,6 +2628,48 @@ class ExpectedCalendarItemOut(BaseModel):
 class ExpectedCalendarOut(BaseModel):
     month: str
     items: list[ExpectedCalendarItemOut]
+
+
+# Open-ended recurring series have no natural end. Expand upcoming occurrences
+# through today + this many years. Returned in every ledger response so clients
+# (and operators) see the bound — it is not a silent omit of older history.
+OPEN_SERIES_FORWARD_YEARS = 10
+LEDGER_CHUNK_DAYS = 366
+LEDGER_DEFAULT_LIMIT = 50
+LEDGER_MAX_LIMIT = 100
+
+
+class TransactionLedgerItemOut(BaseModel):
+    row_type: Literal["actual", "expected"]
+    date: date
+    occurrence_date: Optional[date] = None
+    id: Optional[int] = None
+    expected_transaction_id: Optional[int] = None
+    account_id: Optional[int] = None
+    account: Optional[str] = None
+    kind: TransactionKind
+    amount: Decimal
+    description: str
+    notes: Optional[str] = None
+    category_id: Optional[int] = None
+    category: Optional[str] = None
+    recurrence: Optional[Recurrence] = None
+    variable: bool = False
+    reimbursable: bool = False
+    fg_color: Optional[str] = None
+    bg_color: Optional[str] = None
+    # Day-level balance check-in context — not proof that this row was paid.
+    day_reconciled: bool = False
+    day_adjusted: bool = False
+
+
+class TransactionLedgerOut(BaseModel):
+    items: list[TransactionLedgerItemOut]
+    next_cursor: Optional[str] = None
+    history_start: date
+    horizon_end: date
+    open_series_horizon_years: int = OPEN_SERIES_FORWARD_YEARS
+    today: date
 
 
 class CategoryTotalsLineOut(BaseModel):
@@ -8588,6 +8631,594 @@ def expected_calendar(
 
     items = _expected_calendar_for_range(db, family_id, range_start, range_end_exclusive)
     return ExpectedCalendarOut(month=month_out, items=items)
+
+
+_LEDGER_MONEY_RE = re.compile(
+    r"^\s*\$?\s*(-)?\s*(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d{1,2}))?\s*$"
+)
+
+
+def _ledger_parse_money(raw: Optional[str]) -> Optional[Decimal]:
+    if raw is None:
+        return None
+    text_v = str(raw).strip()
+    if not text_v:
+        return None
+    m = _LEDGER_MONEY_RE.match(text_v)
+    if not m:
+        return None
+    sign = -1 if m.group(1) else 1
+    whole = m.group(2).replace(",", "")
+    frac = m.group(3) or "0"
+    if len(frac) == 1:
+        frac = frac + "0"
+    try:
+        return (Decimal(whole) + Decimal(frac) / Decimal(100)) * sign
+    except Exception:
+        return None
+
+
+def _ledger_amount_cents(amount: Decimal) -> int:
+    return int(round(abs(Decimal(amount)) * 100))
+
+
+def _family_ledger_history_start(db, family_id: int) -> Optional[date]:
+    """Earliest date BalanceWhiz can hold for this family (not an arbitrary N-month cut)."""
+    candidates: list[date] = []
+    balance_start = _family_balance_start_date(db, family_id)
+    if balance_start is not None:
+        candidates.append(balance_start)
+    tx_min = db.execute(
+        select(func.min(Transaction.date)).where(Transaction.family_id == family_id)
+    ).scalar_one_or_none()
+    if tx_min is not None:
+        candidates.append(tx_min)
+    exp_min = db.execute(
+        select(func.min(ExpectedTransaction.start_date)).where(ExpectedTransaction.family_id == family_id)
+    ).scalar_one_or_none()
+    if exp_min is not None:
+        candidates.append(exp_min)
+    if not candidates:
+        return None
+    return min(candidates)
+
+
+def _ledger_horizon_end(today: date) -> date:
+    try:
+        return today.replace(year=today.year + OPEN_SERIES_FORWARD_YEARS)
+    except ValueError:
+        # Feb 29 → Feb 28 in non-leap target year
+        return date(today.year + OPEN_SERIES_FORWARD_YEARS, today.month, 28)
+
+
+def _ledger_encode_cursor(payload: dict) -> str:
+    raw = json.dumps(payload, separators=(",", ":"), default=str)
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
+
+
+def _ledger_decode_cursor(cursor: str) -> dict:
+    try:
+        pad = "=" * (-len(cursor) % 4)
+        raw = base64.urlsafe_b64decode(cursor + pad)
+        data = json.loads(raw.decode("utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("cursor must be an object")
+        return data
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid cursor") from exc
+
+
+def _ledger_item_sort_key(item: TransactionLedgerItemOut, *, today: date, when: str):
+    type_rank = 0 if item.row_type == "actual" else 1
+    tid = int(item.id or 0) if item.row_type == "actual" else int(item.expected_transaction_id or 0)
+    occ = item.occurrence_date or item.date
+    if when == "upcoming":
+        return (0, item.date.toordinal(), type_rank, tid, occ.toordinal())
+    if when == "past":
+        # Descending date: negate ordinals inside a single ascending tuple.
+        return (0, -item.date.toordinal(), type_rank, -tid, -occ.toordinal())
+    # all: closest to today first, then past before future on ties, then date.
+    dist = abs((item.date - today).days)
+    side = 0 if item.date <= today else 1
+    return (dist, side, item.date.toordinal(), type_rank, tid, occ.toordinal())
+
+
+def _ledger_cursor_payload(item: TransactionLedgerItemOut, *, today: date, when: str) -> dict:
+    key = _ledger_item_sort_key(item, today=today, when=when)
+    return {
+        "when": when,
+        "k": list(key),
+        "t": item.row_type,
+        "d": item.date.isoformat(),
+        "i": item.id if item.row_type == "actual" else item.expected_transaction_id,
+        "o": (item.occurrence_date or item.date).isoformat() if item.row_type == "expected" else None,
+    }
+
+
+def _ledger_after_cursor(item: TransactionLedgerItemOut, cursor: dict, *, today: date, when: str) -> bool:
+    if cursor.get("when") and cursor.get("when") != when:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cursor does not match when filter")
+    key = _ledger_item_sort_key(item, today=today, when=when)
+    ckey = cursor.get("k")
+    if not isinstance(ckey, list):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid cursor")
+    try:
+        ckey_t = tuple(ckey)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid cursor") from exc
+    return key > ckey_t
+
+
+def _ledger_text_haystack(description: str, notes: Optional[str], category: Optional[str]) -> str:
+    parts = [description or "", notes or "", category or ""]
+    return " ".join(parts).lower()
+
+
+def _ledger_q_is_pure_money(q: str) -> bool:
+    return bool(q and _LEDGER_MONEY_RE.match(str(q).strip()))
+
+
+def _ledger_amount_matches(cents: int, target: Decimal, amount_mode: str) -> bool:
+    target_cents = _ledger_amount_cents(target)
+    if amount_mode == "approx":
+        return abs(cents - target_cents) <= 100
+    return cents == target_cents
+
+
+def _ledger_matches_filters(
+    *,
+    description: str,
+    notes: Optional[str],
+    category: Optional[str],
+    amount: Decimal,
+    kind: TransactionKind,
+    q: str,
+    q_as_money: Optional[Decimal],
+    amount_filter: Optional[Decimal],
+    amount_min: Optional[Decimal],
+    amount_max: Optional[Decimal],
+    amount_mode: str,
+    kind_filter: str,
+) -> bool:
+    kind_val = kind.value if isinstance(kind, TransactionKind) else str(kind)
+    if kind_filter != "all" and kind_val != kind_filter:
+        return False
+    cents = _ledger_amount_cents(amount)
+    abs_amt = abs(Decimal(amount))
+    if amount_min is not None and abs_amt < abs(amount_min):
+        return False
+    if amount_max is not None and abs_amt > abs(amount_max):
+        return False
+    if amount_filter is not None and not _ledger_amount_matches(cents, amount_filter, amount_mode):
+        return False
+    text_q = (q or "").strip().lower()
+    if not text_q:
+        return True
+    if _ledger_q_is_pure_money(q) and q_as_money is not None:
+        # Amount already applied via amount_filter when provided; else match from q.
+        if amount_filter is not None:
+            return True
+        return _ledger_amount_matches(cents, q_as_money, amount_mode)
+    return text_q in _ledger_text_haystack(description, notes, category)
+
+
+def _ledger_day_flags(db, family_id: int, days: set[date]) -> tuple[set[date], set[date]]:
+    if not days:
+        return set(), set()
+    recon = set(
+        db.execute(
+            select(ReconciledDay.date).where(
+                ReconciledDay.family_id == family_id,
+                ReconciledDay.reconciled == True,  # noqa: E712
+                ReconciledDay.date.in_(days),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    adjusted = set(
+        db.execute(
+            select(VerifiedBalance.date).where(
+                VerifiedBalance.family_id == family_id,
+                VerifiedBalance.date.in_(days),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return recon, adjusted
+
+
+def _ledger_rows_for_inclusive_range(
+    db,
+    family_id: int,
+    range_start: date,
+    range_end: date,
+    *,
+    source: str,
+    kind_filter: str,
+    q: str,
+    q_as_money: Optional[Decimal],
+    amount_filter: Optional[Decimal],
+    amount_min: Optional[Decimal],
+    amount_max: Optional[Decimal],
+    amount_mode: str,
+    category_id: Optional[int],
+    recurrence: Optional[str],
+    series_by_id: dict[int, ExpectedTransaction],
+) -> list[TransactionLedgerItemOut]:
+    if range_end < range_start:
+        return []
+    range_end_exclusive = range_end + timedelta(days=1)
+    match_kwargs = dict(
+        q=q,
+        q_as_money=q_as_money,
+        amount_filter=amount_filter,
+        amount_min=amount_min,
+        amount_max=amount_max,
+        amount_mode=amount_mode,
+        kind_filter=kind_filter,
+    )
+    actual_items: list[TransactionLedgerItemOut] = []
+    if source in ("all", "one_time") and not recurrence:
+        stmt = (
+            select(Transaction, Category.name.label("category_name"))
+            .join(Category, Category.id == Transaction.category_id, isouter=True)
+            .where(
+                Transaction.family_id == family_id,
+                Transaction.date >= range_start,
+                Transaction.date < range_end_exclusive,
+            )
+        )
+        if kind_filter in ("income", "expense"):
+            stmt = stmt.where(Transaction.kind == TransactionKind(kind_filter))
+        if category_id is not None:
+            if category_id == 0:
+                stmt = stmt.where(Transaction.category_id.is_(None))
+            else:
+                stmt = stmt.where(Transaction.category_id == category_id)
+        rows = db.execute(stmt).all()
+        for tx, category_name in rows:
+            if not _ledger_matches_filters(
+                description=tx.description or "",
+                notes=tx.notes,
+                category=category_name,
+                amount=tx.amount,
+                kind=tx.kind,
+                **match_kwargs,
+            ):
+                continue
+            actual_items.append(
+                TransactionLedgerItemOut(
+                    row_type="actual",
+                    date=tx.date,
+                    occurrence_date=None,
+                    id=tx.id,
+                    expected_transaction_id=None,
+                    account_id=None,
+                    account=None,
+                    kind=tx.kind,
+                    amount=tx.amount,
+                    description=tx.description or "",
+                    notes=tx.notes,
+                    category_id=tx.category_id,
+                    category=category_name,
+                    recurrence=None,
+                    variable=False,
+                    reimbursable=bool(getattr(tx, "reimbursable", False)),
+                    fg_color=getattr(tx, "fg_color", None),
+                    bg_color=getattr(tx, "bg_color", None),
+                )
+            )
+
+    expected_items: list[TransactionLedgerItemOut] = []
+    if source in ("all", "recurring"):
+        cal_items = _expected_calendar_for_range(db, family_id, range_start, range_end_exclusive)
+        # Flow-key dedupe against actuals in this chunk (same rule as Forecast calendar).
+        flow_keys = {
+            _pooled_forecast_dedupe_key(it.date, it.category_id, it.kind, it.amount) for it in actual_items
+        }
+        # Also claim keys for actuals that did not match text filters but still occupy the day,
+        # so we do not show a planned twin the calendar would hide.
+        if source == "all":
+            all_actual_rows = db.execute(
+                select(Transaction).where(
+                    Transaction.family_id == family_id,
+                    Transaction.date >= range_start,
+                    Transaction.date < range_end_exclusive,
+                )
+            ).scalars().all()
+            for tx in all_actual_rows:
+                flow_keys.add(_pooled_forecast_dedupe_key(tx.date, tx.category_id, tx.kind, tx.amount))
+
+        for it in cal_items:
+            flow = _pooled_forecast_dedupe_key(it.date, it.category_id, it.kind, it.amount)
+            if flow in flow_keys:
+                continue
+            flow_keys.add(flow)
+            series = series_by_id.get(int(it.expected_transaction_id))
+            if recurrence and (series is None or str(series.recurrence.value) != recurrence):
+                continue
+            if category_id is not None:
+                cid = it.category_id
+                if category_id == 0:
+                    if cid is not None:
+                        continue
+                elif cid != category_id:
+                    continue
+            if not _ledger_matches_filters(
+                description=it.description or "",
+                notes=it.notes,
+                category=it.category,
+                amount=it.amount,
+                kind=it.kind,
+                **match_kwargs,
+            ):
+                continue
+            expected_items.append(
+                TransactionLedgerItemOut(
+                    row_type="expected",
+                    date=it.date,
+                    occurrence_date=it.occurrence_date,
+                    id=None,
+                    expected_transaction_id=it.expected_transaction_id,
+                    account_id=it.account_id,
+                    account=it.account,
+                    kind=it.kind,
+                    amount=it.amount,
+                    description=it.description or "",
+                    notes=it.notes,
+                    category_id=it.category_id,
+                    category=it.category,
+                    recurrence=series.recurrence if series is not None else None,
+                    variable=bool(it.variable),
+                    reimbursable=bool(it.reimbursable),
+                    fg_color=it.fg_color,
+                    bg_color=it.bg_color,
+                )
+            )
+
+    out = actual_items + expected_items
+    days = {r.date for r in out}
+    recon, adjusted = _ledger_day_flags(db, family_id, days)
+    for r in out:
+        r.day_reconciled = r.date in recon
+        r.day_adjusted = r.date in adjusted
+    return out
+
+
+def _iter_ledger_date_chunks(range_start: date, range_end: date, *, descending: bool):
+    if range_end < range_start:
+        return
+    if descending:
+        chunk_end = range_end
+        while chunk_end >= range_start:
+            chunk_start = max(range_start, chunk_end - timedelta(days=LEDGER_CHUNK_DAYS - 1))
+            yield chunk_start, chunk_end
+            if chunk_start <= range_start:
+                break
+            chunk_end = chunk_start - timedelta(days=1)
+    else:
+        chunk_start = range_start
+        while chunk_start <= range_end:
+            chunk_end = min(range_end, chunk_start + timedelta(days=LEDGER_CHUNK_DAYS - 1))
+            yield chunk_start, chunk_end
+            if chunk_end >= range_end:
+                break
+            chunk_start = chunk_end + timedelta(days=1)
+
+
+def _collect_ledger_page(
+    db,
+    family_id: int,
+    *,
+    when: str,
+    history_start: date,
+    horizon_end: date,
+    today: date,
+    source: str,
+    kind_filter: str,
+    q: str,
+    q_as_money: Optional[Decimal],
+    amount_filter: Optional[Decimal],
+    amount_min: Optional[Decimal],
+    amount_max: Optional[Decimal],
+    amount_mode: str,
+    category_id: Optional[int],
+    recurrence: Optional[str],
+    limit: int,
+    cursor: Optional[dict],
+) -> tuple[list[TransactionLedgerItemOut], Optional[str]]:
+    series_rows = list(
+        db.execute(select(ExpectedTransaction).where(ExpectedTransaction.family_id == family_id)).scalars().all()
+    )
+    series_by_id = {int(s.id): s for s in series_rows}
+    range_kwargs = dict(
+        source=source,
+        kind_filter=kind_filter,
+        q=q,
+        q_as_money=q_as_money,
+        amount_filter=amount_filter,
+        amount_min=amount_min,
+        amount_max=amount_max,
+        amount_mode=amount_mode,
+        category_id=category_id,
+        recurrence=recurrence,
+        series_by_id=series_by_id,
+    )
+
+    if when == "past":
+        scan_start, scan_end, descending = history_start, today - timedelta(days=1), True
+        if scan_end < scan_start:
+            return [], None
+    elif when == "upcoming":
+        scan_start, scan_end, descending = today, horizon_end, False
+    else:
+        scan_start, scan_end, descending = history_start, horizon_end, False
+
+    collected: list[TransactionLedgerItemOut] = []
+    seen: set[tuple] = set()
+
+    def _row_id(item: TransactionLedgerItemOut) -> tuple:
+        if item.row_type == "actual":
+            return ("a", int(item.id or 0))
+        return ("e", int(item.expected_transaction_id or 0), (item.occurrence_date or item.date).isoformat())
+
+    if when == "all":
+        # Expand a growing window around today so page 1 is recent without loading all history.
+        window = 45
+        max_span = max((horizon_end - history_start).days, 1)
+        while True:
+            win_start = max(history_start, today - timedelta(days=window))
+            win_end = min(horizon_end, today + timedelta(days=window))
+            rows = _ledger_rows_for_inclusive_range(db, family_id, win_start, win_end, **range_kwargs)
+            for item in rows:
+                rid = _row_id(item)
+                if rid in seen:
+                    continue
+                if cursor is not None and not _ledger_after_cursor(item, cursor, today=today, when=when):
+                    continue
+                seen.add(rid)
+                collected.append(item)
+            collected.sort(key=lambda it: _ledger_item_sort_key(it, today=today, when=when))
+            if len(collected) > limit:
+                page = collected[:limit]
+                return page, _ledger_encode_cursor(_ledger_cursor_payload(page[-1], today=today, when=when))
+            if win_start == history_start and win_end == horizon_end:
+                break
+            if window >= max_span:
+                # Next pass uses the full span via the win_* clamp above.
+                window = max_span
+                if win_start == history_start and win_end == horizon_end:
+                    break
+                # Force one full-range pass when doubling never reaches both bounds in one step.
+                rows = _ledger_rows_for_inclusive_range(
+                    db, family_id, history_start, horizon_end, **range_kwargs
+                )
+                for item in rows:
+                    rid = _row_id(item)
+                    if rid in seen:
+                        continue
+                    if cursor is not None and not _ledger_after_cursor(item, cursor, today=today, when=when):
+                        continue
+                    seen.add(rid)
+                    collected.append(item)
+                collected.sort(key=lambda it: _ledger_item_sort_key(it, today=today, when=when))
+                break
+            window = min(window * 2, max_span)
+        page = collected[:limit]
+        next_cursor = None
+        if len(collected) > limit:
+            next_cursor = _ledger_encode_cursor(_ledger_cursor_payload(page[-1], today=today, when=when))
+        return page, next_cursor
+
+    for chunk_start, chunk_end in _iter_ledger_date_chunks(scan_start, scan_end, descending=descending):
+        rows = _ledger_rows_for_inclusive_range(db, family_id, chunk_start, chunk_end, **range_kwargs)
+        rows.sort(key=lambda it: _ledger_item_sort_key(it, today=today, when=when))
+        for item in rows:
+            rid = _row_id(item)
+            if rid in seen:
+                continue
+            if cursor is not None and not _ledger_after_cursor(item, cursor, today=today, when=when):
+                continue
+            seen.add(rid)
+            collected.append(item)
+            if len(collected) > limit:
+                page = collected[:limit]
+                return page, _ledger_encode_cursor(_ledger_cursor_payload(page[-1], today=today, when=when))
+
+    return collected[:limit], None
+
+
+@app.get("/api/families/{family_id}/transaction-ledger", response_model=TransactionLedgerOut)
+def transaction_ledger(
+    family_id: int,
+    q: Annotated[str, Query(description="Search description, notes, category; pure money also matches amount.")] = "",
+    amount: Annotated[
+        Optional[Decimal],
+        Query(description="Optional absolute dollar amount filter (exact or approx via amount_mode)."),
+    ] = None,
+    amount_min: Annotated[Optional[Decimal], Query(description="Optional minimum absolute amount.")] = None,
+    amount_max: Annotated[Optional[Decimal], Query(description="Optional maximum absolute amount.")] = None,
+    amount_mode: Annotated[Literal["exact", "approx"], Query()] = "exact",
+    when: Annotated[Literal["all", "past", "upcoming"], Query()] = "all",
+    kind: Annotated[Literal["all", "income", "expense"], Query()] = "all",
+    source: Annotated[Literal["all", "one_time", "recurring"], Query()] = "all",
+    category_id: Annotated[
+        Optional[int],
+        Query(description="Category id filter; 0 means uncategorized."),
+    ] = None,
+    recurrence: Annotated[
+        Optional[str],
+        Query(description="Recurrence filter (implies recurring source)."),
+    ] = None,
+    limit: Annotated[int, Query(ge=1, le=LEDGER_MAX_LIMIT)] = LEDGER_DEFAULT_LIMIT,
+    cursor: Annotated[Optional[str], Query(description="Opaque next_cursor from a prior page.")] = None,
+    access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
+    db=Depends(get_db),
+):
+    """Paginated, searchable ledger of posted txs + Forecast effective expected occurrences.
+
+    History extends to the family's earliest available data (account starting balance /
+    earliest series or posted tx) — not an arbitrary N-month cut. Open-ended series
+    expand forward only through ``horizon_end`` (today + OPEN_SERIES_FORWARD_YEARS).
+    """
+    user_id = get_current_user_id(access_token)
+    require_family_member(db=db, family_id=family_id, user_id=user_id)
+
+    today = datetime.utcnow().date()
+    history_start = _family_ledger_history_start(db, family_id)
+    if history_start is None:
+        history_start = today
+    horizon_end = _ledger_horizon_end(today)
+    if history_start > horizon_end:
+        history_start = horizon_end
+
+    cursor_data = _ledger_decode_cursor(cursor) if cursor else None
+    q_as_money = _ledger_parse_money(q)
+    amount_filter = abs(amount) if amount is not None else None
+    min_amt = abs(amount_min) if amount_min is not None else None
+    max_amt = abs(amount_max) if amount_max is not None else None
+    rec = str(recurrence).strip() if recurrence else None
+    if rec == "all":
+        rec = None
+    if rec:
+        try:
+            Recurrence(rec)
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recurrence") from exc
+        if source == "all":
+            source = "recurring"
+
+    items, next_cursor = _collect_ledger_page(
+        db,
+        family_id,
+        when=when,
+        history_start=history_start,
+        horizon_end=horizon_end,
+        today=today,
+        source=source,
+        kind_filter=kind,
+        q=q or "",
+        q_as_money=q_as_money,
+        amount_filter=amount_filter,
+        amount_min=min_amt,
+        amount_max=max_amt,
+        amount_mode=amount_mode,
+        category_id=category_id,
+        recurrence=rec,
+        limit=limit,
+        cursor=cursor_data,
+    )
+
+    return TransactionLedgerOut(
+        items=items,
+        next_cursor=next_cursor,
+        history_start=history_start,
+        horizon_end=horizon_end,
+        open_series_horizon_years=OPEN_SERIES_FORWARD_YEARS,
+        today=today,
+    )
 
 
 @app.get("/api/families/{family_id}/reports/category-totals", response_model=CategoryTotalsReportOut)
