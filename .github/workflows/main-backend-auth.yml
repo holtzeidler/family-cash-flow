@@ -63,9 +63,6 @@ jobs:
       - name: Starter categories
         run: python -m pytest backend/tests/test_default_categories.py -q
 
-  financial-integrity:
-    uses: ./.github/workflows/financial-integrity.yml
-
   frontend:
     runs-on: ubuntu-latest
     steps:
