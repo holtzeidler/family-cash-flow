@@ -62,7 +62,9 @@ assert.deepStrictEqual(dates(api(mixed, "upcoming")), [
 ]);
 
 assert.ok(app.indexOf('title: "Forecast hygiene"') < 0 && app.indexOf('"Forecast hygiene"') < 0, "empty forecast hygiene card is not shown");
-assert.ok(app.indexOf("latestRec !== lastReconciled") >= 0, "matching reconcile dates are not repeated in Monthly Cash Flow");
+assert.ok(app.indexOf("Nothing urgent surfaced") < 0, "the calm forecast hygiene message is gone");
+assert.ok(app.indexOf("if (latestRec)") >= 0, "Monthly Cash Flow still shows Reconciled through");
+assert.ok(app.indexOf("function ensureTransactionsSidebar(") >= 0, "Transactions loads the sidebar instead of leaving it blank");
 assert.ok(txHtml.indexOf("Search, review, and manage your past and upcoming transactions.") >= 0, "transactions description");
 assert.ok(txHtml.indexOf("tm__quickLabel") >= 0 && txHtml.indexOf("Quick filters") >= 0, "secondary quick filters are labeled");
 assert.ok(txHtml.indexOf('data-tm-when="all"') >= 0, "All stays a primary time filter");

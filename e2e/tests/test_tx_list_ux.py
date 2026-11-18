@@ -73,4 +73,24 @@ def test_transactions_list_order_and_sidebar_date(page, guard):
         }"""
     )
     assert boxes["dateTop"] >= boxes["labelBottom"] - 1, boxes
+    expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
+    expect(page.locator("#totals")).to_contain_text("Income")
+    expect(page.locator("#sidebarForecastHints")).to_contain_text("Forecast low")
+    expect(page.locator("#tmInsights")).not_to_contain_text("Nothing urgent")
+    expect(page.locator("#tmInsights")).not_to_contain_text("Forecast hygiene")
+    aligned = page.evaluate(
+        """() => {
+          const label = document.querySelector(".tm__quickLabel").getBoundingClientRect();
+          const chip = document.querySelector(".tm__chips--quick .tm-chip").getBoundingClientRect();
+          return { labelTop: label.top, chipTop: chip.top, labelRight: label.right, chipLeft: chip.left };
+        }"""
+    )
+    assert abs(aligned["labelTop"] - aligned["chipTop"]) < 16, aligned
+    assert aligned["chipLeft"] >= aligned["labelRight"] - 2, aligned
+
+    page.goto("/transactions/")
+    expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
+    expect(page.locator("#totals")).to_contain_text("Income")
+    expect(page.locator("#sidebarForecastHints")).to_contain_text("Forecast low")
+    expect(page.locator("#tmInsights")).not_to_contain_text("Nothing urgent")
     guard.assert_clean()

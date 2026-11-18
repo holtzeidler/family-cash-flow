@@ -3592,7 +3592,7 @@ document.querySelectorAll(".sidebar-section[data-sidebar-key]").forEach((card) =
   // If this is lowBalance and the user hasn't explicitly set a preference,
   // force expanded even if older localStorage had it collapsed.
   let collapsed;
-  if (key === "addTransaction" && !userSet) {
+  if ((key === "addTransaction" || key === "month") && !userSet) {
     collapsed = false;
     try {
       localStorage.setItem(SIDEBAR_SECTION_PREFIX + key, "0");
@@ -4211,6 +4211,7 @@ function setActiveTopView(view) {
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
   syncSidebarCashHealthCardVisibility();
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions" || v === "reimbursements");
+  if (v === "transactions") ensureTransactionsSidebar();
   if (v === "transactions" || v === "reports") {
     // Wait for the family id. main() starts the same pair as soon as loadFamilies()
     // finishes so this early view switch cannot fetch (or settle) with no family.
@@ -7426,6 +7427,53 @@ function paintSidebarReconcileRow() {
   }
 }
 
+function showTransactionsSidebarLoading() {
+  syncSidebarCashHealthCardVisibility();
+  if (sidebarReconcileRow) {
+    sidebarReconcileRow.hidden = false;
+    if (sidebarReconcileDetail && !state.lastReconciledIso) {
+      sidebarReconcileDetail.textContent = "Loading…";
+    }
+    if (sidebarReconcileBtn) {
+      const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
+      sidebarReconcileBtn.hidden = !canWrite;
+    }
+  }
+  if (totalsEl && !totalsEl.querySelector(".total, .totals-compact")) {
+    totalsEl.innerHTML =
+      '<div class="total total--loading"><div class="k">This month</div><div class="v">Loading…</div></div>';
+  }
+  if (
+    sidebarForecastHints &&
+    !(state.monthDailyBalances && state.monthDailyBalances.size) &&
+    !sidebarForecastHints.querySelector(".sidebar-fqh__row")
+  ) {
+    sidebarForecastHints.hidden = false;
+    sidebarForecastHints.innerHTML =
+      '<div class="sidebar-fqh"><div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Forecast low</span><span class="sidebar-fqh__v">Loading…</span></div></div>';
+  }
+}
+
+function ensureTransactionsSidebar() {
+  if (!state.activeFamilyId) return;
+  if (state.monthDailyBalances && state.monthDailyBalances.size) {
+    paintSidebarReconcileRow();
+    renderMonthSummaryTotalsFromState();
+    return;
+  }
+  showTransactionsSidebarLoading();
+  if (calendarLoadInFlight) return;
+  void loadMonthAndCalendar().catch(() => {
+    if (sidebarReconcileDetail && sidebarReconcileDetail.textContent === "Loading…") {
+      sidebarReconcileDetail.textContent = "Couldn't load";
+    }
+    if (totalsEl && totalsEl.textContent.indexOf("Loading…") >= 0) {
+      totalsEl.innerHTML =
+        '<div class="total total--loading"><div class="k">This month</div><div class="v">Couldn\'t load</div></div>';
+    }
+  });
+}
+
 function defaultSidebarReconcileIso() {
   const todayIso = toISODate(new Date());
   const startIso = getFamilyEarliestStartingBalanceIso();
@@ -10190,8 +10238,7 @@ function refreshSidebarForecastHints() {
     );
   }
   const latestRec = mEnd ? tmLatestReconciledIsoBefore(mEnd) : tmLatestReconciledIsoBefore(toISODate(new Date()));
-  const lastReconciled = normalizeIsoDate(state.lastReconciledIso) || "";
-  if (latestRec && latestRec !== lastReconciled) {
+  if (latestRec) {
     parts.push(
       `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Reconciled through</span><span class="sidebar-fqh__v">${fmtDateMedDisplay(latestRec)}</span></div>`
     );
@@ -21017,7 +21064,7 @@ async function loadMonthAndCalendar(options) {
     // On phones the panel overlay is already the loading state. Inserting the
     // green ribbon after empty day cards are on screen is what the recording
     // showed as "Loading forecast…" appearing late and shoving the calendar.
-    if (!mobile) ensureForecastStatusRibbon("Loading forecast…");
+    if (!mobile && document.body?.dataset?.bwView === "calendar") ensureForecastStatusRibbon("Loading forecast…");
     bwCalendarTraceLayout("month-load-start");
 
     if (!state.activeFamilyId) {
@@ -21036,8 +21083,11 @@ async function loadMonthAndCalendar(options) {
       if (mobile) markMobileCalendarPlacing(true);
       renderCalendar();
       updateCalendarEmptyStateBanner();
-      if (mobile) await revealMobileCalendarPlaced();
-      else setCalendarLoadingUi(false);
+      if (mobile && document.body?.dataset?.bwView === "calendar") await revealMobileCalendarPlaced();
+      else {
+        setCalendarLoadingUi(false);
+        if (mobile) markMobileCalendarPlacing(false);
+      }
       calendarInitialMonthReady = true;
       bwCalendarTraceLayout("month-cache-hit");
       if (mobile) schedulePrefetchAdjacentCalendarMonths();
@@ -21113,7 +21163,11 @@ async function loadMonthAndCalendar(options) {
     updateCalendarEmptyStateBanner();
     rememberCalendarMonthView(viewedYm);
     if (mobile) {
-      await revealMobileCalendarPlaced();
+      if (document.body?.dataset?.bwView === "calendar") await revealMobileCalendarPlaced();
+      else {
+        setCalendarLoadingUi(false);
+        markMobileCalendarPlacing(false);
+      }
       calendarInitialMonthReady = true;
       bwCalendarTraceLayout("usable-calendar");
       const afterCashHealth = () => {
@@ -21135,7 +21189,9 @@ async function loadMonthAndCalendar(options) {
             applyCalendarStatusDecorations();
             rememberCalendarMonthView(viewedYm);
           });
-          if (!calendarMobileUserMoved) placeMobileCalendarBeforeReveal("today");
+          if (!calendarMobileUserMoved && document.body?.dataset?.bwView === "calendar") {
+            placeMobileCalendarBeforeReveal("today");
+          }
           bwCalendarTraceLayout("secondary-painted");
         });
       };
@@ -27470,6 +27526,7 @@ async function main() {
     await Promise.all([accountsPromise, reportsChartPromise]);
   } else if (landingOnTransactions) {
     await accountsPromise;
+    ensureTransactionsSidebar();
   } else {
     await calendarPromise;
     bwCalendarTrace("bootstrap-calendar-ready");
