@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import re
+from datetime import date, timedelta
 
 import pytest
 from playwright.sync_api import expect
 
-from support import login
+from support import login, money, show_month
+from test_core_workflows import PASSWORD, _add_planned_item, _balance, _register_checking
 
 
 def _trace(page):
@@ -74,10 +76,71 @@ def test_desktop_forecast_paints_before_secondary_data(page, seed, guard):
     page.locator("#calendarPrevMonth").click()
     expect(panel).not_to_have_class(re.compile(r"calendar-panel--loading"), timeout=15000)
 
+    page.evaluate("() => { window.__bwApiTrace = []; }")
     page.locator("#navTransactionView").click()
+    expect(page).to_have_url(re.compile(r"/transactions"))
     expect(page.locator("#txListMain")).to_be_visible()
+    page.wait_for_timeout(400)
+    tx_calls = page.evaluate(
+        """() => (window.__bwApiTrace || []).map((row) => row.path)"""
+    )
+    assert not any("calendar-month-daily" in path for path in tx_calls), tx_calls
+    assert not any(path.endswith("/projection") for path in tx_calls), tx_calls
+    page.evaluate("() => { window.__bwApiTrace = []; }")
+    switched = page.evaluate("() => performance.now()")
     page.locator("#navCalendarView").click()
-    expect(panel).not_to_have_class(re.compile(r"calendar-panel--loading"), timeout=15000)
+    expect(page).to_have_url(re.compile(r"/calendar"))
+    expect(panel).not_to_have_class(re.compile(r"calendar-panel--loading"))
+    expect(panel.locator(".cal-cell:not(.cal-cell--out) .cal-balance").first).to_be_visible()
+    returned = page.evaluate(
+        """(started) => ({
+          ms: Math.round(performance.now() - started),
+          calls: (window.__bwApiTrace || []).map((row) => row.path + (row.qs ? "?" + row.qs : "")),
+        })""",
+        switched,
+    )
+    assert returned["ms"] < 1000, returned
+    assert not any("calendar-month-daily" in path for path in returned["calls"]), returned
+    page.go_back()
+    expect(page).to_have_url(re.compile(r"/transactions"))
+    expect(page.locator("#txListMain")).to_be_visible()
+    page.go_forward()
+    expect(page).to_have_url(re.compile(r"/calendar"))
     expect(panel.locator(".cal-cell:not(.cal-cell--out) .cal-balance").first).to_be_visible()
     guard.assert_clean()
     print("DESKTOP_FORECAST_TIMING", snap)
+    print("FORECAST_RETURN", returned)
+
+
+@pytest.mark.smoke_title("Editing on Transactions updates Forecast without a reload")
+def test_transaction_edit_shows_on_forecast_return(page, guard):
+    today = date.today()
+    day = today + timedelta(days=1)
+    iso = day.isoformat()
+    email = _register_checking("1000.00", today.isoformat())
+    login(page, email, PASSWORD)
+    show_month(page, iso[:7], iso)
+    label = _add_planned_item(page, iso, "100", kind="income", name="Paycheck")
+    expect(_balance(page, iso)).to_have_text(money("1100.00"))
+    page.locator("#navTransactionView").click()
+    expect(page).to_have_url(re.compile(r"/transactions"))
+    row = page.locator("#txListMain .tm-row", has_text=label).first
+    expect(row).to_be_visible()
+    row.locator(".tm-row__edit").click()
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_be_visible()
+    page.locator("#txEditAmount").fill("250")
+    page.locator("#txEditSave").click()
+    scope = page.locator("#txEditApplyScopeModal.modal-overlay--open")
+    try:
+        expect(scope).to_be_visible(timeout=2000)
+        page.locator("#txEditApplyScopeInstanceBtn").click()
+        page.locator("#txEditApplyScopeSaveBtn").click()
+    except AssertionError:
+        pass
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
+    expect(scope).to_have_count(0)
+    page.locator("#navCalendarView").click()
+    expect(page).to_have_url(re.compile(r"/calendar"))
+    expect(page.locator("#calendarPanel")).not_to_have_class(re.compile(r"calendar-panel--loading"), timeout=15000)
+    expect(_balance(page, iso)).to_have_text(money("1250.00"))
+    guard.assert_clean()

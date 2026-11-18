@@ -228,9 +228,10 @@ assert.ok(loadingFn.indexOf("calendarLoadingIndicator") >= 0, "the overlay indic
 var visFn = functionBody(app, "syncSidebarCashHealthCardVisibility");
 assert.ok(visFn.indexOf("activeFamilyId") < 0, "Cash Health stays in layout before the family id arrives");
 
-var navIife = app.slice(app.indexOf("(function scrollActiveNavTabIntoView()"), app.indexOf("main().catch"));
-assert.ok(navIife.indexOf("scrollIntoView") >= 0 && navIife.indexOf("Never use Element.scrollIntoView") >= 0, "active tab scrolling does not pan the document");
-assert.ok(navIife.indexOf("tabs.scrollTo") >= 0, "active tab only scrolls the tab strip");
+var navFn = functionBody(app, "scrollActiveNavTabIntoView");
+assert.ok(navFn.indexOf("scrollIntoView") >= 0 && navFn.indexOf("Never use Element.scrollIntoView") >= 0, "active tab scrolling does not pan the document");
+assert.ok(navFn.indexOf("tabs.scrollTo") >= 0, "active tab only scrolls the tab strip");
+assert.ok(functionBody(app, "setActiveTopView").indexOf("scrollActiveNavTabIntoView()") >= 0, "the mobile tab strip follows the active tab");
 
 var todayFn = functionBody(app, "scrollMobileCalendarToToday");
 assert.ok(todayFn.indexOf("mobileCalendarScrollTopFor") >= 0, "desktop Today still has a today scroller");
