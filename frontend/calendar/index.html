@@ -430,53 +430,115 @@
           </div>
 
           <div id="transactionViewPanel" class="app-view" hidden>
-            <div class="card sidebar-section sidebar-section--collapsed" data-sidebar-key="allTransactions">
-              <div class="sidebar-section-head">
-                <h2>All Upcoming Transactions</h2>
-                <button
-                  type="button"
-                  class="sidebar-collapse-btn"
-                  aria-expanded="false"
-                  aria-controls="sidebarBodyAllTransactions"
-                  title="Expand All Upcoming Transactions"
-                >
-                  <svg class="sidebar-collapse-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
+            <section class="tm" aria-label="Transactions">
+              <header class="tm__head">
+                <div class="tm__headMain">
+                  <h2 class="tm__title">Transactions</h2>
+                  <p class="tm__sub">
+                    Review upcoming and recurring cash flow lines before they affect the forecast.
+                  </p>
+                </div>
+                <div class="tm__headActions">
+                  <button type="button" class="tm-primary-action" id="tmPrimaryAction">
+                    Add transaction
+                  </button>
+                </div>
+              </header>
+
+              <div class="tm__top" role="region" aria-label="Search and quick filters">
+                <div class="tm__controlDeck">
+                  <div class="tm__controlDeck__row tm__controlDeck__row--search">
+                    <div class="tm__searchRow">
+                      <div class="tm__field tm__field--search">
+                        <label for="tmSearch" class="sr-only">Search transactions</label>
+                        <input id="tmSearch" type="search" placeholder="Search description, notes, category, or amount" autocomplete="off" />
+                      </div>
+                      <button
+                        type="button"
+                        class="tm__moreFiltersBtn secondary"
+                        id="tmMoreFiltersBtn"
+                        aria-expanded="false"
+                        aria-controls="tmAdvancedFilters"
+                      >
+                        Filters
+                      </button>
+                    </div>
+                  </div>
+                  <div class="tm__controlDeck__row tm__controlDeck__row--chips">
+                    <div class="tm__chips" role="toolbar" aria-label="When filters">
+                      <button type="button" class="tm-chip is-active" data-tm-when="all">
+                        <span class="tm-chip__label">All</span>
+                      </button>
+                      <button type="button" class="tm-chip" data-tm-when="past">
+                        <span class="tm-chip__label">Past</span>
+                      </button>
+                      <button type="button" class="tm-chip" data-tm-when="upcoming">
+                        <span class="tm-chip__label">Upcoming</span>
+                      </button>
+                    </div>
+                    <div class="tm__chips" role="toolbar" aria-label="Quick filters">
+                      <button type="button" class="tm-chip" data-tm-view="uncategorized">
+                        <span class="tm-chip__label">Uncategorized</span><span class="tm-chip__count" aria-hidden="true"></span>
+                      </button>
+                      <button type="button" class="tm-chip" data-tm-view="recurring">
+                        <span class="tm-chip__label">Recurring</span><span class="tm-chip__count" aria-hidden="true"></span>
+                      </button>
+                      <button type="button" class="tm-chip" data-tm-view="annual">
+                        <span class="tm-chip__label">Annual bills</span><span class="tm-chip__count" aria-hidden="true"></span>
+                      </button>
+                      <button type="button" class="tm-chip" data-tm-view="large">
+                        <span class="tm-chip__label">Large</span><span class="tm-chip__count" aria-hidden="true"></span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div id="sidebarBodyAllTransactions" class="sidebar-section-body">
-                <div class="row four">
-                  <div>
-                    <label for="upcomingKindFilter">Type</label>
-                    <select id="upcomingKindFilter">
+
+              <div id="tmAdvancedFilters" class="tm__advanced" hidden>
+                <div class="tm__toolbarRow">
+                  <div class="tm__field">
+                    <label for="tmStartDate">Start date</label>
+                    <input id="tmStartDate" type="date" />
+                  </div>
+                  <div class="tm__field">
+                    <label for="tmEndDate">End date</label>
+                    <input id="tmEndDate" type="date" />
+                  </div>
+                  <div class="tm__field">
+                    <label for="tmType">Type</label>
+                    <select id="tmType">
                       <option value="all" selected>All</option>
                       <option value="expense">Expense</option>
                       <option value="income">Income</option>
                     </select>
                   </div>
-                  <div>
-                    <label for="upcomingStartDate">Start</label>
-                    <input id="upcomingStartDate" type="date" />
+                  <div class="tm__field">
+                    <label for="tmCategory">Category</label>
+                    <select id="tmCategory">
+                      <option value="all" selected>All categories</option>
+                    </select>
                   </div>
-                  <div>
-                    <label for="upcomingEndDate">End</label>
-                    <input id="upcomingEndDate" type="date" />
+                </div>
+                <div class="tm__toolbarRow">
+                  <div class="tm__field">
+                    <label for="tmStatus">Status</label>
+                    <select id="tmStatus">
+                      <option value="all" selected>All</option>
+                      <option value="uncategorized">Uncategorized</option>
+                      <option value="recurring">Recurring</option>
+                    </select>
                   </div>
-                  <div>
-                    <label for="upcomingSourceFilter">Show</label>
-                    <select id="upcomingSourceFilter">
+                  <div class="tm__field">
+                    <label for="tmSource">Show</label>
+                    <select id="tmSource">
                       <option value="all" selected>Recurring + one-time</option>
                       <option value="one_time">One-time only</option>
                       <option value="recurring">Recurring only</option>
                     </select>
                   </div>
-                </div>
-                <div style="height: 10px"></div>
-                <div class="row three">
-                  <div id="upcomingRecurrenceWrap" style="display:none;">
-                    <label for="upcomingRecurrenceFilter">Frequency</label>
-                    <select id="upcomingRecurrenceFilter">
+                  <div class="tm__field">
+                    <label for="tmFrequency">Frequency</label>
+                    <select id="tmFrequency">
                       <option value="all" selected>All</option>
                       
                       <option value="monthly">Every month</option>
@@ -488,14 +550,67 @@
                       <option value="yearly">Every year</option>
                     </select>
                   </div>
-                  <div style="display:flex; align-items:end;">
-                    <button type="button" id="upcomingApplyBtn" style="width:100%;">Apply</button>
+                  <div class="tm__field tm__field--amount">
+                    <label for="tmMinAmt">Amount range</label>
+                    <div class="tm__amountRow">
+                      <input id="tmMinAmt" type="text" inputmode="decimal" placeholder="Min" autocomplete="off" />
+                      <span class="tm__amountSep" aria-hidden="true">–</span>
+                      <input id="tmMaxAmt" type="text" inputmode="decimal" placeholder="Max" autocomplete="off" />
+                    </div>
                   </div>
                 </div>
-                <div style="height: 10px"></div>
-                <div class="list" id="txListMain"></div>
               </div>
-            </div>
+
+              <div class="tm__insightGrid" id="tmInsights" hidden aria-live="polite"></div>
+
+              <p class="tm__forecastNote" id="tmForecastNote" hidden aria-live="polite"></p>
+              <p class="tm__summaryLine" id="tmSummaryLine" aria-live="polite"></p>
+
+              <!-- Legacy filter nodes kept for app.js; hidden and driven by the toolbar above. -->
+              <div class="tm__legacy" hidden aria-hidden="true">
+                <select id="upcomingKindFilter">
+                  <option value="all" selected>All</option>
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+                <input id="upcomingStartDate" type="date" />
+                <input id="upcomingEndDate" type="date" />
+                <select id="upcomingSourceFilter">
+                  <option value="all" selected>Recurring + one-time</option>
+                  <option value="one_time">One-time only</option>
+                  <option value="recurring">Recurring only</option>
+                </select>
+                <div id="upcomingRecurrenceWrap" style="display:none;"></div>
+                <select id="upcomingRecurrenceFilter">
+                  <option value="all" selected>All</option>
+                  
+                      <option value="monthly">Every month</option>
+                      <option value="twice_monthly">Twice monthly</option>
+                      <option value="biweekly">Every 2 weeks</option>
+                      <option value="weekly">Every week</option>
+                      <option value="quarterly">Every 3 months</option>
+                      <option value="semiannual">Twice Yearly</option>
+                      <option value="yearly">Every year</option>
+                    </select>
+                <button type="button" id="upcomingApplyBtn">Apply</button>
+              </div>
+
+              <div class="tm__table" aria-label="Transactions list">
+                <div class="tm-table__head" aria-hidden="true">
+                  <div>Date</div>
+                  <div>Description</div>
+                  <div class="tm-table__amt">Amount</div>
+                  <div>Frequency</div>
+                  <div>Status</div>
+                  <div class="tm-table__action" aria-hidden="true"> </div>
+                </div>
+                <div class="tm-table__body" id="txListMain" aria-live="polite"></div>
+                <div class="tm__loadMoreWrap" id="tmLoadMoreWrap" hidden>
+                  <button type="button" class="secondary tm__loadMoreBtn" id="tmLoadMoreBtn">Load more</button>
+                  <p class="tm__horizonNote" id="tmHorizonNote" hidden></p>
+                </div>
+              </div>
+            </section>
 
           </div>
 

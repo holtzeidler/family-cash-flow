@@ -4147,6 +4147,44 @@ function savePendingAttentionChecked(set) {
   } catch (_) {}
 }
 
+// Bumped when saved forecast data is no longer current. A finished month load
+// records the generation it started with, so a later edit still refetches.
+let forecastDataGeneration = 0;
+let forecastLoadedGeneration = -1;
+let calendarLoadInFlight = false;
+
+function forecastCalendarNeedsLoad() {
+  if (calendarLoadInFlight) return false;
+  if (!state.activeFamilyId) return false;
+  if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) return true;
+  return forecastLoadedGeneration !== forecastDataGeneration;
+}
+
+function topViewFromPath(pathname) {
+  const path = String(pathname || "").replace(/\/index\.html$/, "").replace(/\/+$/, "") || "/";
+  if (/(^|\/)transactions$/.test(path)) return "transactions";
+  if (/(^|\/)reports$/.test(path)) return "reports";
+  if (/(^|\/)settings(\/|$)/.test(path)) return "settings";
+  if (/(^|\/)reimbursements$/.test(path)) return "reimbursements";
+  if (/(^|\/)calendar$/.test(path)) return "calendar";
+  return "";
+}
+
+function pathForTopView(view) {
+  if (view === "transactions") return "/transactions";
+  if (view === "reports") return "/reports";
+  if (view === "settings") return "/settings";
+  if (view === "reimbursements") return "/reimbursements";
+  return "/calendar";
+}
+
+function rememberTopViewHistory(view) {
+  if (topViewFromPath(location.pathname) === view) return;
+  try {
+    history.pushState({ bwView: view }, "", pathForTopView(view));
+  } catch (_) {}
+}
+
 function setActiveTopView(view) {
   const v =
     view === "transactions"
@@ -4155,7 +4193,12 @@ function setActiveTopView(view) {
         ? "settings"
         : view === "reports"
           ? "reports"
-          : "calendar";
+          : view === "reimbursements"
+            ? "reimbursements"
+            : "calendar";
+  try {
+    window.__BW_FORCE_VIEW = v;
+  } catch (_) {}
   try {
     document.body.dataset.bwView = v;
     if (v !== "reports") document.body.removeAttribute("data-bw-pressure-report");
@@ -4242,6 +4285,9 @@ function setActiveTopView(view) {
   if (v === "calendar") {
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
     void refreshLowBalanceAlert();
+    // Keep the month already on screen. Refetch only when it was never loaded
+    // or a later edit invalidated it.
+    if (forecastCalendarNeedsLoad()) void loadMonthAndCalendar();
   }
   if (v === "settings") {
     renderAccountDetailsPanel();
@@ -4252,43 +4298,40 @@ function setActiveTopView(view) {
   try {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
   } catch (_) {}
+  scrollActiveNavTabIntoView();
 }
 
-if (navCalendarView) {
-  navCalendarView.addEventListener("click", (e) => {
-    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
+function topViewReady(view) {
+  if (view === "transactions") return !!document.getElementById("tmSearch");
+  if (view === "reimbursements") return !!document.getElementById("reimbursementsViewPanel");
+  if (view === "reports") return !!document.getElementById("projectionChartCanvas");
+  if (view === "settings") return !!document.getElementById("settingsViewPanel");
+  if (view === "calendar") return !!document.getElementById("calendarGrid");
+  return false;
+}
+
+function bindTopViewLink(el, view) {
+  if (!el) return;
+  el.addEventListener("click", (e) => {
+    if (e.defaultPrevented) return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    // A page that does not contain this view still follows the link.
+    if (!topViewReady(view)) return;
     e.preventDefault();
-    setActiveTopView("calendar");
+    setActiveTopView(view);
+    rememberTopViewHistory(view);
   });
 }
-if (navTransactionView) {
-  navTransactionView.addEventListener("click", (e) => {
-    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
-    e.preventDefault();
-    setActiveTopView("transactions");
-  });
-}
-if (navSettingsView) {
-  navSettingsView.addEventListener("click", (e) => {
-    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
-    e.preventDefault();
-    setActiveTopView("settings");
-  });
-}
-if (navReportsView) {
-  navReportsView.addEventListener("click", (e) => {
-    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
-    e.preventDefault();
-    setActiveTopView("reports");
-  });
-}
-if (navReimbursementsView) {
-  navReimbursementsView.addEventListener("click", (e) => {
-    if (e.currentTarget instanceof HTMLAnchorElement && String(e.currentTarget.getAttribute("href") || "").startsWith("/")) return;
-    e.preventDefault();
-    setActiveTopView("reimbursements");
-  });
-}
+bindTopViewLink(navCalendarView, "calendar");
+bindTopViewLink(navTransactionView, "transactions");
+bindTopViewLink(navSettingsView, "settings");
+bindTopViewLink(navReportsView, "reports");
+bindTopViewLink(navReimbursementsView, "reimbursements");
+window.addEventListener("popstate", () => {
+  const view = topViewFromPath(location.pathname);
+  if (!view) return;
+  setActiveTopView(view);
+});
 
 document.querySelectorAll("#settingsViewPanel .settings-nav-item, #settingsSidebarNav .settings-nav-item").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -4306,6 +4349,7 @@ if (settingsViewPanel) {
         sessionStorage.setItem("BW_OPEN_TX_UNCATEGORIZED", "1");
       } catch (_) {}
       setActiveTopView("transactions");
+      rememberTopViewHistory("transactions");
     }
   });
 }
@@ -7634,6 +7678,7 @@ async function saveBalanceCheckIn() {
 }
 
 function invalidateCalendarMonthDaily() {
+  forecastDataGeneration += 1;
   calendarMonthDailyCache.clear();
   calendarMonthDailyInflight.clear();
   calendarMonthViewCache.clear();
@@ -20869,6 +20914,8 @@ function setCalendarLoadingUi(on) {
 
 async function loadMonthAndCalendar(options) {
   const gen = ++calendarLoadGen;
+  const forecastGenAtStart = forecastDataGeneration;
+  calendarLoadInFlight = true;
   const stillCurrent = () => gen === calendarLoadGen;
   const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
   const mobile = isMobileCalendarViewport();
@@ -21047,9 +21094,17 @@ async function loadMonthAndCalendar(options) {
       updateCalendarEmptyStateBanner();
     } catch (_) {}
   } finally {
+    if (gen === calendarLoadGen) calendarLoadInFlight = false;
     if (stillCurrent()) {
       setCalendarLoadingUi(false);
       calendarInitialMonthReady = true;
+      if (
+        state.monthDailyBalances &&
+        state.monthDailyBalances.size > 0 &&
+        forecastGenAtStart === forecastDataGeneration
+      ) {
+        forecastLoadedGeneration = forecastGenAtStart;
+      }
       bwCalendarTraceLayout("month-load-ready");
       try {
         maybeShowForecastReadyPopup();
@@ -27272,6 +27327,7 @@ async function main() {
   // Transactions lets those rows render before Forecast. Reports charts use
   // /projection, so they must not wait for Forecast calendar startup.
   const landingOnReports = isReportsView();
+  const landingOnTransactions = isTransactionsView();
   const txListPrefetch =
     state.activeFamilyId && isTransactionsOrReportsView() ? ensureTransactionsListData() : null;
   // Family-scoped forecast fetches only need the family id. Run accounts in
@@ -27281,7 +27337,7 @@ async function main() {
         show(familiesErr, (e && e.message) || "Failed to load accounts");
       })
     : Promise.resolve();
-  if (!isMobileCalendarViewport() && !landingOnReports) {
+  if (!isMobileCalendarViewport() && !landingOnReports && !landingOnTransactions) {
     try {
       ensureForecastStatusRibbon("Loading forecast…");
     } catch (_) {}
@@ -27291,7 +27347,8 @@ async function main() {
       await txListPrefetch;
     } catch (_) {}
   }
-  const calendarPromise = landingOnReports
+  // Transactions shows the ledger. Forecast loads when that tab is opened.
+  const calendarPromise = landingOnReports || landingOnTransactions
     ? Promise.resolve()
     : Promise.all([accountsPromise, loadMonthAndCalendar()]);
   const reportsChartPromise =
@@ -27323,6 +27380,8 @@ async function main() {
       })
       .catch(() => {});
     await Promise.all([accountsPromise, reportsChartPromise]);
+  } else if (landingOnTransactions) {
+    await accountsPromise;
   } else {
     await calendarPromise;
     bwCalendarTrace("bootstrap-calendar-ready");
@@ -27368,7 +27427,7 @@ async function main() {
   }
   // Desktop may still need a color pass after categories. On phones this extra
   // innerHTML rebuild is a visible jump after the coherent first paint.
-  if (!isMobileCalendarViewport() && !landingOnReports) {
+  if (!isMobileCalendarViewport() && !landingOnReports && !landingOnTransactions) {
     try {
       renderCalendar();
     } catch (_) {}
@@ -27376,7 +27435,7 @@ async function main() {
   try {
     updateCalendarEmptyStateBanner();
   } catch (_) {}
-  if (state.activeFamilyId && !landingOnReports) {
+  if (state.activeFamilyId && !landingOnReports && !landingOnTransactions) {
     try {
       await refreshProjectionChart();
     } catch (e) {
@@ -27418,7 +27477,7 @@ async function main() {
         }
       });
     }
-    if (!calendarInitialMonthReady) {
+    if (!calendarInitialMonthReady && !landingOnTransactions) {
       await refreshLowBalanceAlert();
       await refreshForecastConfidence();
     }
@@ -27488,7 +27547,7 @@ function wireForecastPreferencesUi() {
   }
 }
 
-(function scrollActiveNavTabIntoView() {
+function scrollActiveNavTabIntoView() {
   var tab = document.querySelector(".top-nav__tab.is-active");
   var tabs = document.querySelector(".top-nav__tabs");
   if (!tab || !tabs || window.innerWidth > 768) return;
@@ -27498,7 +27557,8 @@ function wireForecastPreferencesUi() {
     if (typeof tabs.scrollTo === "function") tabs.scrollTo({ left: Math.max(0, left), behavior: "auto" });
     else tabs.scrollLeft = Math.max(0, left);
   } catch (_) {}
-})();
+}
+scrollActiveNavTabIntoView();
 
 main().catch((e) => {
   if (userPill) userPill.textContent = "Not connected";
