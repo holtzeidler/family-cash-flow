@@ -44,7 +44,12 @@ assert.strictEqual(phase("error", "ready", true), "ready");
 
 assert.ok(calendarHtml.indexOf('sidebar-reconcile__date">Never') < 0, "calendar does not start on Never");
 assert.ok(txHtml.indexOf('sidebar-reconcile__date">Never') < 0, "transactions does not start on Never");
-assert.ok(functionBody(app, "renderSidebarPendingTransactionsForMonth").indexOf("sidebar-summary-skel") >= 0, "needs review uses a placeholder while loading");
+var reviewPaint = functionBody(app, "renderSidebarPendingTransactionsForMonth");
+assert.ok(reviewPaint.indexOf("sidebarPendingTxCard.hidden = true") >= 0, "empty Needs Review is hidden");
+assert.ok(reviewPaint.indexOf("All caught up.") < 0, "a finished empty list is not labeled caught up");
+assert.ok(reviewPaint.indexOf("No estimates to review.") < 0, "a finished empty list is not labeled empty");
+assert.ok(reviewPaint.indexOf("pending-attn-item") >= 0, "items that need review stay actionable");
+assert.ok(reviewPaint.indexOf('setPendingStatus("Unavailable")') >= 0, "a failed load is not shown as complete");
 assert.ok(functionBody(app, "paintMonthSummarySkeleton").indexOf("Income") >= 0, "monthly totals keep their labels while the amounts load");
 assert.ok(functionBody(app, "paintMonthSummarySkeleton").indexOf("$0") < 0, "monthly totals do not paint zero while loading");
 

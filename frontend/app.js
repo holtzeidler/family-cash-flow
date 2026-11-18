@@ -4214,7 +4214,15 @@ function setActiveTopView(view) {
   if (reimbursementsViewPanel) reimbursementsViewPanel.hidden = v !== "reimbursements";
   if (settingsSidebarNav) settingsSidebarNav.hidden = v !== "settings";
   syncSidebarCashHealthCardVisibility();
-  if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = !(v === "calendar" || v === "transactions" || v === "reimbursements");
+  if (sidebarPendingTxCard) {
+    if (v !== "calendar" && v !== "transactions" && v !== "reimbursements") {
+      sidebarPendingTxCard.hidden = true;
+    } else if (sidebarPendingTxCard.classList.contains("sidebar-pending--empty")) {
+      sidebarPendingTxCard.hidden = true;
+    } else {
+      sidebarPendingTxCard.hidden = false;
+    }
+  }
   if (v === "transactions") ensureTransactionsSidebar();
   if (v === "transactions" || v === "reports") {
     // Wait for the family id. main() starts the same pair as soon as loadFamilies()
@@ -20312,12 +20320,6 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.hidden = true;
   }
   const viewedYm = typeof getCalendarViewYm === "function" ? getCalendarViewYm() : calendarMonth?.value || monthInput?.value || "";
-  const caughtUpTitle =
-    typeof NEEDS_REVIEW_EMPTY_TITLE === "string" ? NEEDS_REVIEW_EMPTY_TITLE : "All caught up.";
-  const noneTitle =
-    typeof NEEDS_REVIEW_EMPTY_NONE_TITLE === "string"
-      ? NEEDS_REVIEW_EMPTY_NONE_TITLE
-      : "No estimates to review.";
   const setTitle = () => {
     if (!sidebarPendingTitle) return;
     sidebarPendingTitle.textContent = "Needs Review";
@@ -20327,12 +20329,13 @@ function renderSidebarPendingTransactionsForMonth() {
     sidebarPendingStatus.textContent = text || "";
     sidebarPendingStatus.hidden = !text;
   };
-  const showEmpty = (title, { success = false } = {}) => {
-    setTitle();
-    setPendingStatus(title);
+  const hideNeedsReview = () => {
+    setPendingStatus("");
+    sidebarPendingTxList.innerHTML = "";
     if (sidebarPendingTxCard) {
+      sidebarPendingTxCard.hidden = true;
       sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-      if (success) sidebarPendingTxCard.classList.add("sidebar-pending--success");
+      sidebarPendingTxCard.classList.remove("sidebar-pending--success");
     }
   };
 
@@ -20347,26 +20350,14 @@ function renderSidebarPendingTransactionsForMonth() {
   if (needsReviewLoadStatus === "error" && !dataReady) {
     if (sidebarPendingTxCard) {
       sidebarPendingTxCard.hidden = false;
-      sidebarPendingTxCard.classList.add("sidebar-pending--empty");
+      sidebarPendingTxCard.classList.remove("sidebar-pending--empty", "sidebar-pending--success");
     }
     setTitle();
     setPendingStatus("Unavailable");
     return;
   }
   if (!dataReady) {
-    if (forecastIntroApplies()) {
-      if (sidebarPendingTxCard) {
-        sidebarPendingTxCard.hidden = true;
-        sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-      }
-      setTitle();
-      return;
-    }
-    if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
-    setTitle();
-    setPendingStatus("");
-    sidebarPendingTxList.innerHTML =
-      '<div class="sidebar-summary-pending" aria-busy="true"><span class="sidebar-summary-skel" aria-hidden="true"></span><span class="sr-only">Loading</span></div>';
+    hideNeedsReview();
     return;
   }
 
@@ -20382,19 +20373,9 @@ function renderSidebarPendingTransactionsForMonth() {
       : { rows: [], hadVariableEstimates: false };
   const reviewRows = collected.rows || [];
   if (reviewRows.length || collected.hadVariableEstimates) needsReviewSeenVariableYm.add(viewedYm);
-  const hadVariableEstimates = !!collected.hadVariableEstimates || needsReviewSeenVariableYm.has(viewedYm);
 
   if (!reviewRows.length) {
-    if (forecastIntroApplies()) {
-      if (sidebarPendingTxCard) {
-        sidebarPendingTxCard.hidden = true;
-        sidebarPendingTxCard.classList.add("sidebar-pending--empty");
-      }
-      showEmpty(hadVariableEstimates ? caughtUpTitle : noneTitle, { success: hadVariableEstimates });
-      return;
-    }
-    if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
-    showEmpty(hadVariableEstimates ? caughtUpTitle : noneTitle, { success: hadVariableEstimates });
+    hideNeedsReview();
     return;
   }
   if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;

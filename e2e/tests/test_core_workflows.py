@@ -275,7 +275,7 @@ def test_signup_reaches_forecast_and_can_tour_it(page, guard):
     _add_planned_item(page, today, "40", kind="expense")
     expect(page.locator("#sidebarLowBalanceBanner")).to_contain_text("Looking good")
     expect(page.locator("#sidebarLowBalanceBanner")).not_to_contain_text("Your forecast is getting started")
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("No estimates to review.")
+    expect(page.locator("#sidebarPendingTxCard")).to_be_hidden()
 
     page.goto("/settings/")
     page.locator('[data-settings-key="preferences"]').click()
@@ -519,7 +519,7 @@ def test_needs_review_confirm_this_amount(page, guard):
     page.locator("#reviewAmountConfirmBtn").click()
     expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
     expect(modal).to_have_count(0)
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("All caught up.")
+    expect(page.locator("#sidebarPendingTxCard")).to_be_hidden()
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("108")
     expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
@@ -527,7 +527,7 @@ def test_needs_review_confirm_this_amount(page, guard):
 
     page.reload()
     show_month(page, start.strftime("%Y-%m"), today.isoformat())
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("All caught up.")
+    expect(page.locator("#sidebarPendingTxCard")).to_be_hidden()
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("108")
     expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
@@ -582,7 +582,7 @@ def test_needs_review_confirm_unchanged_amount(page, guard):
     page.locator("#reviewAmountConfirmBtn").click()
     expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
     expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("All caught up.")
+    expect(page.locator("#sidebarPendingTxCard")).to_be_hidden()
     today_line = _day_line(page, today.isoformat(), label)
     expect(today_line).to_contain_text("95")
     expect(today_line).not_to_have_class(re.compile(r"cal-expected-variable"))
@@ -659,7 +659,7 @@ def test_needs_review_confirm_ignores_second_click(page, guard):
     page.locator("#reviewAmountConfirmBtn").evaluate("el => { el.click(); el.click(); }")
     expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
     expect(page.locator("#txEditApplyScopeModal.modal-overlay--open")).to_have_count(0)
-    expect(page.locator("#sidebarPendingTxCard")).to_contain_text("All caught up.")
+    expect(page.locator("#sidebarPendingTxCard")).to_be_hidden()
     assert posts["n"] == 1
     guard.assert_clean()
 
@@ -710,7 +710,7 @@ def test_needs_review_follows_viewed_calendar_month(page, guard):
     page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
     page.locator("#reviewAmountConfirmBtn").click()
     expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
-    expect(card).to_contain_text("All caught up.")
+    expect(card).to_be_hidden()
     dec_line = _day_line(page, dec_11.isoformat(), card_label)
     expect(dec_line).to_contain_text("90")
     expect(dec_line).not_to_have_class(re.compile(r"cal-expected-variable"))
