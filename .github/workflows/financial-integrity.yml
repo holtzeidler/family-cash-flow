@@ -1,0 +1,23 @@
+name: Financial integrity
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install backend
+        run: pip install -r backend/requirements.txt pytest==8.4.2 httpx==0.28.1
+
+      - name: Financial integrity
+        run: python -m pytest backend/tests/test_financial_integrity.py -q

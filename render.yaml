@@ -29,6 +29,8 @@ services:
     dockerContext: .
     plan: free
     branch: main
+    # Deploy only after GitHub checks pass. A failed financial-integrity run skips this service.
+    autoDeployTrigger: checksPass
     healthCheckPath: /docs
 
   - type: web
@@ -99,6 +101,7 @@ services:
     dockerContext: .
     plan: starter
     branch: main
+    autoDeployTrigger: checksPass
     schedule: "15 14,20 * * *"
     dockerCommand: python -m app.trial_ending_reminders
     envVars:
@@ -131,6 +134,7 @@ services:
     dockerContext: .
     plan: starter
     branch: main
+    autoDeployTrigger: checksPass
     schedule: "30 8 * * *"
     envVars:
       - key: SOURCE_DATABASE_URL

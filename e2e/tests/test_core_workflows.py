@@ -11,6 +11,7 @@ import time
 import uuid
 import urllib.request
 from datetime import date, timedelta
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from playwright.sync_api import expect
@@ -58,18 +59,32 @@ def _request(method, path, token=None, body=None):
 def _register_checking(start_balance: str, start_date: str) -> str:
     email = f"bw-smoke-flow{uuid.uuid4().hex[:10]}@example.com"
     assert_bot_email(email)
-    body = _request(
+    _request(
         "POST",
-        "/api/auth/register",
+        "/api/auth/verification/start",
         body={"email": email, "password": PASSWORD, "first_name": "Flow", "last_name": "Bot"},
     )
-    token = str((body or {}).get("access_token") or "")
-    families = _request("GET", "/api/families", token=token)
+    confirm_url = ""
+    deadline = time.time() + 8
+    while time.time() < deadline:
+        confirm_url = latest_confirm_url(email)
+        if confirm_url:
+            break
+        time.sleep(0.2)
+    assert confirm_url, "confirmation link was not captured"
+    verify_token = str(parse_qs(urlparse(confirm_url).query).get("verify", [""])[0] or "").strip()
+    assert verify_token, "confirmation link had no token"
+    verified = _request("POST", "/api/auth/verify-email", body={"token": verify_token})
+    access = str((verified or {}).get("access_token") or "").strip()
+    assert access, "verify-email did not return a token"
+    complete = _request("POST", "/api/auth/onboarding/complete", token=access, body={})
+    access = str((complete or {}).get("access_token") or access).strip()
+    families = _request("GET", "/api/families", token=access)
     family_id = int(families[0]["id"])
     _request(
         "POST",
         f"/api/families/{family_id}/accounts",
-        token=token,
+        token=access,
         body={
             "name": "Checking",
             "type": "checking",
@@ -1461,11 +1476,53 @@ def test_changing_one_occurrence_amount_leaves_later_dates(page, guard):
     expect(scope.locator("#txEditApplyScopeInstanceTitle")).to_have_text("Only this occurrence")
     expect(scope.locator("#txEditApplyScopeInstanceHint")).to_have_text("Updates Nov 9 only.")
     expect(scope.locator("#txEditApplyScopeInstanceBadge")).to_be_visible()
+    expect(_balance(page, "2026-11-09")).to_have_text(money("1920.00"))
     scope.get_by_role("button", name="Save Changes").click()
     expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
-    expect(_day_line(page, "2026-11-09", label)).to_contain_text("95")
+    edited = page.locator('.cal-cell[data-iso="2026-11-09"] .cal-day-tx-line', has_text=label)
+    expect(edited).to_have_count(1)
+    expect(edited).to_contain_text("95.00")
+    expect(_balance(page, "2026-11-09")).to_have_text(money("1905.00"))
     show_month(page, "2026-12", "2026-12-09")
-    expect(_day_line(page, "2026-12-09", label)).to_contain_text("80")
+    later = page.locator('.cal-cell[data-iso="2026-12-09"] .cal-day-tx-line', has_text=label)
+    expect(later).to_have_count(1)
+    expect(later).to_contain_text("80.00")
+    expect(_balance(page, "2026-12-09")).to_have_text(money("1825.00"))
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("One paycheck date changes the balance by the difference")
+def test_one_paycheck_occurrence_changes_the_balance_by_the_difference(page, guard):
+    email = _register_checking("10000.00", "2026-11-01")
+    login(page, email, PASSWORD)
+    show_month(page, "2026-11", "2026-11-15")
+    label = _add_planned_item(page, "2026-11-15", "3000", kind="income", repeat="monthly", name="Paycheck")
+    lines = page.locator('.cal-cell[data-iso="2026-11-15"] .cal-day-tx-line', has_text=label)
+    expect(lines).to_have_count(1)
+    expect(lines).to_contain_text("3,000.00")
+    expect(_balance(page, "2026-11-15")).to_have_text(money("13000.00"))
+    _open_calendar_item(page, "2026-11-15", label, expected=True)
+    page.locator("#txEditAmount").fill("3200")
+    page.locator("#txEditSave").click()
+    scope = page.locator("#txEditApplyScopeModal.modal-overlay--open")
+    expect(scope).to_be_visible()
+    scope.locator("#txEditApplyScopeInstanceBtn").click()
+    scope.get_by_role("button", name="Save Changes").click()
+    expect(page.locator("#txEditModal.modal-overlay--open")).to_have_count(0)
+    expect(lines).to_have_count(1)
+    expect(lines).to_contain_text("3,200.00")
+    expect(lines).not_to_contain_text("3,000.00")
+    expect(_balance(page, "2026-11-15")).to_have_text(money("13200.00"))
+    page.reload()
+    show_month(page, "2026-11", "2026-11-15")
+    expect(lines).to_have_count(1)
+    expect(lines).to_contain_text("3,200.00")
+    expect(_balance(page, "2026-11-15")).to_have_text(money("13200.00"))
+    show_month(page, "2026-12", "2026-12-15")
+    later = page.locator('.cal-cell[data-iso="2026-12-15"] .cal-day-tx-line', has_text=label)
+    expect(later).to_have_count(1)
+    expect(later).to_contain_text("3,000.00")
+    expect(_balance(page, "2026-12-15")).to_have_text(money("16200.00"))
     guard.assert_clean()
 
 
