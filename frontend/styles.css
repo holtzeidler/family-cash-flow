@@ -6900,9 +6900,10 @@ button.nav-link:hover{
 }
 .sidebar-reconcile__status{
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
   min-width: 0;
 }
 .sidebar-reconcile__label{
@@ -6915,15 +6916,15 @@ button.nav-link:hover{
   color: rgba(100, 116, 139, 0.76);
 }
 .sidebar-reconcile__date{
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   margin: 0;
-  text-align: right;
-  font-size: 11.5px;
-  font-weight: 500;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 650;
   line-height: 1.35;
   letter-spacing: -0.011em;
-  color: rgba(71, 85, 105, 0.86);
+  color: rgba(30, 41, 59, 0.9);
 }
 button.sidebar-reconcile__action{
   display: block;
@@ -24236,6 +24237,64 @@ body[data-bw-view="transactions"] .tm__field label{
     0 2px 6px rgba(11, 61, 46, 0.08);
   font-weight: 720;
 }
+.tm__controlDeck__row--chips{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.tm__chips--when{
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  padding: 2px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 10px;
+  background: #fff;
+}
+.tm__chips--when .tm-chip{
+  border: 0;
+  border-radius: 8px;
+  box-shadow: none;
+  background: transparent;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+.tm__chips--when .tm-chip.is-active,
+.tm__chips--when .tm-chip[aria-pressed="true"]{
+  background: rgba(4, 120, 87, 0.16);
+  color: rgba(6, 54, 38, 1);
+  box-shadow: none;
+}
+.tm__quick{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.tm__quickLabel{
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(100, 116, 139, 0.9);
+}
+.tm__chips--quick .tm-chip[aria-pressed="true"]{
+  background: rgba(4, 120, 87, 0.14);
+  border-color: rgba(4, 120, 87, 0.4);
+}
+.tm-insight-card--compact{
+  padding: 8px 12px;
+}
+.tm-insight-card--compact .tm-insight-card__body{
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgba(30, 41, 59, 0.9);
+}
 
 /* "In this list" line */
 .tm__summaryLine{
@@ -36310,11 +36369,14 @@ body[data-bw-view] .pending-attn-item.is-major .pending-attn-meta{
   color: var(--sb-support-color);
 }
 body[data-bw-view] .sidebar-reconcile__date{
-  font-size: var(--sb-support-size);
-  font-weight: var(--sb-support-weight);
-  letter-spacing: 0;
+  display: block;
+  margin-top: 1px;
+  text-align: left;
+  font-size: var(--sb-body-size);
+  font-weight: 650;
+  letter-spacing: -0.011em;
   line-height: 1.35;
-  color: var(--sb-support-color);
+  color: var(--sb-body-color);
 }
 body[data-bw-view] button.sidebar-reconcile__action{
   font-size: 12px;
