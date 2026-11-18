@@ -159,6 +159,14 @@ var usableIdx = loadBody.indexOf("usable-calendar");
 var deferredIdx = loadBody.indexOf("startDeferredSecondary()");
 assert.ok(usableIdx >= 0 && deferredIdx > usableIdx, "phones defer extras until Cash Health has resolved");
 assert.ok(
+  loadBody.indexOf("await Promise.all([dailyPromise, txPromise, expectedPromise])") >= 0,
+  "the visible month waits only for its daily balances, transactions, and expected items"
+);
+assert.ok(
+  loadBody.indexOf('await runStep("forecast-confidence"') < 0,
+  "forecast confidence does not hold the calendar loading state"
+);
+assert.ok(
   loadBody.indexOf('runStep("upcoming"') >= 0 && loadBody.indexOf("? Promise.resolve()") >= 0,
   "phones do not fetch the 548-day upcoming list on the first Forecast paint"
 );

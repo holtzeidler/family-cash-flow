@@ -20716,7 +20716,6 @@ function setCashHealthShellPending(on) {
 }
 
 function showCashHealthPendingUi() {
-  if (!isMobileCalendarViewport()) return;
   if (state.cashHealth && state.cashHealth.copy) return;
   cashHealthUiPending = true;
   setCashHealthShellPending(true);
@@ -20727,7 +20726,7 @@ function showCashHealthPendingUi() {
     sidebarLowBalanceBanner.classList.remove("is-danger", "is-intro");
     sidebarLowBalanceBanner.classList.add("is-muted");
   }
-  paintCashHealthPendingStrip();
+  if (isMobileCalendarViewport()) paintCashHealthPendingStrip();
 }
 
 function preserveMobileForecastScroll(work) {
@@ -20933,7 +20932,7 @@ async function loadMonthAndCalendar(options) {
     };
 
     const dailyPromise = runStep("daily-balances", () =>
-      loadCalendarMonthDaily(gen, mobile ? { adjacent: false } : undefined)
+      loadCalendarMonthDaily(gen, { adjacent: false })
     );
     const txPromise = runStep("transactions", () => loadTransactions(gen));
     const expectedPromise = runStep("expected", () => loadExpectedCalendar(gen));
@@ -20942,9 +20941,9 @@ async function loadMonthAndCalendar(options) {
       cashHealthPromise: runStep("low-balance", () => refreshLowBalanceAlert()),
       reconciledPromise: runStep("reconciled", () => loadReconciledDays(getCalendarViewYm())),
       verifiedPromise: runStep("verified", () => loadVerifiedBalances(getCalendarViewYm())),
-      adjacentPromise: mobile
-        ? runStep("adjacent-daily", () => loadCalendarMonthDaily(gen, { adjacentOnly: true }))
-        : Promise.resolve(),
+      adjacentPromise: runStep("adjacent-daily", () =>
+        loadCalendarMonthDaily(gen, { adjacentOnly: true })
+      ),
       upcomingPromise: mobile
         ? Promise.resolve()
         : runStep("upcoming", () => loadUpcomingTransactionsPanel()),
@@ -20957,49 +20956,19 @@ async function loadMonthAndCalendar(options) {
     });
 
     let cashHealthPromise = Promise.resolve();
-    if (!mobile) {
-      const {
-        extrasPromise,
-        cashHealthPromise: desktopCashHealthPromise,
-        reconciledPromise,
-        verifiedPromise,
-        upcomingPromise,
-      } = startSecondary();
-      cashHealthPromise = desktopCashHealthPromise;
-      await dailyPromise;
-      if (!stillCurrent()) return;
-      if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
-        try {
-          computeMonthDailyBalancesLegacy();
-        } catch (_) {}
-      }
-      renderCalendar();
-      bwCalendarTraceLayout("daily-balances-painted");
-      if (stillCurrent()) updateCalendarEmptyStateBanner();
-      await Promise.all([
-        txPromise,
-        upcomingPromise,
-        expectedPromise,
-        extrasPromise,
-        reconciledPromise,
-        verifiedPromise,
-        cashHealthPromise,
-      ]);
-    } else {
+    if (mobile) {
       showCashHealthPendingUi();
       prefetchCashHealthDailyMonths();
       cashHealthPromise = runStep("low-balance", () => refreshLowBalanceAlert());
-      await Promise.all([dailyPromise, txPromise, expectedPromise]);
     }
+    // The visible month paints from its own daily balances, transactions, and
+    // expected items. Cash Health, neighbor transactions, reconciliation, and
+    // confidence update their own UI when they arrive.
+    await Promise.all([dailyPromise, txPromise, expectedPromise]);
     if (!stillCurrent()) return;
     if (!state.monthDailyBalances || state.monthDailyBalances.size === 0) {
       try {
         computeMonthDailyBalancesLegacy();
-      } catch (_) {}
-    }
-    if (!mobile) {
-      try {
-        repairOutOfMonthBalanceContinuity();
       } catch (_) {}
     }
     finishNeedsReviewMonthLoad(viewedYm);
@@ -21037,7 +21006,28 @@ async function loadMonthAndCalendar(options) {
       };
       void cashHealthPromise.finally(afterCashHealth);
     } else {
-      await runStep("forecast-confidence", () => refreshForecastConfidence());
+      calendarInitialMonthReady = true;
+      bwCalendarTraceLayout("usable-calendar");
+      if (!(state.cashHealth && state.cashHealth.copy)) showCashHealthPendingUi();
+      const started = startSecondary();
+      void runStep("forecast-confidence", () => refreshForecastConfidence());
+      void Promise.all([
+        started.extrasPromise,
+        started.reconciledPromise,
+        started.verifiedPromise,
+        started.cashHealthPromise,
+        started.upcomingPromise,
+      ]).then(() => {
+        if (!stillCurrent()) return;
+        try {
+          repairOutOfMonthBalanceContinuity();
+        } catch (_) {}
+        renderCalendar();
+        applyCalendarStatusDecorations();
+        rememberCalendarMonthView(viewedYm);
+        renderMonthSummaryTotalsFromState();
+        bwCalendarTraceLayout("secondary-painted");
+      });
     }
     if (!stillCurrent()) return;
     const pendingFocus = document.body?.dataset?.bwView === "calendar" ? takePendingCashHealthFocus() : null;
