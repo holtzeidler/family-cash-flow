@@ -54,9 +54,13 @@ def test_mobile_summary_reports_and_today(page, guard):
 
     _assert_today(_today_position(page))
     expect(page.locator("#mobileSummaryToggle")).to_have_text("Hide summary")
+    expect(page.locator("#sidebarCashHealthCard #sidebarMonthLow")).to_be_visible()
+    expect(page.locator("#sidebarMonthLow")).to_contain_text("Lowest balance this month")
+    expect(page.locator("#sidebarForecastHints")).not_to_contain_text("Forecast low")
 
     page.locator("#navTransactionView").click()
     expect(page.locator("#mobileSummaryToggle")).to_have_text("Summary")
+    expect(page.locator("#sidebarMonthLow")).to_be_hidden()
     page.wait_for_timeout(200)
     phone = page.evaluate(
         """() => {
@@ -75,6 +79,8 @@ def test_mobile_summary_reports_and_today(page, guard):
     assert phone["titleTop"] is not None and 0 < phone["titleTop"] < 220, phone
     assert phone["monthDisplay"] == "none", phone
     assert phone["alertsDisplay"] != "none", phone
+    page.locator("#mobileSummaryToggle").click()
+    expect(page.locator("#sidebarMonthLow")).to_be_visible()
 
     page.locator("#navReportsView").click()
     page.wait_for_timeout(200)

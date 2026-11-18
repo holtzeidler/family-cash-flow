@@ -38,7 +38,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css?v=949" />
+    <link rel="stylesheet" href="../styles.css?v=950" />
   </head>
   <body>
     <h1 class="sr-only">Settings</h1>
@@ -98,6 +98,11 @@
                 <div class="sidebar-balance-threshold-alerts sidebar-cash-health__alerts" id="sidebarBalanceThresholdAlerts" aria-label="Balance threshold alerts">
                   <div id="sidebarLowBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--inset" style="display: none" role="status"></div>
                   <div id="sidebarHighBalanceBanner" class="calendar-low-balance calendar-low-balance--sidebar calendar-low-balance--high calendar-low-balance--inset" style="display: none" role="status"></div>
+                </div>
+
+                <div id="sidebarMonthLow" class="cash-health-month-low" hidden>
+                  <span class="cash-health-month-low__label">Lowest balance this month</span>
+                  <span id="sidebarMonthLowValue" class="cash-health-month-low__value"></span>
                 </div>
 
                 <div id="forecastConfidenceCard" class="cash-health-status cash-health-status--balance" hidden aria-label="Balance check-in">
@@ -1937,7 +1942,7 @@
     <script src="../sidebar-reconcile.js?v=4"></script>
     <script src="../tx-edit-scope.js?v=4"></script>
     <script src="../reconcile-record-tip.js?v=5"></script>
-    <script src="../app.js?v=625"></script>
+    <script src="../app.js?v=626"></script>
     <script src="../feedback.js?v=6" defer></script>
     <script src="../tour.js?v=28" defer></script>
   </body>
