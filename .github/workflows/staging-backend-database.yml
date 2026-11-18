@@ -58,5 +58,5 @@ jobs:
       - name: Staging access password
         run: python -m pytest backend/tests/test_staging_access_password.py -q
 
-      - name: Financial integrity
-        run: python -m pytest backend/tests/test_financial_integrity.py -q
+  financial-integrity:
+    uses: ./.github/workflows/financial-integrity.yml
