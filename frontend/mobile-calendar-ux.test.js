@@ -168,7 +168,11 @@ assert.ok(loadBody.indexOf("maybeShowForecastReadyPopup()") >= 0, "first-forecas
 var extrasFn = functionBody(app, "loadCalendarExtras");
 assert.ok(extrasFn.indexOf("requestMonthExpectedCalendar") >= 0 && extrasFn.indexOf("await Promise.all([") >= 0, "wrap-month extras fetch in one round");
 var mainFn = functionBody(app, "main");
-assert.ok(mainFn.indexOf("Promise.all([accountsPromise, loadMonthAndCalendar()])") >= 0, "accounts do not block the month fetch");
+assert.ok(
+  mainFn.indexOf("Promise.all([accountsPromise, loadMonthAndCalendar()])") >= 0 ||
+    mainFn.indexOf("const calendarPromise = landingOnReports") >= 0,
+  "accounts do not block the month fetch"
+);
 assert.ok(
   mainFn.indexOf("!isMobileCalendarViewport()") >= 0 && mainFn.indexOf("categoriesBootstrap = loadCategories()") >= 0,
   "phones do not start category fetches before the first calendar paint"
@@ -255,11 +259,11 @@ var ensureFn = functionBody(app, "ensureTransactionsListData");
 assert.ok(ensureFn.indexOf("loadExpectedTransactions()") >= 0, "list prefetch loads recurring series");
 assert.ok(ensureFn.indexOf("loadUpcomingTransactionsPanel()") >= 0, "list prefetch loads 548-day actuals on every viewport");
 var prefetchIdx = app.indexOf("const txListPrefetch");
-var calendarAwaitIdx = app.indexOf("await Promise.all([accountsPromise, loadMonthAndCalendar()])");
-assert.ok(prefetchIdx >= 0 && prefetchIdx < calendarAwaitIdx, "transactions list prefetch starts before the calendar wait");
+var calendarPromiseIdx = app.indexOf("const calendarPromise = landingOnReports");
+assert.ok(prefetchIdx >= 0 && calendarPromiseIdx > prefetchIdx, "transactions list prefetch starts before the calendar wait");
 var mainFn = functionBody(app, "main");
 var txWaitIdx = mainFn.indexOf("await txListPrefetch");
-var mainCalendarIdx = mainFn.indexOf("await Promise.all([accountsPromise, loadMonthAndCalendar()])");
+var mainCalendarIdx = mainFn.indexOf("const calendarPromise = landingOnReports");
 assert.ok(
   txWaitIdx >= 0 && mainCalendarIdx > txWaitIdx && mainFn.indexOf("isTransactionsView()") < txWaitIdx,
   "Transactions rows settle before Forecast starts"
@@ -267,6 +271,18 @@ assert.ok(
 assert.ok(
   mainFn.indexOf("isTransactionsOrReportsView()") >= 0 && mainFn.indexOf("isTransactionsOrReportsView()") < txWaitIdx,
   "Reports still starts its list without waiting to begin Forecast"
+);
+assert.ok(app.indexOf("function isReportsView(") >= 0, "Reports landing is detected separately from Transactions");
+assert.ok(mainFn.indexOf("landingOnReports") >= 0, "bootstrap knows when Reports is the landing view");
+assert.ok(
+  mainFn.indexOf("refreshProjectionChart()") >= 0 &&
+    mainFn.indexOf("loadMonthAndCalendar()") >= 0 &&
+    mainFn.indexOf("Keep Forecast warm in the background without blocking Reports charts.") >= 0,
+  "Reports charts start without waiting for Forecast calendar startup"
+);
+assert.ok(
+  app.indexOf("pad_months=1") >= 0 && app.indexOf("padMonths: 1") >= 0,
+  "calendar daily balances request adjacent months in one padded call"
 );
 var monthFn = functionBody(app, "loadMonthAndCalendar");
 assert.ok(monthFn.indexOf("upcomingPromise: mobile") >= 0, "Forecast still skips the 548-day upcoming fetch on phones");

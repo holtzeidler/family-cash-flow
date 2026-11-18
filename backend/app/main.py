@@ -9399,6 +9399,32 @@ def _verified_balance_amount_map(db, family_id: int, through: date) -> dict[date
     return {r.date: r.amount for r in rows}
 
 
+def _pooled_sim_start_after_verified(
+    *,
+    balance_start: date,
+    window_start: date,
+    verified_by_date: dict[date, Decimal],
+) -> tuple[date, Decimal]:
+    """
+    Skip history before the response window when a verified checkpoint already
+    anchors the running balance. Returns (sim_start, initial_carry).
+    """
+    anchor_date: Optional[date] = None
+    anchor_amount: Optional[Decimal] = None
+    for day, amount in verified_by_date.items():
+        if day < balance_start or day >= window_start:
+            continue
+        if anchor_date is None or day > anchor_date:
+            anchor_date = day
+            anchor_amount = amount
+    if anchor_date is None or anchor_amount is None:
+        return balance_start, Decimal("0")
+    sim_start = anchor_date + timedelta(days=1)
+    if sim_start < balance_start:
+        sim_start = balance_start
+    return sim_start, Decimal(anchor_amount)
+
+
 def _simulate_pooled_daily_balance_rows(
     *,
     balance_start: date,
@@ -9408,9 +9434,10 @@ def _simulate_pooled_daily_balance_rows(
     expected_by_date: dict[date, Decimal],
     start_adds: dict[date, Decimal],
     verified_by_date: dict[date, Decimal],
+    initial_carry: Decimal = Decimal("0"),
 ) -> dict[date, dict[str, object]]:
     """Simulate pooled balances; verified checkpoints override end-of-day carry forward."""
-    carry = Decimal("0")
+    carry = Decimal(initial_carry)
     out: dict[date, dict[str, object]] = {}
     d = balance_start
     while d <= last_day:
@@ -9466,23 +9493,29 @@ def _projected_balance_on_date(
     balance_start = _family_balance_start_date(db, family_id)
     if balance_start is None or target_date < balance_start:
         return None
+    verified_by_date = _verified_balance_amount_map(db, family_id, target_date)
+    sim_start, initial_carry = _pooled_sim_start_after_verified(
+        balance_start=balance_start,
+        window_start=target_date,
+        verified_by_date=verified_by_date,
+    )
     actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
         db=db,
         family_id=family_id,
-        balance_start=balance_start,
+        balance_start=sim_start,
         last_day=target_date,
         range_end_exclusive=target_date + timedelta(days=1),
         mode=mode,
     )
-    verified_by_date = _verified_balance_amount_map(db, family_id, target_date)
     sim = _simulate_pooled_daily_balance_rows(
-        balance_start=balance_start,
+        balance_start=sim_start,
         last_day=target_date,
         mode=mode,
         actual_by_date=actual_by_date,
         expected_by_date=expected_by_date,
         start_adds=start_adds,
         verified_by_date=verified_by_date,
+        initial_carry=initial_carry,
     )
     row = sim.get(target_date)
     if not row:
@@ -9545,20 +9578,35 @@ def _verified_balance_report_warnings(
     return out
 
 
+def _shift_year_month(month: str, delta: int) -> str:
+    start, _ = _month_range(month)
+    shifted = _add_months(start, delta)
+    return f"{shifted.year:04d}-{shifted.month:02d}"
+
+
 def _calendar_month_daily_balances(
     *,
     db,
     family_id: int,
     month: str,
     mode: Literal["both", "actual", "expected"],
+    pad_months: int = 0,
 ) -> list[CalendarDayBalanceOut]:
     """
     One pooled running balance: starting balances apply on their day, then each day's end balance
-    feeds the next day. Simulates from the earliest account starting-balance date through the end of `month`.
-    Days before that date in the requested month have null balances (no forecast data).
+    feeds the next day. Simulates from the earliest account starting-balance date (or the latest
+    verified checkpoint before the window) through the end of `month` (plus optional adjacent months).
+    Days before that date in the requested window have null balances (no forecast data).
     """
-    month_start, month_end_excl = _month_range(month)
-    last_day = month_end_excl - timedelta(days=1)
+    if pad_months < 0 or pad_months > 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="pad_months must be 0 or 1")
+
+    if pad_months:
+        range_start, _ = _month_range(_shift_year_month(month, -pad_months))
+        _, range_end_excl = _month_range(_shift_year_month(month, pad_months))
+    else:
+        range_start, range_end_excl = _month_range(month)
+    last_day = range_end_excl - timedelta(days=1)
 
     account_rows = list(db.execute(select(Account).where(Account.family_id == family_id)).scalars().all())
     if not account_rows:
@@ -9566,51 +9614,56 @@ def _calendar_month_daily_balances(
 
     balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
     verified_by_date = _verified_balance_amount_map(db, family_id, last_day)
+    sim_start, initial_carry = _pooled_sim_start_after_verified(
+        balance_start=balance_start,
+        window_start=range_start,
+        verified_by_date=verified_by_date,
+    )
     actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
         db=db,
         family_id=family_id,
-        balance_start=balance_start,
+        balance_start=sim_start,
         last_day=last_day,
-        range_end_exclusive=month_end_excl,
+        range_end_exclusive=range_end_excl,
         mode=mode,
     )
     sim = _simulate_pooled_daily_balance_rows(
-        balance_start=balance_start,
+        balance_start=sim_start,
         last_day=last_day,
         mode=mode,
         actual_by_date=actual_by_date,
         expected_by_date=expected_by_date,
         start_adds=start_adds,
         verified_by_date=verified_by_date,
+        initial_carry=initial_carry,
     )
 
     out: list[CalendarDayBalanceOut] = []
-    d = month_start
+    d = range_start
     while d < balance_start and d <= last_day:
         out.append(CalendarDayBalanceOut(date=d))
         d += timedelta(days=1)
 
-    sim_day = balance_start
+    sim_day = max(balance_start, range_start)
     while sim_day <= last_day:
-        if sim_day >= month_start:
-            row = sim.get(sim_day)
-            if row:
-                verified = bool(row.get("verified"))
-                verified_amount = row.get("verified_amount")
-                projected_end = row.get("projected_end")
-                out.append(
-                    CalendarDayBalanceOut(
-                        date=sim_day,
-                        start=str(row["start"]),
-                        tx_net=str(row["tx_net"]),
-                        end=str(row["end"]),
-                        verified=verified,
-                        verified_amount=str(verified_amount) if verified and verified_amount is not None else None,
-                        projected_end=str(projected_end) if verified and projected_end is not None else None,
-                    )
+        row = sim.get(sim_day)
+        if row:
+            verified = bool(row.get("verified"))
+            verified_amount = row.get("verified_amount")
+            projected_end = row.get("projected_end")
+            out.append(
+                CalendarDayBalanceOut(
+                    date=sim_day,
+                    start=str(row["start"]),
+                    tx_net=str(row["tx_net"]),
+                    end=str(row["end"]),
+                    verified=verified,
+                    verified_amount=str(verified_amount) if verified and verified_amount is not None else None,
+                    projected_end=str(projected_end) if verified and projected_end is not None else None,
                 )
-            else:
-                out.append(CalendarDayBalanceOut(date=sim_day))
+            )
+        else:
+            out.append(CalendarDayBalanceOut(date=sim_day))
         sim_day += timedelta(days=1)
 
     return out
@@ -9641,22 +9694,32 @@ def _pooled_daily_balance_first_hit_impl(
 
     balance_start = min((a.starting_balance_date or a.created_at.date()) for a in account_rows)
     verified_by_date = _verified_balance_amount_map(db, family_id, last_day)
+    # Search window starts after start_date; a verified day on/before start_date is a safe carry-in.
+    window_start = start_date + timedelta(days=1)
+    if window_start < balance_start:
+        window_start = balance_start
+    sim_start, initial_carry = _pooled_sim_start_after_verified(
+        balance_start=balance_start,
+        window_start=window_start,
+        verified_by_date=verified_by_date,
+    )
     actual_by_date, expected_by_date, start_adds = _build_pooled_forecast_flow_maps(
         db=db,
         family_id=family_id,
-        balance_start=balance_start,
+        balance_start=sim_start,
         last_day=last_day,
         range_end_exclusive=range_end_excl,
         mode=mode,
     )
     sim = _simulate_pooled_daily_balance_rows(
-        balance_start=balance_start,
+        balance_start=sim_start,
         last_day=last_day,
         mode=mode,
         actual_by_date=actual_by_date,
         expected_by_date=expected_by_date,
         start_adds=start_adds,
         verified_by_date=verified_by_date,
+        initial_carry=initial_carry,
     )
 
     hit_date: Optional[date] = None
@@ -9708,11 +9771,13 @@ def calendar_month_daily(
     family_id: int,
     month: str,
     mode: Literal["both", "actual", "expected"] = "both",
+    pad_months: int = 0,
     access_token: Optional[str] = Depends(_read_access_token_from_cookie_or_authorization),
     db=Depends(get_db),
 ):
     """
     Pooled daily balance for each day in `month`: prior day's end + starting balances on the day + net flows.
+    When pad_months=1, `days` also includes the previous and next calendar months from one simulation.
     """
     user_id = get_current_user_id(access_token)
     require_family_member(db=db, family_id=family_id, user_id=user_id)
@@ -9721,8 +9786,12 @@ def calendar_month_daily(
         _month_range(month)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid month (use YYYY-MM)")
+    if pad_months < 0 or pad_months > 1:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="pad_months must be 0 or 1")
 
-    days = _calendar_month_daily_balances(db=db, family_id=family_id, month=month, mode=mode)
+    days = _calendar_month_daily_balances(
+        db=db, family_id=family_id, month=month, mode=mode, pad_months=pad_months
+    )
     return CalendarMonthDailyOut(month=month, mode=mode, days=days)
 
 

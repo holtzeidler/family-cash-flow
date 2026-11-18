@@ -2686,30 +2686,82 @@ function rememberCalendarMonthDaily(fid, mode, ym, days) {
   calendarMonthDailyCache.set(key, { days, sig });
 }
 
+function splitCalendarMonthDailyDays(days) {
+  /** @type {Map<string, any[]>} */
+  const byMonth = new Map();
+  for (const row of days || []) {
+    const iso = normalizeIsoDate(row?.date) || String(row?.date || "").slice(0, 10);
+    if (!iso || iso.length < 7) continue;
+    const ym = iso.slice(0, 7);
+    const list = byMonth.get(ym) || [];
+    list.push(row);
+    byMonth.set(ym, list);
+  }
+  return byMonth;
+}
+
+function rememberCalendarMonthDailyPayload(fid, mode, ym, days, { padMonths = 0 } = {}) {
+  if (!Array.isArray(days) || !days.length) return;
+  if (!padMonths) {
+    rememberCalendarMonthDaily(fid, mode, ym, days);
+    return;
+  }
+  const byMonth = splitCalendarMonthDailyDays(days);
+  if (!byMonth.size) {
+    rememberCalendarMonthDaily(fid, mode, ym, days);
+    return;
+  }
+  for (const [monthKey, monthDays] of byMonth.entries()) {
+    rememberCalendarMonthDaily(fid, mode, monthKey, monthDays);
+  }
+}
+
 /** One request per month at a time; Cash Health and the calendar share it while it is in flight. */
-function requestCalendarMonthDaily(fid, mode, ym) {
+function requestCalendarMonthDaily(fid, mode, ym, options) {
+  const padMonths = options && Number(options.padMonths) === 1 ? 1 : 0;
   const key = calendarMonthDailyKey(fid, mode, ym);
   const cached = calendarMonthDailyCache.get(key);
   if (cached && Array.isArray(cached.days) && cached.days.length) {
     try {
       bwCalendarTrace("daily-cache-hit", { ym });
     } catch (_) {}
-    return Promise.resolve({ days: cached.days });
+    if (!padMonths) return Promise.resolve({ days: cached.days });
+    const prev = shiftMonthStr(ym, -1);
+    const next = shiftMonthStr(ym, 1);
+    const months = [prev, ym, next].filter(Boolean);
+    if (months.every((monthKey) => {
+      const row = calendarMonthDailyCache.get(calendarMonthDailyKey(fid, mode, monthKey));
+      return row && Array.isArray(row.days) && row.days.length;
+    })) {
+      const days = [];
+      for (const monthKey of months) {
+        const row = calendarMonthDailyCache.get(calendarMonthDailyKey(fid, mode, monthKey));
+        if (row && Array.isArray(row.days)) days.push(...row.days);
+      }
+      return Promise.resolve({ days });
+    }
   }
   const pending = calendarMonthDailyInflight.get(key);
-  if (pending) return pending;
-  const req = api(
-    `/api/families/${fid}/calendar-month-daily?month=${encodeURIComponent(ym)}&mode=${encodeURIComponent(mode)}`,
-    "GET"
-  )
+  if (pending && !padMonths) return pending;
+  const padKey = padMonths ? `${key}|pad1` : key;
+  const pendingPad = calendarMonthDailyInflight.get(padKey);
+  if (pendingPad) return pendingPad;
+  const qs = [
+    `month=${encodeURIComponent(ym)}`,
+    `mode=${encodeURIComponent(mode)}`,
+  ];
+  if (padMonths) qs.push("pad_months=1");
+  const req = api(`/api/families/${fid}/calendar-month-daily?${qs.join("&")}`, "GET")
     .then((data) => {
-      if (calendarMonthDailyInflight.get(key) === req) rememberCalendarMonthDaily(fid, mode, ym, data?.days);
+      if (calendarMonthDailyInflight.get(padKey) === req) {
+        rememberCalendarMonthDailyPayload(fid, mode, ym, data?.days, { padMonths });
+      }
       return data;
     })
     .finally(() => {
-      if (calendarMonthDailyInflight.get(key) === req) calendarMonthDailyInflight.delete(key);
+      if (calendarMonthDailyInflight.get(padKey) === req) calendarMonthDailyInflight.delete(padKey);
     });
-  calendarMonthDailyInflight.set(key, req);
+  calendarMonthDailyInflight.set(padKey, req);
   return req;
 }
 
@@ -4503,6 +4555,17 @@ function isTransactionsView() {
   return false;
 }
 
+function isReportsView() {
+  try {
+    const forced = String(window.__BW_FORCE_VIEW || "").trim().toLowerCase();
+    if (forced) return forced === "reports";
+  } catch (_) {}
+  try {
+    return String(document.body?.dataset?.bwView || "").trim().toLowerCase() === "reports";
+  } catch (_) {}
+  return false;
+}
+
 function resetTransactionsListFamilyState() {
   expectedTxLoadedFid = 0;
   upcomingLoadedFid = 0;
@@ -4634,12 +4697,23 @@ familySelect.addEventListener("change", async () => {
       await familyTxList;
     } catch (_) {}
   }
-  await loadMonthAndCalendar();
-  if (state.activeFamilyId) {
-    try {
-      await refreshProjectionChart();
-    } catch (e) {
-      show(chartErr, e.message || "Failed to load balance chart");
+  if (isReportsView()) {
+    const reportsChart =
+      state.activeFamilyId
+        ? refreshProjectionChart().catch((e) => {
+            show(chartErr, e.message || "Failed to load balance chart");
+          })
+        : Promise.resolve();
+    void loadMonthAndCalendar();
+    await reportsChart;
+  } else {
+    await loadMonthAndCalendar();
+    if (state.activeFamilyId) {
+      try {
+        await refreshProjectionChart();
+      } catch (e) {
+        show(chartErr, e.message || "Failed to load balance chart");
+      }
     }
   }
   void refreshLowBalanceAlert();
@@ -20066,24 +20140,49 @@ async function loadCalendarMonthDaily(gen, options) {
   };
   const prev = shiftMonthStr(month, -1);
   const next = shiftMonthStr(month, 1);
-  // Fetch visible month + wrap months together. Awaiting adjacent is safe now that
-  // api() has per-attempt timeouts; fire-and-forget left gray cells stuck on stale seeds.
+  // One padded request covers the visible month plus wrap months. Falling back to
+  // per-month calls keeps older APIs and cache-only adjacent fills working.
   try {
     const tasks = [];
-    if (includePrimary) tasks.push(requestCalendarMonthDaily(state.activeFamilyId, mode, month));
-    if (includeAdjacent) {
-      if (prev) tasks.push(requestCalendarMonthDaily(state.activeFamilyId, mode, prev));
-      if (next) tasks.push(requestCalendarMonthDaily(state.activeFamilyId, mode, next));
+    if (includePrimary && includeAdjacent) {
+      tasks.push(requestCalendarMonthDaily(state.activeFamilyId, mode, month, { padMonths: 1 }));
+    } else {
+      if (includePrimary) tasks.push(requestCalendarMonthDaily(state.activeFamilyId, mode, month));
+      if (includeAdjacent) {
+        if (prev) tasks.push(requestCalendarMonthDaily(state.activeFamilyId, mode, prev));
+        if (next) tasks.push(requestCalendarMonthDaily(state.activeFamilyId, mode, next));
+      }
     }
     const results = await Promise.allSettled(tasks);
     if (!stillCurrent()) return;
     let applied = adjacentOnly && nextBalances.size > 0;
+    let usedPaddedPrimary = false;
     for (const res of results) {
       if (res.status !== "fulfilled") continue;
       const days = res.value?.days;
       if (!Array.isArray(days) || days.length === 0) continue;
+      if (includePrimary && includeAdjacent) usedPaddedPrimary = true;
       applyDayRows(days, { onlyMissing: adjacentOnly });
       applied = true;
+    }
+    // Old servers ignore pad_months and return only the center month — fetch neighbors.
+    if (usedPaddedPrimary && includeAdjacent) {
+      const havePrev = !prev || [...nextBalances.keys()].some((iso) => String(iso).startsWith(`${prev}-`));
+      const haveNext = !next || [...nextBalances.keys()].some((iso) => String(iso).startsWith(`${next}-`));
+      if (!havePrev || !haveNext) {
+        const fallback = [];
+        if (prev && !havePrev) fallback.push(requestCalendarMonthDaily(state.activeFamilyId, mode, prev));
+        if (next && !haveNext) fallback.push(requestCalendarMonthDaily(state.activeFamilyId, mode, next));
+        const extra = await Promise.allSettled(fallback);
+        if (!stillCurrent()) return;
+        for (const res of extra) {
+          if (res.status !== "fulfilled") continue;
+          const days = res.value?.days;
+          if (!Array.isArray(days) || days.length === 0) continue;
+          applyDayRows(days, { onlyMissing: true });
+          applied = true;
+        }
+      }
     }
     if (applied) {
       if (includePrimary) fillInMonthGapsFromClient();
@@ -24737,9 +24836,18 @@ async function loadRiskCalendarDailyForMonth(ym) {
   const balanceByIso = new Map();
 
   try {
-    const payloads = await Promise.all(
-      [ym, prev, next].map((month) => requestCalendarMonthDaily(state.activeFamilyId, mode, month)),
-    );
+    const payloads = [await requestCalendarMonthDaily(state.activeFamilyId, mode, ym, { padMonths: 1 })];
+    const havePrev = !prev || (payloads[0]?.days || []).some((row) => String(row?.date || "").startsWith(`${prev}-`));
+    const haveNext = !next || (payloads[0]?.days || []).some((row) => String(row?.date || "").startsWith(`${next}-`));
+    if (!havePrev || !haveNext) {
+      const missing = [];
+      if (prev && !havePrev) missing.push(prev);
+      if (next && !haveNext) missing.push(next);
+      const extra = await Promise.all(
+        missing.map((month) => requestCalendarMonthDaily(state.activeFamilyId, mode, month)),
+      );
+      payloads.push(...extra);
+    }
     for (const data of payloads) {
       for (const row of data?.days || []) {
         const iso = normalizeIsoDate(row.date);
@@ -27099,8 +27207,9 @@ async function main() {
     syncSidebarCashHealthCardVisibility();
   } catch (_) {}
   // Transactions and Reports start the list as soon as the family id exists.
-  // Transactions lets those rows render before Forecast. Reports still starts
-  // Forecast immediately, because its charts depend on those calculations.
+  // Transactions lets those rows render before Forecast. Reports charts use
+  // /projection, so they must not wait for Forecast calendar startup.
+  const landingOnReports = isReportsView();
   const txListPrefetch =
     state.activeFamilyId && isTransactionsOrReportsView() ? ensureTransactionsListData() : null;
   // Family-scoped forecast fetches only need the family id. Run accounts in
@@ -27110,7 +27219,7 @@ async function main() {
         show(familiesErr, (e && e.message) || "Failed to load accounts");
       })
     : Promise.resolve();
-  if (!isMobileCalendarViewport()) {
+  if (!isMobileCalendarViewport() && !landingOnReports) {
     try {
       ensureForecastStatusRibbon("Loading forecast…");
     } catch (_) {}
@@ -27120,8 +27229,42 @@ async function main() {
       await txListPrefetch;
     } catch (_) {}
   }
-  await Promise.all([accountsPromise, loadMonthAndCalendar()]);
-  bwCalendarTrace("bootstrap-calendar-ready");
+  const calendarPromise = landingOnReports
+    ? Promise.resolve()
+    : Promise.all([accountsPromise, loadMonthAndCalendar()]);
+  const reportsChartPromise =
+    landingOnReports && state.activeFamilyId
+      ? accountsPromise.then(async () => {
+          const tasks = [
+            refreshProjectionChart().catch((e) => {
+              show(chartErr, (e && e.message) || "Failed to load balance chart");
+            }),
+          ];
+          if (incomeExpenseChartCanvas) {
+            tasks.push(refreshIncomeExpenseReport().catch(() => {}));
+          }
+          if (document.getElementById("txnBreakdownChartCanvas")) {
+            tasks.push(refreshTxnBreakdownReport().catch(() => {}));
+          }
+          if (document.getElementById("reportsRiskHeatmapGrid")) {
+            tasks.push(refreshRiskCalendarMonth().catch(() => {}));
+          }
+          await Promise.all(tasks);
+        })
+      : Promise.resolve();
+  if (landingOnReports) {
+    // Keep Forecast warm in the background without blocking Reports charts.
+    void accountsPromise
+      .then(() => loadMonthAndCalendar())
+      .then(() => {
+        bwCalendarTrace("bootstrap-calendar-ready");
+      })
+      .catch(() => {});
+    await Promise.all([accountsPromise, reportsChartPromise]);
+  } else {
+    await calendarPromise;
+    bwCalendarTrace("bootstrap-calendar-ready");
+  }
   try {
     updateCalendarEmptyStateBanner();
   } catch (_) {}
@@ -27163,7 +27306,7 @@ async function main() {
   }
   // Desktop may still need a color pass after categories. On phones this extra
   // innerHTML rebuild is a visible jump after the coherent first paint.
-  if (!isMobileCalendarViewport()) {
+  if (!isMobileCalendarViewport() && !landingOnReports) {
     try {
       renderCalendar();
     } catch (_) {}
@@ -27171,12 +27314,14 @@ async function main() {
   try {
     updateCalendarEmptyStateBanner();
   } catch (_) {}
-  if (state.activeFamilyId) {
+  if (state.activeFamilyId && !landingOnReports) {
     try {
       await refreshProjectionChart();
     } catch (e) {
       show(chartErr, e.message || "Failed to load balance chart");
     }
+  } else if (landingOnReports) {
+    await reportsChartPromise;
   }
   const bt = balanceThresholdFieldEls();
   if (bt.min || bt.max) {

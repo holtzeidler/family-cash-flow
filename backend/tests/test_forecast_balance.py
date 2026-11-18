@@ -942,3 +942,126 @@ def test_one_date_amount_edit_keeps_a_different_paycheck_already_on_that_day():
 
         november = sorted(it["amount"] for it in _paychecks_on(client, family_id, "2026-11-15"))
         assert november == ["100.00", "4805.35"]
+
+
+def test_calendar_month_daily_pad_months_matches_single_month_requests():
+    """One padded request must equal three single-month simulations."""
+    with TestClient(app) as client:
+        created = signup_verified(
+            client,
+            email="bw-smoke-pad-months@example.com",
+            password="SmokeOnly1!",
+            first_name="Smoke",
+            last_name="Pad",
+        )
+        assert created.status_code == 200, created.text
+        family_id = int(created.json()["family_id"])
+
+        account = client.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "1000.00",
+                "starting_balance_date": "2026-08-01",
+            },
+        )
+        assert account.status_code == 200, account.text
+
+        for day, kind, amount in (
+            ("2026-08-15", "income", "200.00"),
+            ("2026-09-10", "expense", "50.00"),
+            ("2026-10-05", "income", "75.00"),
+        ):
+            row = client.post(
+                f"/api/families/{family_id}/transactions",
+                json={"date": day, "kind": kind, "amount": amount, "description": day},
+            )
+            assert row.status_code == 200, row.text
+
+        padded = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-09", "pad_months": 1},
+        )
+        assert padded.status_code == 200, padded.text
+        padded_days = {row["date"]: row for row in padded.json()["days"]}
+        assert "2026-08-01" in padded_days
+        assert "2026-09-30" in padded_days
+        assert "2026-10-31" in padded_days
+
+        for month in ("2026-08", "2026-09", "2026-10"):
+            alone = client.get(
+                f"/api/families/{family_id}/calendar-month-daily",
+                params={"month": month},
+            )
+            assert alone.status_code == 200, alone.text
+            for row in alone.json()["days"]:
+                got = padded_days[row["date"]]
+                assert got["end"] == row["end"], row["date"]
+                assert got["tx_net"] == row["tx_net"], row["date"]
+                assert got["start"] == row["start"], row["date"]
+
+
+def test_verified_checkpoint_keeps_later_month_balances_identical():
+    """A verified balance before the month must not change later calendar math."""
+    with TestClient(app) as client:
+        created = signup_verified(
+            client,
+            email="bw-smoke-verified-anchor@example.com",
+            password="SmokeOnly1!",
+            first_name="Smoke",
+            last_name="Anchor",
+        )
+        assert created.status_code == 200, created.text
+        family_id = int(created.json()["family_id"])
+
+        account = client.post(
+            f"/api/families/{family_id}/accounts",
+            json={
+                "name": "Checking",
+                "type": "checking",
+                "starting_balance": "5000.00",
+                "starting_balance_date": "2026-01-01",
+            },
+        )
+        assert account.status_code == 200, account.text
+
+        for day, kind, amount in (
+            ("2026-01-15", "income", "1000.00"),
+            ("2026-02-01", "expense", "250.00"),
+            ("2026-03-10", "expense", "100.00"),
+            ("2026-03-20", "income", "40.00"),
+        ):
+            row = client.post(
+                f"/api/families/{family_id}/transactions",
+                json={"date": day, "kind": kind, "amount": amount, "description": day},
+            )
+            assert row.status_code == 200, row.text
+
+        before = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-03"},
+        )
+        assert before.status_code == 200, before.text
+        before_days = {row["date"]: row for row in before.json()["days"]}
+
+        # Checkpoint the exact projected end of Feb 28 so March carry-in is unchanged.
+        feb_end = before_days["2026-03-01"]["start"]
+        verified = client.post(
+            f"/api/families/{family_id}/verified-balances",
+            json={"date": "2026-02-28", "amount": feb_end},
+        )
+        assert verified.status_code == 200, verified.text
+
+        after = client.get(
+            f"/api/families/{family_id}/calendar-month-daily",
+            params={"month": "2026-03"},
+        )
+        assert after.status_code == 200, after.text
+        after_days = {row["date"]: row for row in after.json()["days"]}
+
+        for iso, row in before_days.items():
+            got = after_days[iso]
+            assert got["end"] == row["end"], iso
+            assert got["tx_net"] == row["tx_net"], iso
+            assert got["start"] == row["start"], iso
