@@ -35000,6 +35000,12 @@ body[data-bw-view] .cash-health-status--review{
   padding-bottom: 1px;
   border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
+body[data-bw-view] #sidebarPendingTxCard.sidebar-pending--empty{
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
 body[data-bw-view] #sidebarPendingTxCard.sidebar-pending--success #sidebarPendingTitle{
   text-transform: none;
   letter-spacing: -0.011em;

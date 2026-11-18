@@ -121,7 +121,14 @@ def test_transactions_list_order_and_sidebar_date(page, guard):
         }"""
     )
     assert boxes["dateTop"] >= boxes["labelBottom"] - 1, boxes
-    expect(page.locator("#sidebarPendingTitle")).to_have_text("Needs Review")
+    review = page.locator("#sidebarPendingTxCard")
+    expect(review).not_to_contain_text("All caught up")
+    expect(review).not_to_contain_text("No estimates to review")
+    if page.locator("#sidebarPendingTxList .pending-attn-item").count():
+        expect(page.locator("#sidebarPendingTitle")).to_have_text("Needs Review")
+        expect(review).to_be_visible()
+    else:
+        expect(review).to_be_hidden()
     expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
     _assert_sidebar_spacing(_sidebar_layout(page))
     page.set_viewport_size({"width": 900, "height": 900})
@@ -151,4 +158,74 @@ def test_transactions_list_order_and_sidebar_date(page, guard):
     expect(page.locator("#sidebarMonthLowValue")).to_contain_text("$")
     expect(page.locator("#sidebarForecastHints")).not_to_contain_text("Forecast low")
     expect(page.locator("#tmInsights")).not_to_contain_text("Nothing urgent")
+    guard.assert_clean()
+
+
+@pytest.mark.smoke_title("Needs Review hides when nothing needs review")
+def test_needs_review_hides_when_empty_and_shows_items(page, guard):
+    page.set_viewport_size({"width": 1280, "height": 900})
+    email = _register_checking("2000.00", "2026-11-01")
+    login(page, email, "SmokeOnly1!")
+    created = page.evaluate(
+        """async () => {
+          const token = sessionStorage.getItem("bw_api_access_token") || localStorage.getItem("bw_api_access_token");
+          const base = typeof getApiBase === "function" ? getApiBase() : "";
+          const headers = { Authorization: "Bearer " + token, "Content-Type": "application/json" };
+          const families = await fetch(base + "/api/families", { headers }).then((r) => r.json());
+          const id = families[0].id;
+          const accounts = await fetch(base + "/api/families/" + id + "/accounts", { headers }).then((r) => r.json());
+          const cats = await fetch(base + "/api/families/" + id + "/categories", { headers }).then((r) => r.json());
+          const cat = cats.find((c) => c.kind === "expense") || cats[0];
+          const today = new Date();
+          const iso = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+          const res = await fetch(base + "/api/families/" + id + "/expected-transactions", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              account_id: accounts[0].id,
+              start_date: iso,
+              recurrence: "monthly",
+              description: "Electric bill",
+              kind: "expense",
+              amount: 80,
+              variable: true,
+              category_id: cat.id,
+            }),
+          });
+          return { ok: res.ok, status: res.status, body: await res.text() };
+        }"""
+    )
+    assert created.get("ok"), created
+    page.reload()
+    card = page.locator("#sidebarPendingTxCard")
+    expect(card).to_be_visible()
+    expect(card).to_contain_text("Needs Review")
+    expect(card).to_contain_text("Est. $80")
+    expect(card).to_contain_text("due today")
+    expect(card).not_to_contain_text("All caught up")
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_be_visible()
+    expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
+    expect(page.locator("#sidebarLowBalanceBanner")).to_be_visible()
+
+    page.set_viewport_size({"width": 390, "height": 800})
+    expect(card).to_be_visible()
+    expect(page.locator("#sidebarPendingTxList .pending-attn-item")).to_be_visible()
+
+    page.locator("#sidebarPendingTxList .pending-attn-item").first.click()
+    expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_be_visible()
+    page.locator("#reviewAmountConfirmBtn").click()
+    expect(page.locator("#reviewAmountModal.modal-overlay--open")).to_have_count(0)
+    expect(card).to_be_hidden()
+    expect(card).not_to_contain_text("All caught up")
+    expect(card).not_to_contain_text("No estimates to review")
+    gap = page.evaluate(
+        """() => {
+          const el = document.querySelector("#sidebarPendingTxCard");
+          const rect = el.getBoundingClientRect();
+          return { hidden: el.hidden, height: rect.height, width: rect.width };
+        }"""
+    )
+    assert gap["hidden"] is True and gap["height"] == 0, gap
+    expect(page.locator("#sidebarReconcileBtn")).to_be_visible()
+    expect(page.locator("#sidebarLowBalanceBanner")).to_be_visible()
     guard.assert_clean()
