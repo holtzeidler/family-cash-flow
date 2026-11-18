@@ -3943,10 +3943,10 @@ function initReportsLeftNav() {
     for (const it of section.items) labelForId.set(it.id, it.label);
   }
   if (mobileSelect) {
-    for (const id of ids) {
+    for (const it of ids) {
       const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = labelForId.get(id) || id;
+      opt.value = it.id;
+      opt.textContent = it.label || labelForId.get(it.id) || it.id;
       mobileSelect.appendChild(opt);
     }
   }
@@ -4299,6 +4299,62 @@ function setActiveTopView(view) {
     localStorage.setItem(ACTIVE_VIEW_KEY, v);
   } catch (_) {}
   scrollActiveNavTabIntoView();
+  syncMobileSummary(v);
+  scrollPhoneViewIntoSight(v);
+}
+
+function ensureMobileSummaryToggle() {
+  const card = document.getElementById("sidebarCashHealthCard");
+  if (!card || document.getElementById("mobileSummaryToggle")) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = "mobileSummaryToggle";
+  btn.className = "mobile-summary-toggle";
+  btn.addEventListener("click", () => {
+    const collapsed = document.body.classList.toggle("mobile-summary-collapsed");
+    btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    btn.textContent = collapsed ? "Summary" : "Hide summary";
+  });
+  const head = card.querySelector(".sidebar-section-head") || card;
+  head.appendChild(btn);
+}
+
+function syncMobileSummary(view) {
+  ensureMobileSummaryToggle();
+  const btn = document.getElementById("mobileSummaryToggle");
+  if (!btn) return;
+  const collapse = view === "transactions" || view === "reports";
+  document.body.classList.toggle("mobile-summary-collapsed", collapse);
+  btn.setAttribute("aria-expanded", collapse ? "false" : "true");
+  btn.textContent = collapse ? "Summary" : "Hide summary";
+}
+
+function scrollPhoneViewIntoSight(view) {
+  if (typeof isMobileCalendarViewport === "function" && !isMobileCalendarViewport()) return;
+  if (typeof isMobileCalendarViewport !== "function") return;
+  if (view === "calendar") {
+    if (typeof placeMobileCalendarBeforeReveal === "function" && !calendarMobileUserMoved) {
+      placeMobileCalendarBeforeReveal("today");
+    }
+    return;
+  }
+  const id =
+    view === "transactions"
+      ? "transactionViewPanel"
+      : view === "reports"
+        ? "reportsViewPanel"
+        : view === "settings"
+          ? "settingsViewPanel"
+          : view === "reimbursements"
+            ? "reimbursementsViewPanel"
+            : "";
+  const el = id ? document.getElementById(id) : null;
+  if (!el || typeof setMobileCalendarScrollTop !== "function") return;
+  requestAnimationFrame(() => {
+    const header = typeof fixedHeaderBottom === "function" ? fixedHeaderBottom() : 0;
+    const y = el.getBoundingClientRect().top + (window.scrollY || 0) - header - 8;
+    setMobileCalendarScrollTop(Math.max(0, y));
+  });
 }
 
 function topViewReady(view) {
@@ -20405,7 +20461,12 @@ function bwCalendarTraceLayout(event) {
 function noteUserMovedCalendar(e) {
   if (calendarMobileUserMoved || !calendarInitialMonthReady) return;
   try {
-    if (e && e.target && typeof e.target.closest === "function" && e.target.closest(".modal-overlay, .bw-tour-tooltip")) {
+    if (
+      e &&
+      e.target &&
+      typeof e.target.closest === "function" &&
+      e.target.closest(".modal-overlay, .bw-tour-tooltip, .top-nav")
+    ) {
       return;
     }
   } catch (_) {}
@@ -20562,27 +20623,19 @@ function revealMobileCalendarPlaced() {
   markMobileCalendarPlacing(true);
   setCalendarLoadingUi(false);
   const kind = getCalendarViewYm() === toISODate(new Date()).slice(0, 7) ? "today" : "month";
-  const cell = mobileCalendarPlaceCell();
-  const offset = mobileCalendarOffsetInScroll(cell);
   markMobileCalendarPlaceReady(true);
-  if (!calendarMobileUserMoved) {
-    const placeStarted = typeof performance !== "undefined" ? performance.now() : Date.now();
-    setMobileCalendarScrollTop(mobileCalendarScrollTopFromOffset(offset));
-    try {
-      bwCalendarTrace("mobile-place-offset", {
-        iso: cell ? cell.getAttribute("data-iso") : "",
-        kind,
-        ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - placeStarted),
-      });
-    } catch (_) {}
-  }
   syncCashHealthStripVisibility();
   return new Promise((resolve) => {
     const finish = () => {
       if (!calendarMobileUserMoved) placeMobileCalendarBeforeReveal(kind);
       syncCashHealthStripVisibility();
-      markMobileCalendarPlacing(false);
-      resolve();
+      const settle = () => {
+        if (!calendarMobileUserMoved) placeMobileCalendarBeforeReveal(kind);
+        markMobileCalendarPlacing(false);
+        resolve();
+      };
+      if (typeof requestAnimationFrame === "function") requestAnimationFrame(settle);
+      else settle();
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(finish);
     else finish();
@@ -21082,6 +21135,7 @@ async function loadMonthAndCalendar(options) {
             applyCalendarStatusDecorations();
             rememberCalendarMonthView(viewedYm);
           });
+          if (!calendarMobileUserMoved) placeMobileCalendarBeforeReveal("today");
           bwCalendarTraceLayout("secondary-painted");
         });
       };

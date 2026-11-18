@@ -40,6 +40,13 @@ def test_transactions_list_order_and_sidebar_date(page, guard):
         }"""
     )
     assert created.get("ok"), created
+    page.evaluate(
+        """async () => {
+          if (typeof loadUpcomingTransactionsPanelUncached === "function") {
+            await loadUpcomingTransactionsPanelUncached();
+          }
+        }"""
+    )
     page.locator("#navTransactionView").click()
     expect(page).to_have_url(re.compile(r"/transactions"))
     expect(page.locator(".tm__sub")).to_have_text("Search, review, and manage your past and upcoming transactions.")

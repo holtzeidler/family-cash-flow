@@ -36458,3 +36458,39 @@ body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__
   color: color-mix(in srgb, var(--danger) 72%, #78716c);
 }
 
+.mobile-summary-toggle{
+  display: none;
+}
+@media (max-width: 768px){
+  .mobile-summary-toggle{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    min-height: 32px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(11, 61, 46, 0.22);
+    background: #fff;
+    color: rgba(11, 61, 46, 0.94);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+  }
+  .sidebar-cash-health__head{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  body.mobile-summary-collapsed #sidebarCashHealthCard .sidebar-section-body > :not(#sidebarBalanceThresholdAlerts){
+    display: none !important;
+  }
+  body.mobile-summary-collapsed #sidebarForecastHints,
+  body.mobile-summary-collapsed [data-sidebar-key="month"],
+  body.mobile-summary-collapsed #reportsLeftNav{
+    display: none !important;
+  }
+}
+
