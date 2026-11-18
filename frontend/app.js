@@ -3078,15 +3078,18 @@ async function refreshLowBalanceAlert() {
     })();
   } catch (e) {
     show(btErr, e.message || "Failed to compute balance threshold alerts");
-    state.cashHealth = null;
     cashHealthUiPending = false;
     setCashHealthShellPending(false);
-    setLowBalanceResult("", true);
-    setSidebarLowBalanceBanner("", "off");
-    setSidebarHighBalanceBanner("", "off");
-    setSidebarBalanceThresholdHint("");
-    syncCashHealthCalendarChip();
-    syncCashHealthStrip(null);
+    if (!state.cashHealth?.copy) {
+      if (sidebarLowBalanceBanner) {
+        sidebarLowBalanceBanner.style.display = "flex";
+        sidebarLowBalanceBanner.classList.remove("is-danger", "is-intro", "is-suggestion");
+        sidebarLowBalanceBanner.classList.add("is-muted");
+        sidebarLowBalanceBanner.innerHTML = '<span class="sidebar-summary-error">Unavailable</span>';
+      }
+      setSidebarHighBalanceBanner("", "off");
+      syncCashHealthStrip(null);
+    }
     lowBalanceLastQuery = { familyId: null, min: null, max: null, mode: null };
   }
 }
@@ -3789,6 +3792,7 @@ const reviewAmountEditBtn = document.getElementById("reviewAmountEditBtn");
 let reviewAmountContext = null;
 let reviewAmountSaving = false;
 let needsReviewReadyYm = "";
+let needsReviewLoadStatus = "loading";
 let needsReviewShowAll = false;
 let needsReviewShowAllYm = "";
 const needsReviewSeenVariableYm = new Set();
@@ -7368,6 +7372,43 @@ async function ensureForecastBalanceForIso(iso) {
   } catch (_) {}
 }
 
+let reconcileDatesStatus = "loading";
+let verifiedBalancesStatus = "loading";
+let monthSummaryStatus = "loading";
+let monthSummaryYm = "";
+
+function sidebarSummaryPresentation(status, value, emptyText) {
+  if (status === "loading") return { kind: "loading" };
+  if (status === "error" && !value) return { kind: "error", text: "Unavailable" };
+  if (value) return { kind: "value", text: String(value) };
+  return { kind: "empty", text: emptyText || "" };
+}
+
+function reconcileSummaryPhase(datesStatus, verifiedStatus, hasDate) {
+  if (datesStatus === "loading" || verifiedStatus === "loading") return "loading";
+  if ((datesStatus === "error" || verifiedStatus === "error") && !hasDate) return "error";
+  return "ready";
+}
+
+function paintSummarySlot(el, presentation) {
+  if (!el) return;
+  el.classList.remove("sidebar-summary-pending", "sidebar-summary-error");
+  el.removeAttribute("aria-busy");
+  if (!presentation || presentation.kind === "loading") {
+    el.classList.add("sidebar-summary-pending");
+    el.setAttribute("aria-busy", "true");
+    el.innerHTML =
+      '<span class="sidebar-summary-skel" aria-hidden="true"></span><span class="sr-only">Loading</span>';
+    return;
+  }
+  if (presentation.kind === "error") {
+    el.classList.add("sidebar-summary-error");
+    el.textContent = presentation.text || "Unavailable";
+    return;
+  }
+  el.textContent = presentation.text || "";
+}
+
 function resetReconciledDateCache() {
   state.reconciledDatesByMonth = new Map();
   state.reconciledDates = new Set();
@@ -7377,6 +7418,8 @@ function resetReconciledDateCache() {
   state.verifiedBalances = new Map();
   state.verifiedBalanceMonths = new Set();
   state.verifiedLookbackDone = false;
+  reconcileDatesStatus = "loading";
+  verifiedBalancesStatus = "loading";
 }
 
 function ensureReconciledDateCacheFamily() {
@@ -7414,12 +7457,17 @@ function paintSidebarReconcileRow() {
   }
   sidebarReconcileRow.hidden = false;
   const lastIso = state.lastReconciledIso;
+  const formatted = lastIso
+    ? typeof formatSidebarReconcileDate === "function"
+      ? formatSidebarReconcileDate(lastIso)
+      : lastIso
+    : "";
+  const phase = reconcileSummaryPhase(reconcileDatesStatus, verifiedBalancesStatus, !!lastIso);
   if (sidebarReconcileDetail) {
-    sidebarReconcileDetail.textContent = lastIso
-      ? typeof formatSidebarReconcileDate === "function"
-        ? formatSidebarReconcileDate(lastIso)
-        : lastIso
-      : "Never";
+    paintSummarySlot(
+      sidebarReconcileDetail,
+      sidebarSummaryPresentation(phase === "loading" ? "loading" : phase, formatted, "Never")
+    );
   }
   if (sidebarReconcileBtn) {
     const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
@@ -7431,24 +7479,14 @@ function showTransactionsSidebarLoading() {
   syncSidebarCashHealthCardVisibility();
   if (sidebarReconcileRow) {
     sidebarReconcileRow.hidden = false;
-    if (sidebarReconcileDetail && !state.lastReconciledIso) {
-      sidebarReconcileDetail.textContent = "Loading…";
-    }
+    paintSidebarReconcileRow();
     if (sidebarReconcileBtn) {
       const canWrite = !state.viewOnly && state.activeFamilyAccessMode !== "view";
       sidebarReconcileBtn.hidden = !canWrite;
     }
   }
-  if (totalsEl && !totalsEl.querySelector(".total, .totals-compact")) {
-    totalsEl.innerHTML =
-      '<div class="total total--loading"><div class="k">This month</div><div class="v">Loading…</div></div>';
-  }
-  const monthLow = document.getElementById("sidebarMonthLow");
-  const monthLowValue = document.getElementById("sidebarMonthLowValue");
-  if (monthLow && monthLowValue && !(state.monthDailyBalances && state.monthDailyBalances.size)) {
-    monthLow.hidden = false;
-    monthLowValue.textContent = "Loading…";
-  }
+  if (monthSummaryStatus !== "ready") paintMonthSummarySkeleton();
+  paintSidebarMonthLow();
 }
 
 function ensureTransactionsSidebar() {
@@ -7461,13 +7499,12 @@ function ensureTransactionsSidebar() {
   showTransactionsSidebarLoading();
   if (calendarLoadInFlight) return;
   void loadMonthAndCalendar().catch(() => {
-    if (sidebarReconcileDetail && sidebarReconcileDetail.textContent === "Loading…") {
-      sidebarReconcileDetail.textContent = "Couldn't load";
-    }
-    if (totalsEl && totalsEl.textContent.indexOf("Loading…") >= 0) {
-      totalsEl.innerHTML =
-        '<div class="total total--loading"><div class="k">This month</div><div class="v">Couldn\'t load</div></div>';
-    }
+    if (reconcileDatesStatus !== "ready") reconcileDatesStatus = "error";
+    if (verifiedBalancesStatus !== "ready") verifiedBalancesStatus = "error";
+    noteMonthSummaryError();
+    failNeedsReviewMonthLoad();
+    paintSidebarReconcileRow();
+    renderMonthSummaryTotalsFromState();
   });
 }
 
@@ -8464,10 +8501,11 @@ async function loadVerifiedBalances(month) {
     for (const ym of months) state.verifiedBalanceMonths.add(ym);
   } catch (_) {
     // Keep previously loaded adjustments so a failed refresh cannot erase Last Reconciled.
+    if (verifiedBalancesStatus !== "ready") verifiedBalancesStatus = "error";
   }
   recomputeLastReconciledIso();
   paintSidebarReconcileRow();
-  void lookbackVerifiedBalances();
+  if (verifiedBalancesStatus !== "error") void lookbackVerifiedBalances();
 }
 
 function lastBalanceCheckTier(days) {
@@ -10228,18 +10266,26 @@ function paintSidebarMonthLow() {
   const valueEl = document.getElementById("sidebarMonthLowValue");
   if (!el || !valueEl) return;
   const ym = monthInput?.value || "";
-  const low = tmForecastLowInMonthYm(ym);
-  if (!low) {
-    const loaded = !!(state.monthDailyBalances && state.monthDailyBalances.size);
-    if (loaded) {
-      el.hidden = true;
-      valueEl.textContent = "";
-    } else {
-      valueEl.textContent = "Loading…";
-      el.hidden = false;
-    }
+  if (monthSummaryStatus === "loading") {
+    el.hidden = false;
+    el.classList.remove("is-negative");
+    paintSummarySlot(valueEl, sidebarSummaryPresentation("loading", "", ""));
     return;
   }
+  const low = tmForecastLowInMonthYm(ym);
+  if (!low) {
+    if (monthSummaryStatus === "error") {
+      el.hidden = false;
+      paintSummarySlot(valueEl, sidebarSummaryPresentation("error", "", ""));
+      return;
+    }
+    el.hidden = true;
+    valueEl.textContent = "";
+    el.classList.remove("is-negative");
+    return;
+  }
+  valueEl.classList.remove("sidebar-summary-pending", "sidebar-summary-error");
+  valueEl.removeAttribute("aria-busy");
   valueEl.textContent = `$${fmtMoney(low.bal)} on ${fmtDateMedDisplay(low.iso)}`;
   el.hidden = false;
   el.classList.toggle("is-negative", Number(low.bal) < 0);
@@ -19237,7 +19283,49 @@ function computeMonthSummaryTotalsFromState() {
   return { income, expense, net: income - expense };
 }
 
+function paintMonthSummarySkeleton() {
+  if (!totalsEl) return;
+  const row = (label) =>
+    `<div class="totals-compact__row"><span class="totals-compact__k">${label}</span><span class="totals-compact__v"><span class="sidebar-summary-skel" aria-hidden="true"></span></span></div>`;
+  totalsEl.innerHTML = `<div class="totals-compact totals--pending" aria-busy="true">${row("Income")}${row("Expenses")}${row("Net cash flow")}</div>`;
+}
+
+function paintMonthSummaryUnavailable() {
+  if (!totalsEl) return;
+  totalsEl.innerHTML =
+    '<div class="totals-compact"><div class="totals-compact__row"><span class="totals-compact__k">This month</span><span class="totals-compact__v sidebar-summary-error">Unavailable</span></div></div>';
+}
+
+function beginMonthSummaryLoad(ym) {
+  if (monthSummaryStatus === "ready" && monthSummaryYm === ym) return;
+  monthSummaryStatus = "loading";
+  monthSummaryYm = ym || "";
+  paintMonthSummarySkeleton();
+  paintSidebarMonthLow();
+}
+
+function noteMonthSummaryReady(ym) {
+  monthSummaryStatus = "ready";
+  monthSummaryYm = ym || "";
+}
+
+function noteMonthSummaryError() {
+  if (monthSummaryStatus !== "ready") monthSummaryStatus = "error";
+}
+
 function renderMonthSummaryTotalsFromState() {
+  if (monthSummaryStatus === "loading") {
+    paintMonthSummarySkeleton();
+    paintSidebarMonthLow();
+    refreshCalendarCashInsights();
+    return;
+  }
+  if (monthSummaryStatus === "error") {
+    paintMonthSummaryUnavailable();
+    paintSidebarMonthLow();
+    refreshCalendarCashInsights();
+    return;
+  }
   renderTotals(computeMonthSummaryTotalsFromState());
   refreshSidebarForecastHints();
   refreshCalendarCashInsights();
@@ -19822,10 +19910,11 @@ async function loadReconciledDays(month, extraIso) {
     state.reconciledDates = merged;
   } catch (_) {
     // Keep previously loaded matching dates so a failed refresh cannot erase Last Reconciled.
+    if (reconcileDatesStatus !== "ready") reconcileDatesStatus = "error";
   }
   recomputeLastReconciledIso();
   paintSidebarReconcileRow();
-  void lookbackReconciledDays();
+  if (reconcileDatesStatus !== "error") void lookbackReconciledDays();
   refreshCalendarCashInsights();
 }
 
@@ -19848,6 +19937,7 @@ async function lookbackReconciledDays() {
   }
   if (!months.length) {
     state.reconciledLookbackDone = true;
+    reconcileDatesStatus = "ready";
     recomputeLastReconciledIso();
     paintSidebarReconcileRow();
     return;
@@ -19868,9 +19958,11 @@ async function lookbackReconciledDays() {
       if (ym) state.reconciledDatesByMonth.set(ym, monthSet);
     }
     state.reconciledLookbackDone = true;
+    reconcileDatesStatus = "ready";
     recomputeLastReconciledIso();
     paintSidebarReconcileRow();
   } catch (_) {
+    if (reconcileDatesStatus !== "ready") reconcileDatesStatus = "error";
     recomputeLastReconciledIso();
     paintSidebarReconcileRow();
   }
@@ -19896,6 +19988,7 @@ async function lookbackVerifiedBalances() {
   }
   if (!months.length) {
     state.verifiedLookbackDone = true;
+    verifiedBalancesStatus = "ready";
     recomputeLastReconciledIso();
     paintSidebarReconcileRow();
     return;
@@ -19927,9 +20020,11 @@ async function lookbackVerifiedBalances() {
       if (ym) state.verifiedBalanceMonths.add(ym);
     }
     state.verifiedLookbackDone = true;
+    verifiedBalancesStatus = "ready";
     recomputeLastReconciledIso();
     paintSidebarReconcileRow();
   } catch (_) {
+    if (verifiedBalancesStatus !== "ready") verifiedBalancesStatus = "error";
     recomputeLastReconciledIso();
     paintSidebarReconcileRow();
   }
@@ -19969,7 +20064,9 @@ function maybeRefreshNeedsReviewForToday() {
 }
 
 function beginNeedsReviewMonthLoad(ym) {
+  if (needsReviewLoadStatus === "ready" && needsReviewReadyYm === ym) return;
   needsReviewReadyYm = "";
+  needsReviewLoadStatus = "loading";
   if (needsReviewShowAllYm !== ym) {
     needsReviewShowAll = false;
     needsReviewShowAllYm = ym || "";
@@ -19980,7 +20077,16 @@ function beginNeedsReviewMonthLoad(ym) {
 }
 
 function finishNeedsReviewMonthLoad(ym) {
+  needsReviewLoadStatus = "ready";
   needsReviewReadyYm = ym || "";
+  try {
+    renderSidebarPendingTransactionsForMonth();
+  } catch (_) {}
+}
+
+function failNeedsReviewMonthLoad() {
+  if (needsReviewLoadStatus === "ready") return;
+  needsReviewLoadStatus = "error";
   try {
     renderSidebarPendingTransactionsForMonth();
   } catch (_) {}
@@ -20237,7 +20343,16 @@ function renderSidebarPendingTransactionsForMonth() {
     needsReviewShowAllYm = viewedYm;
   }
 
-  const dataReady = !!viewedYm && needsReviewReadyYm === viewedYm;
+  const dataReady = !!viewedYm && needsReviewLoadStatus === "ready" && needsReviewReadyYm === viewedYm;
+  if (needsReviewLoadStatus === "error" && !dataReady) {
+    if (sidebarPendingTxCard) {
+      sidebarPendingTxCard.hidden = false;
+      sidebarPendingTxCard.classList.add("sidebar-pending--empty");
+    }
+    setTitle();
+    setPendingStatus("Unavailable");
+    return;
+  }
   if (!dataReady) {
     if (forecastIntroApplies()) {
       if (sidebarPendingTxCard) {
@@ -20248,7 +20363,10 @@ function renderSidebarPendingTransactionsForMonth() {
       return;
     }
     if (sidebarPendingTxCard) sidebarPendingTxCard.hidden = false;
-    showEmpty(noneTitle);
+    setTitle();
+    setPendingStatus("");
+    sidebarPendingTxList.innerHTML =
+      '<div class="sidebar-summary-pending" aria-busy="true"><span class="sidebar-summary-skel" aria-hidden="true"></span><span class="sr-only">Loading</span></div>';
     return;
   }
 
@@ -21082,6 +21200,7 @@ async function loadMonthAndCalendar(options) {
     bwCalendarTraceLayout("month-load-start");
 
     if (!state.activeFamilyId) {
+      noteMonthSummaryReady(viewedYm);
       beginNeedsReviewMonthLoad(viewedYm);
       if (stillCurrent()) finishNeedsReviewMonthLoad(viewedYm);
       renderMonthSummaryTotalsFromState();
@@ -21089,9 +21208,11 @@ async function loadMonthAndCalendar(options) {
       return;
     }
 
+    beginMonthSummaryLoad(viewedYm);
     const cachedView = allowCache ? calendarMonthViewCache.get(calendarMonthViewKey(viewedYm)) : null;
     if (cachedView) {
       applyCalendarMonthViewSnapshot(cachedView);
+      noteMonthSummaryReady(viewedYm);
       finishNeedsReviewMonthLoad(viewedYm);
       renderMonthSummaryTotalsFromState();
       if (mobile) markMobileCalendarPlacing(true);
@@ -21111,11 +21232,13 @@ async function loadMonthAndCalendar(options) {
     beginNeedsReviewMonthLoad(viewedYm);
     setCalendarLoadingUi(true);
     const loadErrors = [];
+    const failedSteps = new Set();
     const runStep = async (label, fn) => {
       const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
       try {
         await fn();
       } catch (e) {
+        failedSteps.add(label);
         loadErrors.push(e);
         try {
           if (window.console && console.warn) {
@@ -21169,7 +21292,13 @@ async function loadMonthAndCalendar(options) {
         computeMonthDailyBalancesLegacy();
       } catch (_) {}
     }
-    finishNeedsReviewMonthLoad(viewedYm);
+    if (failedSteps.has("transactions") || failedSteps.has("expected")) {
+      failNeedsReviewMonthLoad();
+      noteMonthSummaryError();
+    } else {
+      noteMonthSummaryReady(viewedYm);
+      finishNeedsReviewMonthLoad(viewedYm);
+    }
     renderMonthSummaryTotalsFromState();
     if (mobile) markMobileCalendarPlacing(true);
     renderCalendar();

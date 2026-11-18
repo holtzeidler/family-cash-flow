@@ -36561,4 +36561,23 @@ body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__
 .cash-health-month-low.is-negative .cash-health-month-low__value{
   color: var(--danger, #b91c1c);
 }
+.sidebar-summary-skel{
+  display: inline-block;
+  width: 4.5rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.1);
+  vertical-align: middle;
+}
+.sidebar-summary-pending{
+  min-height: 0.9rem;
+}
+.sidebar-summary-error{
+  color: rgba(71, 85, 105, 0.88);
+  font-size: 12px;
+  font-weight: 600;
+}
+.totals--pending .sidebar-summary-skel{
+  width: 3.4rem;
+}
 
