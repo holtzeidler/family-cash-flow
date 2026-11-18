@@ -7443,14 +7443,11 @@ function showTransactionsSidebarLoading() {
     totalsEl.innerHTML =
       '<div class="total total--loading"><div class="k">This month</div><div class="v">Loading…</div></div>';
   }
-  if (
-    sidebarForecastHints &&
-    !(state.monthDailyBalances && state.monthDailyBalances.size) &&
-    !sidebarForecastHints.querySelector(".sidebar-fqh__row")
-  ) {
-    sidebarForecastHints.hidden = false;
-    sidebarForecastHints.innerHTML =
-      '<div class="sidebar-fqh"><div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Forecast low</span><span class="sidebar-fqh__v">Loading…</span></div></div>';
+  const monthLow = document.getElementById("sidebarMonthLow");
+  const monthLowValue = document.getElementById("sidebarMonthLowValue");
+  if (monthLow && monthLowValue && !(state.monthDailyBalances && state.monthDailyBalances.size)) {
+    monthLow.hidden = false;
+    monthLowValue.textContent = "Loading…";
   }
 }
 
@@ -10226,17 +10223,34 @@ function refreshTmForecastNote() {
   tmForecastNote.hidden = true;
 }
 
+function paintSidebarMonthLow() {
+  const el = document.getElementById("sidebarMonthLow");
+  const valueEl = document.getElementById("sidebarMonthLowValue");
+  if (!el || !valueEl) return;
+  const ym = monthInput?.value || "";
+  const low = tmForecastLowInMonthYm(ym);
+  if (!low) {
+    const loaded = !!(state.monthDailyBalances && state.monthDailyBalances.size);
+    if (loaded) {
+      el.hidden = true;
+      valueEl.textContent = "";
+    } else {
+      valueEl.textContent = "Loading…";
+      el.hidden = false;
+    }
+    return;
+  }
+  valueEl.textContent = `$${fmtMoney(low.bal)} on ${fmtDateMedDisplay(low.iso)}`;
+  el.hidden = false;
+  el.classList.toggle("is-negative", Number(low.bal) < 0);
+}
+
 function refreshSidebarForecastHints() {
+  paintSidebarMonthLow();
   if (!sidebarForecastHints) return;
   const ym = monthInput?.value || "";
   const { start: mStart, end: mEnd } = ymBounds(ym);
   const parts = [];
-  const low = tmForecastLowInMonthYm(ym);
-  if (low) {
-    parts.push(
-      `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Forecast low</span><span class="sidebar-fqh__v">$${fmtMoney(low.bal)} <span class="sidebar-fqh__d">${fmtDateMedDisplay(low.iso)}</span></span></div>`
-    );
-  }
   const latestRec = mEnd ? tmLatestReconciledIsoBefore(mEnd) : tmLatestReconciledIsoBefore(toISODate(new Date()));
   if (latestRec) {
     parts.push(
@@ -20512,7 +20526,7 @@ function noteUserMovedCalendar(e) {
       e &&
       e.target &&
       typeof e.target.closest === "function" &&
-      e.target.closest(".modal-overlay, .bw-tour-tooltip, .top-nav")
+      e.target.closest(".modal-overlay, .bw-tour-tooltip, .top-nav, #mobileSummaryToggle")
     ) {
       return;
     }

@@ -36533,5 +36533,32 @@ body[data-bw-view] #sidebarBodyMonth .totals-compact__row--net .totals-compact__
   body.mobile-summary-collapsed #reportsLeftNav{
     display: none !important;
   }
+  .cash-health-month-low{
+    margin-top: 6px;
+  }
+}
+.cash-health-month-low{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 8px 0 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+}
+.cash-health-month-low__label{
+  font-size: 12px;
+  font-weight: 650;
+  color: rgba(51, 65, 85, 0.88);
+}
+.cash-health-month-low__value{
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(15, 23, 42, 0.92);
+}
+.cash-health-month-low.is-negative .cash-health-month-low__value{
+  color: var(--danger, #b91c1c);
 }
 

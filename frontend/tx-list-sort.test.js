@@ -65,6 +65,10 @@ assert.ok(app.indexOf('title: "Forecast hygiene"') < 0 && app.indexOf('"Forecast
 assert.ok(app.indexOf("Nothing urgent surfaced") < 0, "the calm forecast hygiene message is gone");
 assert.ok(app.indexOf("if (latestRec)") >= 0, "Monthly Cash Flow still shows Reconciled through");
 assert.ok(app.indexOf("function ensureTransactionsSidebar(") >= 0, "Transactions loads the sidebar instead of leaving it blank");
+assert.ok(txHtml.indexOf("Lowest balance this month") >= 0 && txHtml.indexOf('id="sidebarMonthLow"') >= 0, "monthly low is labeled in Cash Health");
+assert.ok(functionBody(app, "refreshSidebarForecastHints").indexOf("Forecast low") < 0, "Forecast low is not a Monthly Cash Flow row");
+assert.ok(functionBody(app, "paintSidebarMonthLow").indexOf("tmForecastLowInMonthYm") >= 0, "monthly low reuses the projected daily ending balance");
+assert.ok(functionBody(app, "tmForecastLowInMonthYm").indexOf("row?.end") >= 0, "monthly low reads the daily ending balance");
 assert.ok(txHtml.indexOf("Search, review, and manage your past and upcoming transactions.") >= 0, "transactions description");
 assert.ok(txHtml.indexOf("tm__quickLabel") >= 0 && txHtml.indexOf("Quick filters") >= 0, "secondary quick filters are labeled");
 assert.ok(txHtml.indexOf('data-tm-when="all"') >= 0, "All stays a primary time filter");
