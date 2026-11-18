@@ -9715,7 +9715,9 @@ function tmApplyQuickView(view) {
 
   for (const btn of tmChips || []) {
     try {
-      btn.classList.toggle("is-active", String(btn?.dataset?.tmView || "") === v);
+      const on = String(btn?.dataset?.tmView || "") === v;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
     } catch (_) {}
   }
   tmSyncLegacyFiltersFromToolbar();
@@ -9726,6 +9728,7 @@ function tmClearChips() {
   for (const btn of tmChips || []) {
     try {
       btn.classList.remove("is-active");
+      btn.setAttribute("aria-pressed", "false");
     } catch (_) {}
   }
 }
@@ -9844,7 +9847,7 @@ function tmCountLargeHitsBetween(todayIso, endIso, kindFilter, minAbs) {
   for (const t of state.upcomingActualItems || []) {
     const iso = normalizeIsoDate(t?.date) || String(t?.date || "");
     if (!iso || iso < todayIso || iso > endIso) continue;
-    if (String(t.kind || "") !== kindFilter) continue;
+    if (kindFilter !== "all" && String(t.kind || "") !== kindFilter) continue;
     if (Math.abs(Number(t.amount) || 0) < minAbs) continue;
     n++;
   }
@@ -9853,7 +9856,7 @@ function tmCountLargeHitsBetween(todayIso, endIso, kindFilter, minAbs) {
     const eff = effectiveNextOccurrenceListFields(tx);
     const nextIso = nextOccurrenceIsoForRecurringList(tx, todayIso);
     if (!nextIso || nextIso < todayIso || nextIso > endIso) continue;
-    if (String(eff.kind || "") !== kindFilter) continue;
+    if (kindFilter !== "all" && String(eff.kind || "") !== kindFilter) continue;
     if (Math.abs(Number(eff.amount) || 0) < minAbs) continue;
     n++;
   }
@@ -9879,7 +9882,11 @@ function refreshTmChipCounts() {
     return x;
   })());
 
-  const uncat = tmCountUncategorizedActual();
+  let uncat = tmCountUncategorizedActual();
+  for (const tx of tmUniqueExpectedMap().values()) {
+    const cid = tx && tx.category_id;
+    if (cid == null || cid === "" || Number(cid) === 0) uncat += 1;
+  }
   const recurringN = tmUniqueExpectedMap().size;
 
   let up30 = 0;
@@ -9891,7 +9898,7 @@ function refreshTmChipCounts() {
 
   const annualN = [...tmUniqueExpectedMap().values()].filter((t) => String(t?.recurrence || "") === "yearly").length;
 
-  const largeN = tmCountLargeHitsBetween(today, end365, "expense", 500);
+  const largeN = tmCountLargeHitsBetween(today, end365, "all", 500);
 
   /** @type {Record<string, number>} */
   const counts = {
@@ -9901,17 +9908,45 @@ function refreshTmChipCounts() {
     annual: annualN,
     large: largeN,
   };
+  const scope = {
+    uncategorized: (n) => (n === 1 ? "1 transaction without a category" : `${n} transactions without a category`),
+    recurring: (n) => (n === 1 ? "1 recurring series" : `${n} recurring series`),
+    annual: (n) => (n === 1 ? "1 yearly series" : `${n} yearly series`),
+    large: (n) =>
+      n === 1
+        ? "1 transaction of $500 or more in the next year"
+        : `${n} transactions of $500 or more in the next year`,
+  };
+
+  let shown = 0;
+  try {
+    shown = txListMain ? txListMain.querySelectorAll(".tm-row").length : 0;
+  } catch (_) {}
+  const more = !!state.ledgerNextCursor;
 
   for (const btn of tmChips) {
     const k = String(btn?.dataset?.tmView || "");
+    const label = String(btn.querySelector(".tm-chip__label")?.textContent || k).trim();
     const el = btn.querySelector(".tm-chip__count");
     if (!el) continue;
     const n = counts[k];
-    if (n == null || !Number.isFinite(n)) {
-      el.textContent = "";
+    if (btn.classList.contains("is-active")) {
+      const phrase = more ? `${shown} shown, more available` : `${shown} shown`;
+      el.textContent = shown > 0 ? ` (${shown}${more ? "+" : ""})` : "";
+      btn.title = phrase;
+      btn.setAttribute("aria-label", `${label}, ${phrase}`);
       continue;
     }
-    el.textContent = n > 0 ? ` (${n})` : "";
+    if (n == null || !Number.isFinite(n) || n <= 0) {
+      el.textContent = "";
+      btn.removeAttribute("title");
+      btn.setAttribute("aria-label", label);
+      continue;
+    }
+    const phrase = scope[k] ? scope[k](n) : String(n);
+    el.textContent = ` (${n})`;
+    btn.title = phrase;
+    btn.setAttribute("aria-label", `${label}, ${phrase}`);
   }
 }
 
@@ -10022,7 +10057,10 @@ function tmForecastLowInMonthYm(ym) {
 function tmInsightCard(title, body, extraClass = "", opts = {}) {
   const ec = extraClass ? ` ${extraClass}` : "";
   const bodyInner = opts && opts.htmlBody ? body : escapeHtml(body);
-  return `<div class="tm-insight-card${ec}"><div class="tm-insight-card__title">${escapeHtml(title)}</div><div class="tm-insight-card__body">${bodyInner}</div></div>`;
+  const titleHtml = title
+    ? `<div class="tm-insight-card__title">${escapeHtml(title)}</div>`
+    : "";
+  return `<div class="tm-insight-card${ec}">${titleHtml}<div class="tm-insight-card__body">${bodyInner}</div></div>`;
 }
 
 function refreshTmInsights() {
@@ -10030,49 +10068,38 @@ function refreshTmInsights() {
   const { startIso, endIso } = tmDateRangeFromToolbar();
   const cards = [];
 
-  let rowCount = 0;
-  try {
-    rowCount = txListMain ? txListMain.querySelectorAll(".tm-row").length : 0;
-  } catch (_) {}
-
   const varsInRange = tmVariableExpectedCountInRange(startIso, endIso);
   const uncat = tmCountUncategorizedActual();
   const floorDays = tmCountDaysBelowFloorInRange(startIso, endIso);
 
-  /* One primary insight at a time — variable amounts first when actionable */
+  /* One compact action at a time. Hide the card when nothing needs attention. */
   if (varsInRange > 0) {
-    const lead = `${varsInRange} recurring ${varsInRange === 1 ? "bill still needs" : "bills still need"} real amounts.`;
-    const tail = `Update ${varsInRange === 1 ? "it" : "them"} before ${varsInRange === 1 ? "it affects" : "they affect"} your forecast.`;
+    const noun = varsInRange === 1 ? "recurring bill still needs" : "recurring bills still need";
+    const fix = varsInRange === 1 ? "Update it before it affects your forecast." : "Update them before they affect your forecast.";
     cards.push(
       tmInsightCard(
-        "Variable amounts",
-        `<strong class="tm-insight-card__lead">${escapeHtml(lead)}</strong> <span class="tm-insight-card__tail">${escapeHtml(tail)}</span>`,
-        "tm-insight-card--variable",
-        { htmlBody: true }
+        "",
+        `${varsInRange} ${noun} a real amount. ${fix}`,
+        "tm-insight-card--compact tm-insight-card--variable"
       )
     );
   } else if (uncat > 0) {
+    const noun = uncat === 1 ? "transaction needs" : "transactions need";
+    const trust = uncat === 1 ? "it can be trusted" : "they can be trusted";
     cards.push(
       tmInsightCard(
-        "Uncategorized",
-        `${uncat} one-time ${uncat === 1 ? "transaction needs" : "transactions need"} a category. Uncategorized lines can blur what is safe to move from checking.`,
-        "tm-insight-card--uncat"
+        "",
+        `${uncat} ${noun} a category before ${trust} in the forecast.`,
+        "tm-insight-card--compact tm-insight-card--uncat"
       )
     );
   } else if (floorDays > 0) {
+    const noun = floorDays === 1 ? "day in this window is" : "days in this window are";
     cards.push(
       tmInsightCard(
-        "Cash pressure ahead",
-        `${floorDays} projected ${floorDays === 1 ? "day" : "days"} in this window dip below your minimum balance. Adjust dates or amounts to restore room.`,
-        "tm-insight-card--risk"
-      )
-    );
-  } else if (rowCount > 0) {
-    cards.push(
-      tmInsightCard(
-        "Forecast hygiene",
-        "Nothing urgent surfaced for these filters—fine-tune recurring amounts before they hit the calendar.",
-        "tm-insight-card--calm"
+        "",
+        `${floorDays} ${noun} below your minimum balance.`,
+        "tm-insight-card--compact tm-insight-card--risk"
       )
     );
   }
@@ -10090,34 +10117,9 @@ function refreshTmInsights() {
 
 function refreshTmForecastNote() {
   if (!tmForecastNote) return;
-  const uncat = tmCountUncategorizedActual();
-  const { startIso, endIso } = tmDateRangeFromToolbar();
-  const varsInRange = tmVariableExpectedCountInRange(startIso, endIso);
-  let rowCount = 0;
-  try {
-    rowCount = txListMain ? txListMain.querySelectorAll(".tm-row").length : 0;
-  } catch (_) {}
-  const latest = tmLatestReconciledIsoBefore(toISODate(new Date()));
   tmForecastNote.classList.remove("tm__forecastNote--status", "tm__forecastNote--tip");
-  if (!tmInsightsEl?.hidden) {
-    tmForecastNote.textContent = "";
-    tmForecastNote.hidden = true;
-  } else if (rowCount <= 0) {
-    tmForecastNote.textContent = "";
-    tmForecastNote.hidden = true;
-  } else if (uncat > 0) {
-    tmForecastNote.textContent = `Start with uncategorized transactions, then review upcoming rows so your forecast stays easy to trust.`;
-    tmForecastNote.classList.add("tm__forecastNote--tip");
-    tmForecastNote.hidden = false;
-  } else if (latest) {
-    tmForecastNote.textContent = `Everything in this list is categorized. Your forecast is reconciled through ${fmtDateMedDisplay(latest)}.`;
-    tmForecastNote.classList.add("tm__forecastNote--status");
-    tmForecastNote.hidden = false;
-  } else {
-    tmForecastNote.textContent = "Review upcoming rows here, then reconcile your forecast to your real balance after any edits.";
-    tmForecastNote.classList.add("tm__forecastNote--tip");
-    tmForecastNote.hidden = false;
-  }
+  tmForecastNote.textContent = "";
+  tmForecastNote.hidden = true;
 }
 
 function refreshSidebarForecastHints() {
@@ -10132,7 +10134,8 @@ function refreshSidebarForecastHints() {
     );
   }
   const latestRec = mEnd ? tmLatestReconciledIsoBefore(mEnd) : tmLatestReconciledIsoBefore(toISODate(new Date()));
-  if (latestRec) {
+  const lastReconciled = normalizeIsoDate(state.lastReconciledIso) || "";
+  if (latestRec && latestRec !== lastReconciled) {
     parts.push(
       `<div class="sidebar-fqh__row"><span class="sidebar-fqh__k">Reconciled through</span><span class="sidebar-fqh__v">${fmtDateMedDisplay(latestRec)}</span></div>`
     );
@@ -18244,6 +18247,35 @@ function renderTmTransactionsLoadingState() {
   txListMain.replaceChildren(wrap);
 }
 
+function tmLedgerIso(item) {
+  const raw = item && item.date != null ? String(item.date) : "";
+  return raw.length >= 10 ? raw.slice(0, 10) : raw;
+}
+
+function tmSortLedgerRows(rows, when) {
+  const list = Array.isArray(rows) ? rows.slice() : [];
+  const mode = when === "past" || when === "upcoming" ? when : "all";
+  list.sort((a, b) => {
+    const da = tmLedgerIso(a);
+    const db = tmLedgerIso(b);
+    if (da !== db) {
+      if (mode === "past") return da < db ? 1 : -1;
+      return da < db ? -1 : 1;
+    }
+    const ta = String(a && a.row_type) === "actual" ? 0 : 1;
+    const tb = String(b && b.row_type) === "actual" ? 0 : 1;
+    if (ta !== tb) return ta - tb;
+    const ia = Number((a && (String(a.row_type) === "actual" ? a.id : a.expected_transaction_id)) || 0);
+    const ib = Number((b && (String(b.row_type) === "actual" ? b.id : b.expected_transaction_id)) || 0);
+    if (ia !== ib) return ia - ib;
+    const oa = String((a && a.occurrence_date) || da);
+    const ob = String((b && b.occurrence_date) || db);
+    if (oa === ob) return 0;
+    return mode === "past" ? (oa < ob ? 1 : -1) : oa < ob ? -1 : 1;
+  });
+  return list;
+}
+
 function renderUpcomingTransactionsFiltered() {
   if (!txListMain) return;
   if (tmTransactionsListLoading()) {
@@ -18252,7 +18284,7 @@ function renderUpcomingTransactionsFiltered() {
   }
 
   const todayIso = toISODate(new Date());
-  const rows = Array.isArray(state.ledgerItems) ? state.ledgerItems : [];
+  const rows = tmSortLedgerRows(state.ledgerItems, state.ledgerWhen);
 
   txListMain.innerHTML = "";
   if (!rows.length) {
@@ -19333,7 +19365,9 @@ function tmSetWhenFilter(when) {
   state.ledgerWhen = w;
   for (const btn of tmWhenChips || []) {
     try {
-      btn.classList.toggle("is-active", String(btn?.dataset?.tmWhen || "") === w);
+      const on = String(btn?.dataset?.tmWhen || "") === w;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
     } catch (_) {}
   }
   scheduleLedgerRefetch();

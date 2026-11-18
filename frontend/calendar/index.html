@@ -436,7 +436,7 @@
                 <div class="tm__headMain">
                   <h2 class="tm__title">Transactions</h2>
                   <p class="tm__sub">
-                    Review upcoming and recurring cash flow lines before they affect the forecast.
+                    Search, review, and manage your past and upcoming transactions.
                   </p>
                 </div>
                 <div class="tm__headActions">
@@ -466,30 +466,33 @@
                     </div>
                   </div>
                   <div class="tm__controlDeck__row tm__controlDeck__row--chips">
-                    <div class="tm__chips" role="toolbar" aria-label="When filters">
-                      <button type="button" class="tm-chip is-active" data-tm-when="all">
+                    <div class="tm__chips tm__chips--when" role="group" aria-label="Time">
+                      <button type="button" class="tm-chip tm-chip--when is-active" data-tm-when="all" aria-pressed="true">
                         <span class="tm-chip__label">All</span>
                       </button>
-                      <button type="button" class="tm-chip" data-tm-when="past">
+                      <button type="button" class="tm-chip tm-chip--when" data-tm-when="past" aria-pressed="false">
                         <span class="tm-chip__label">Past</span>
                       </button>
-                      <button type="button" class="tm-chip" data-tm-when="upcoming">
+                      <button type="button" class="tm-chip tm-chip--when" data-tm-when="upcoming" aria-pressed="false">
                         <span class="tm-chip__label">Upcoming</span>
                       </button>
                     </div>
-                    <div class="tm__chips" role="toolbar" aria-label="Quick filters">
-                      <button type="button" class="tm-chip" data-tm-view="uncategorized">
-                        <span class="tm-chip__label">Uncategorized</span><span class="tm-chip__count" aria-hidden="true"></span>
-                      </button>
-                      <button type="button" class="tm-chip" data-tm-view="recurring">
-                        <span class="tm-chip__label">Recurring</span><span class="tm-chip__count" aria-hidden="true"></span>
-                      </button>
-                      <button type="button" class="tm-chip" data-tm-view="annual">
-                        <span class="tm-chip__label">Annual bills</span><span class="tm-chip__count" aria-hidden="true"></span>
-                      </button>
-                      <button type="button" class="tm-chip" data-tm-view="large">
-                        <span class="tm-chip__label">Large</span><span class="tm-chip__count" aria-hidden="true"></span>
-                      </button>
+                    <div class="tm__quick">
+                      <span class="tm__quickLabel" id="tmQuickLabel">Quick filters</span>
+                      <div class="tm__chips tm__chips--quick" role="group" aria-labelledby="tmQuickLabel">
+                        <button type="button" class="tm-chip" data-tm-view="recurring" aria-pressed="false">
+                          <span class="tm-chip__label">Recurring</span><span class="tm-chip__count" aria-hidden="true"></span>
+                        </button>
+                        <button type="button" class="tm-chip" data-tm-view="annual" aria-pressed="false">
+                          <span class="tm-chip__label">Annual bills</span><span class="tm-chip__count" aria-hidden="true"></span>
+                        </button>
+                        <button type="button" class="tm-chip" data-tm-view="large" aria-pressed="false">
+                          <span class="tm-chip__label">Large</span><span class="tm-chip__count" aria-hidden="true"></span>
+                        </button>
+                        <button type="button" class="tm-chip" data-tm-view="uncategorized" aria-pressed="false">
+                          <span class="tm-chip__label">Uncategorized</span><span class="tm-chip__count" aria-hidden="true"></span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -521,14 +524,6 @@
                   </div>
                 </div>
                 <div class="tm__toolbarRow">
-                  <div class="tm__field">
-                    <label for="tmStatus">Status</label>
-                    <select id="tmStatus">
-                      <option value="all" selected>All</option>
-                      <option value="uncategorized">Uncategorized</option>
-                      <option value="recurring">Recurring</option>
-                    </select>
-                  </div>
                   <div class="tm__field">
                     <label for="tmSource">Show</label>
                     <select id="tmSource">
@@ -569,6 +564,11 @@
 
               <!-- Legacy filter nodes kept for app.js; hidden and driven by the toolbar above. -->
               <div class="tm__legacy" hidden aria-hidden="true">
+                <select id="tmStatus" aria-hidden="true" tabindex="-1">
+                  <option value="all" selected>All</option>
+                  <option value="uncategorized">Uncategorized</option>
+                  <option value="recurring">Recurring</option>
+                </select>
                 <select id="upcomingKindFilter">
                   <option value="all" selected>All</option>
                   <option value="expense">Expense</option>
