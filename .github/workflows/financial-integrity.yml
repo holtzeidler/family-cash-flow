@@ -20,4 +20,6 @@ jobs:
         run: pip install -r backend/requirements.txt pytest==8.4.2 httpx==0.28.1
 
       - name: Financial integrity
+        # Blocks staging/prod Pages deploys. Includes Only-this-occurrence amount-edit
+        # regressions that fail if a recurring edit leaves old + new amounts on one date.
         run: python -m pytest backend/tests/test_financial_integrity.py -q
