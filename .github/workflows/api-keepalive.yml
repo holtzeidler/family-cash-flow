@@ -1,0 +1,47 @@
+# Ping Render APIs so free-tier instances do not spin down from idle.
+# Scheduled workflows only run from the repository default branch (main).
+# Staging still benefits once this file is on main; until then, client retries
+# and the in-session keep-alive cover the wake path.
+name: API keep-alive
+
+on:
+  schedule:
+    # Under 15 minutes so Render free instances stay warm.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: production
+            url: https://family-cash-flow-api.onrender.com/api/health
+          - name: staging
+            url: https://family-cash-flow-api-staging.onrender.com/api/health
+    steps:
+      - name: Wake ${{ matrix.name }} API
+        run: |
+          set -euo pipefail
+          echo "Pinging ${{ matrix.url }}"
+          # Allow a full cold start if the previous ping missed the window.
+          for i in 1 2 3; do
+            if curl -fsS --max-time 90 -o /tmp/bw-health.json -w "attempt=${i} http=%{http_code} total=%{time_total}\n" "${{ matrix.url }}"; then
+              cat /tmp/bw-health.json
+              echo
+              exit 0
+            fi
+            echo "attempt ${i} failed; retrying…"
+            sleep 5
+          done
+          echo "::error::Keep-alive failed for ${{ matrix.name }}"
+          exit 1

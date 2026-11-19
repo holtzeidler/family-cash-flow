@@ -144,7 +144,7 @@ function apiBearerAuthHeaders() {
   return {};
 }
 
-async function request(path, method, body, { timeoutMs = 25000 } = {}) {
+async function request(path, method, body, { timeoutMs = 45000 } = {}) {
   const apiBase = getApiBase();
   const fullPath = `${apiBase}${path}`;
   const startedAt = Date.now();
@@ -430,7 +430,8 @@ async function doLogin() {
     const keepMeLoggedIn = document.getElementById("keepMeLoggedIn")?.checked === true;
     keepOnboardingDraftForLogin(email);
     const loginResp = await requestWithRetry("/api/auth/login", "POST", { email, password, keep_me_logged_in: keepMeLoggedIn }, {
-      maxMs: 28000,
+      // Cover measured Render free cold starts (~40–50s) without forcing a hard refresh.
+      maxMs: 90000,
       onRetry() {
         showSlowConnectHint();
       },
@@ -833,7 +834,7 @@ try {
 
 /** Wake the API on idle Render instances so login is faster when the user submits. */
 if (getApiBase()) {
-  request("/api/health", "GET", null, { timeoutMs: 15000 }).catch(() => {});
+  void requestWithRetry("/api/health", "GET", null, { maxMs: 90000 }).catch(() => {});
 }
 
 async function redirectIfAlreadySignedIn() {
