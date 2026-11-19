@@ -2915,7 +2915,8 @@ async function loadCashHealthRunUpItems(fid, mode, startIso, endIso) {
 function syncSidebarCashHealthCardVisibility() {
   if (!sidebarCashHealthCard) return;
   const v = document.body?.dataset?.bwView;
-  const showOnView = v === "calendar" || v === "transactions" || v === "reports" || v === "settings" || v === "reimbursements";
+  // Settings opens straight to account/settings content — no Cash Health Summary.
+  const showOnView = v === "calendar" || v === "transactions" || v === "reports" || v === "reimbursements";
   // Keep the calendar Cash Health shell in layout before family id arrives.
   // Hiding it first-paints Monthly Cash Flow at the top on iPhone Safari.
   sidebarCashHealthCard.hidden = !showOnView;
@@ -3049,7 +3050,6 @@ async function refreshLowBalanceAlert() {
       return;
     }
     syncSidebarCashHealthCardVisibility();
-    if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
 
     const minVal = readUserConfiguredMinBalanceThreshold(activeFid);
     const mode = calendarMode?.value || "both";
@@ -3973,11 +3973,16 @@ function initReportsLeftNav() {
     for (const it of section.items) labelForId.set(it.id, it.label);
   }
   if (mobileSelect) {
-    for (const it of ids) {
-      const opt = document.createElement("option");
-      opt.value = it.id;
-      opt.textContent = it.label || labelForId.get(it.id) || it.id;
-      mobileSelect.appendChild(opt);
+    for (const section of sections) {
+      const group = document.createElement("optgroup");
+      group.label = section.title;
+      for (const it of section.items) {
+        const opt = document.createElement("option");
+        opt.value = it.id;
+        opt.textContent = it.label || labelForId.get(it.id) || it.id;
+        group.appendChild(opt);
+      }
+      mobileSelect.appendChild(group);
     }
   }
 
@@ -4329,6 +4334,7 @@ function setActiveTopView(view) {
     if (forecastCalendarNeedsLoad()) void loadMonthAndCalendar();
   }
   if (v === "settings") {
+    ensureSettingsMobileNav();
     renderAccountDetailsPanel();
     // Honor ?section= and /settings/billing on the first paint. Forcing Profile
     // here flashed the profile page before Billing finished loading.
@@ -4377,7 +4383,7 @@ function scrollPhoneViewIntoSight(view) {
     }
     return;
   }
-  const id =
+  let id =
     view === "transactions"
       ? "transactionViewPanel"
       : view === "reports"
@@ -4387,6 +4393,13 @@ function scrollPhoneViewIntoSight(view) {
           : view === "reimbursements"
             ? "reimbursementsViewPanel"
             : "";
+  if (view === "settings") {
+    // Land at the start of Settings chrome (mobile section menu, else rail, else panel).
+    const mobileNav = document.getElementById("settingsMobileNav");
+    const rail = document.getElementById("settingsSidebarNav");
+    if (mobileNav && !mobileNav.hidden) id = "settingsMobileNav";
+    else if (rail && !rail.hidden) id = "settingsSidebarNav";
+  }
   const el = id ? document.getElementById(id) : null;
   if (!el || typeof setMobileCalendarScrollTop !== "function") return;
   requestAnimationFrame(() => {
@@ -6223,6 +6236,77 @@ function mountTxAddFormInSidebar() {
   if (root && home && root.parentElement !== home) home.appendChild(root);
 }
 
+function settingsMobileNavItems() {
+  const canCollaborators = typeof canViewHouseholdSettings === "function" && canViewHouseholdSettings();
+  return [
+    { key: "profile", label: "Profile" },
+    { key: "accounts", label: "Accounts" },
+    { key: "collaborators", label: "Collaborators", householdOnly: true },
+    { key: "categories", label: "Categories" },
+    { key: "preferences", label: "Preferences" },
+    { key: "billing", label: "Billing" },
+  ].filter((it) => !(it.householdOnly && !canCollaborators));
+}
+
+function refreshSettingsMobileNavOptions() {
+  const select = document.getElementById("settingsMobileNavSelect");
+  if (!select) return;
+  const prev = select.value;
+  const items = settingsMobileNavItems();
+  const nextKeys = items.map((it) => it.key).join("|");
+  if (select.dataset.keys === nextKeys) return;
+  select.dataset.keys = nextKeys;
+  select.replaceChildren();
+  for (const it of items) {
+    const opt = document.createElement("option");
+    opt.value = it.key;
+    opt.textContent = it.label;
+    select.appendChild(opt);
+  }
+  if (items.some((it) => it.key === prev)) select.value = prev;
+}
+
+function ensureSettingsMobileNav() {
+  if (!settingsViewPanel) return;
+  const content =
+    settingsViewPanel.querySelector(".settings-content--hub") ||
+    settingsViewPanel.querySelector(".settings-content") ||
+    settingsViewPanel;
+  let wrap = document.getElementById("settingsMobileNav");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "settingsMobileNav";
+    wrap.className = "settings-mobile-nav";
+    content.insertBefore(wrap, content.firstChild);
+    const inner = document.createElement("div");
+    inner.className = "settings-mobile-nav__inner";
+    const lbl = document.createElement("label");
+    lbl.className = "settings-mobile-nav__label";
+    lbl.htmlFor = "settingsMobileNavSelect";
+    lbl.textContent = "Section";
+    const select = document.createElement("select");
+    select.id = "settingsMobileNavSelect";
+    select.className = "settings-mobile-nav__select";
+    select.setAttribute("aria-label", "Choose a settings section");
+    select.addEventListener("change", () => {
+      activateSettingsSection(select.value);
+    });
+    inner.appendChild(lbl);
+    inner.appendChild(select);
+    wrap.appendChild(inner);
+  }
+  refreshSettingsMobileNavOptions();
+}
+
+function syncSettingsMobileNavSelect(key) {
+  const select = document.getElementById("settingsMobileNavSelect");
+  if (!select) return;
+  const k = String(key || "");
+  if (!k) return;
+  const has = [...select.options].some((opt) => opt.value === k);
+  if (has && select.value !== k) select.value = k;
+}
+
 function activateSettingsSection(key) {
   // Settings IA: Profile, Accounts, Categories, Preferences, Billing.
   let k = String(key || "profile");
@@ -6258,6 +6342,8 @@ function activateSettingsSection(key) {
     pane.hidden = !on;
   });
   syncHouseholdSettingsUi();
+  ensureSettingsMobileNav();
+  syncSettingsMobileNavSelect(k);
   if (k === "collaborators") {
     loadFamilyMembersPanel().catch((e) => {
       const el = document.getElementById("familyMembersErr");
@@ -8615,7 +8701,7 @@ function applyForecastConfidenceUi(_data) {
     forecastConfidenceHelper.hidden = true;
   }
   if (forecastConfidenceDetail) forecastConfidenceDetail.textContent = "";
-  if (sidebarCashHealthCard && state.activeFamilyId) sidebarCashHealthCard.hidden = false;
+  syncSidebarCashHealthCardVisibility();
   paintSidebarReconcileRow();
 }
 

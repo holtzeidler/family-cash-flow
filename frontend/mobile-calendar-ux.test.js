@@ -227,6 +227,8 @@ assert.ok(loadingFn.indexOf("calendarLoadingIndicator") >= 0, "the overlay indic
 
 var visFn = functionBody(app, "syncSidebarCashHealthCardVisibility");
 assert.ok(visFn.indexOf("activeFamilyId") < 0, "Cash Health stays in layout before the family id arrives");
+assert.ok(visFn.indexOf('v === "settings"') < 0, "Cash Health Summary is not shown on Settings");
+assert.ok(visFn.indexOf('v === "calendar"') >= 0 && visFn.indexOf('v === "transactions"') >= 0 && visFn.indexOf('v === "reports"') >= 0, "Cash Health remains on Forecast, Transactions, and Reports");
 
 var navFn = functionBody(app, "scrollActiveNavTabIntoView");
 assert.ok(navFn.indexOf("scrollIntoView") >= 0 && navFn.indexOf("Never use Element.scrollIntoView") >= 0, "active tab scrolling does not pan the document");

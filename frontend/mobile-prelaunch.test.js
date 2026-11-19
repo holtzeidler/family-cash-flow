@@ -24,6 +24,7 @@ var reports = functionBody(app, "initReportsLeftNav");
 assert.ok(reports.indexOf("opt.value = it.id") >= 0, "report options use the report id");
 assert.ok(reports.indexOf("opt.textContent = it.label") >= 0, "report options use the report label");
 assert.ok(reports.indexOf("opt.value = id") < 0, "report options do not stringify the item object");
+assert.ok(reports.indexOf('createElement("optgroup")') >= 0, "report mobile menu groups report types");
 
 var summary = functionBody(app, "syncMobileSummary");
 assert.ok(summary.indexOf('view === "transactions"') >= 0 && summary.indexOf('view === "reports"') >= 0, "summary collapses on Transactions and Reports");
@@ -31,6 +32,15 @@ assert.ok(functionBody(app, "setActiveTopView").indexOf("scrollPhoneViewIntoSigh
 assert.ok(css.indexOf("mobile-summary-collapsed") >= 0, "collapsed summary is styled");
 assert.ok(css.indexOf(":not(#sidebarBalanceThresholdAlerts)") >= 0, "balance warnings stay visible when the summary is collapsed");
 assert.ok(css.indexOf(".mobile-summary-toggle{\n  display: none;") >= 0, "the summary toggle stays off the desktop sidebar");
+
+var settingsScroll = functionBody(app, "scrollPhoneViewIntoSight");
+assert.ok(settingsScroll.indexOf("settingsMobileNav") >= 0, "Settings phone scroll lands on the section menu");
+assert.ok(app.indexOf("function ensureSettingsMobileNav(") >= 0, "Settings has a compact mobile section menu");
+assert.ok(css.indexOf("settings-mobile-nav") >= 0, "Settings mobile section menu is styled");
+assert.ok(css.indexOf('body[data-bw-view="settings"] #sidebarCashHealthCard') >= 0, "Settings hides Cash Health in CSS as well");
+assert.ok(functionBody(app, "setActiveTopView").indexOf("ensureSettingsMobileNav()") >= 0, "Settings builds its mobile menu when opened");
+assert.ok(functionBody(app, "refreshLowBalanceAlert").indexOf("sidebarCashHealthCard.hidden = false") < 0, "Cash Health refresh does not force-show on Settings");
+assert.ok(functionBody(app, "applyForecastConfidenceUi").indexOf("sidebarCashHealthCard.hidden = false") < 0, "confidence UI does not force-show Cash Health on Settings");
 
 var reveal = functionBody(app, "revealMobileCalendarPlaced");
 assert.ok(reveal.indexOf("placeMobileCalendarBeforeReveal(kind)") >= 0, "today is placed after the phone calendar lays out");
