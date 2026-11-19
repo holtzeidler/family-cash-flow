@@ -20685,7 +20685,7 @@ async function loadCalendarMonthDaily(gen, options) {
   paintSidebarReconcileRow();
 }
 
-/** Phones open the forecast at the top (Cash Health). Today / date focus / the tour still scroll on purpose. */
+/** Phones land the first Forecast paint on today. Explicit Today / date focus / the tour still scroll on purpose. */
 let calendarMobileUserMoved = false;
 
 try {
@@ -20849,10 +20849,20 @@ function mobileCalendarPlaceCell() {
   return calendarGrid.querySelector(".calendar--mobile .cal-cell:not(.cal-cell--out), .cal-cell:not(.cal-cell--out)");
 }
 
-/** One silent placement before the calendar is revealed. Not used after the user can see dates. */
+/** True when an overlay should block silent today placement (tour or a real editor modal). */
+function mobileCalendarPlacementBlocked() {
+  if (document.querySelector(".bw-tour-tooltip--open")) return true;
+  const open = document.querySelector(".modal-overlay--open");
+  // The first-forecast welcome sits on top of Forecast; allow placement underneath so
+  // dismissing it does not leave the phone stuck on the 1st of the month.
+  if (open && open.id !== "bwForecastReadyModal") return true;
+  return false;
+}
+
+/** One silent placement once today's card exists. Used before reveal and after the welcome closes. */
 function placeMobileCalendarBeforeReveal(kind) {
   if (!isMobileCalendarViewport() || calendarMobileUserMoved) return false;
-  if (document.querySelector(".bw-tour-tooltip--open, .modal-overlay--open")) return false;
+  if (mobileCalendarPlacementBlocked()) return false;
   if (state.cashHealthFocus || peekPendingCashHealthFocus()) return false;
   const cell = mobileCalendarPlaceCell();
   if (!cell) return false;
@@ -20864,6 +20874,24 @@ function placeMobileCalendarBeforeReveal(kind) {
     ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - placeStarted),
   });
   return true;
+}
+
+/** After the welcome closes, wait a frame for the strip/layout, then land on today once. */
+function settleMobileCalendarAfterWelcome() {
+  if (!isMobileCalendarViewport() || calendarMobileUserMoved) return;
+  try {
+    syncCashHealthStripVisibility();
+  } catch (_) {}
+  const run = () => {
+    if (calendarMobileUserMoved) return;
+    if (placeMobileCalendarBeforeReveal("today")) return;
+    // Today's card can finish painting just after the modal dismisses.
+    window.setTimeout(() => {
+      if (!calendarMobileUserMoved) placeMobileCalendarBeforeReveal("today");
+    }, 50);
+  };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+  else run();
 }
 
 function markMobileCalendarPlacing(on) {
@@ -27217,6 +27245,9 @@ function ensureForecastReadyModal() {
         window.BW.tour.markSkipped();
       }
     } catch (_) {}
+    try {
+      settleMobileCalendarAfterWelcome();
+    } catch (_) {}
   };
   wrap.addEventListener("click", (e) => {
     if (e.target === wrap) skipTourFromModal();
@@ -27243,6 +27274,13 @@ function maybeShowForecastReadyPopup() {
     return;
   }
 
+  // Land on today's rendered card before the welcome covers Forecast, so the
+  // first paint behind the modal is already correct on phones.
+  try {
+    if (isMobileCalendarViewport() && !calendarMobileUserMoved) {
+      placeMobileCalendarBeforeReveal("today");
+    }
+  } catch (_) {}
   const modal = ensureForecastReadyModal();
   applyForecastReadyWelcomeCopy(modal);
   try {

@@ -48,6 +48,16 @@ var showBody = functionBody(app, "maybeShowForecastReadyPopup");
 assert.ok(showBody.indexOf("forecastReadyCalendarCanShowWelcome()") >= 0, "welcome waits until the calendar is ready");
 assert.ok(showBody.indexOf("applyForecastReadyWelcomeCopy") >= 0, "welcome copy is applied when shown");
 assert.ok(showBody.indexOf("preventScroll: true") >= 0, "welcome focus does not jump the page behind the modal");
+assert.ok(
+  showBody.indexOf('placeMobileCalendarBeforeReveal("today")') >= 0,
+  "welcome places today after calendar content is ready and before the modal covers Forecast"
+);
+
+var modalBodyPlace = functionBody(app, "ensureForecastReadyModal");
+assert.ok(
+  modalBodyPlace.indexOf("settleMobileCalendarAfterWelcome()") >= 0,
+  "skipping the welcome re-settles today after the overlay closes"
+);
 
 var canShow = functionBody(app, "forecastReadyCalendarCanShowWelcome");
 assert.ok(canShow.indexOf("calendarInitialMonthReady") >= 0, "welcome requires the first month load");
