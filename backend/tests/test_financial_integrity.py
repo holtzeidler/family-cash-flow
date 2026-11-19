@@ -11,6 +11,7 @@ duplicate back.
 from __future__ import annotations
 
 import sys
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -37,7 +38,13 @@ apply_safe_environment(_DB)
 assert_process_is_safe(_DB)
 
 sys.path.insert(0, str(ROOT / "backend"))
-from app.main import app, settings  # noqa: E402
+from app.main import (  # noqa: E402
+    ExpectedTransactionOverride,
+    SessionLocal,
+    TransactionKind,
+    app,
+    settings,
+)
 from fastapi.testclient import TestClient  # noqa: E402
 
 assert_loaded_settings(
@@ -308,6 +315,81 @@ def test_only_this_occurrence_amount_edit_does_not_reveal_a_hidden_moved_copy():
         assert _on(october_items, "2026-10-15", "Holt Paycheck") == []
         later_items, _later_days = _refetch_matches(client, family_id, "2026-12")
         assert _amounts(later_items, "2026-12-15", "Holt Paycheck") == [Decimal("4805.35")]
+
+
+def test_only_this_occurrence_heals_pre_damaged_same_day_twin():
+    """A later Only-this edit must clear a leftover series-template twin on that day.
+
+    Pre-fix damage: Nov 15 already overridden to $5,000 while a moved Nov 30→15
+    copy still sits at the series $4,800. A further Only-this amount edit used to
+    keep both rows because absorb only matched the edited row's previous identity.
+    """
+    with TestClient(app) as client:
+        family_id, account_id = _family(client, "bw-smoke-integrity-heal-twin@example.com")
+        series_id = _series(
+            client,
+            family_id,
+            account_id,
+            kind="expense",
+            amount="4800.00",
+            description="Mortgage",
+            start="2026-11-15",
+            recurrence="twice_monthly",
+            second_day_of_month=30,
+        )
+        # Simulate pre-fix damage via DB (bypass absorb): Nov 15 at $5,000 plus a
+        # moved Nov 30→15 twin still at the series $4,800.
+        with SessionLocal() as db:
+            db.add(
+                ExpectedTransactionOverride(
+                    expected_transaction_id=series_id,
+                    occurrence_date=date(2026, 11, 15),
+                    cancelled=False,
+                    account_id=account_id,
+                    kind=TransactionKind.expense,
+                    amount=Decimal("5000.00"),
+                    description="Mortgage",
+                )
+            )
+            db.add(
+                ExpectedTransactionOverride(
+                    expected_transaction_id=series_id,
+                    occurrence_date=date(2026, 11, 30),
+                    cancelled=False,
+                    account_id=account_id,
+                    kind=TransactionKind.expense,
+                    amount=Decimal("4800.00"),
+                    description="Mortgage",
+                    moved_to_date=date(2026, 11, 15),
+                )
+            )
+            db.commit()
+
+        damaged_items, damaged_days = _forecast(client, family_id, "2026-11")
+        assert _amounts(damaged_items, "2026-11-15", "Mortgage") == [
+            Decimal("4800.00"),
+            Decimal("5000.00"),
+        ]
+        assert _money(damaged_days["2026-11-15"]["tx_net"]) == Decimal("-9800.00")
+
+        _override(
+            client,
+            family_id,
+            series_id,
+            "2026-11-15",
+            account_id=account_id,
+            kind="expense",
+            amount="5100.00",
+            description="Mortgage",
+        )
+
+        items, days = _refetch_matches(client, family_id, "2026-11")
+        on_day = _on(items, "2026-11-15", "Mortgage")
+        assert len(on_day) == 1, on_day
+        assert _amounts(items, "2026-11-15", "Mortgage") == [Decimal("5100.00")]
+        assert Decimal("4800.00") not in _amounts(items, "2026-11-15", "Mortgage")
+        assert _money(days["2026-11-15"]["tx_net"]) == Decimal("-5100.00")
+        assert _on(items, "2026-11-30", "Mortgage") == []
 
 
 def test_only_this_occurrence_twice_monthly_amount_edit_updates_in_place():
