@@ -8164,11 +8164,16 @@ def _absorb_identical_occurrences_on_date(
     display_date: date,
     keep_occurrence: date,
     identity: tuple[Optional[int], TransactionKind, int],
+    include_natural: bool = True,
 ) -> list[dict]:
     """Cancel other occurrences of this series that show as the same payment on one day.
 
     September's Taxes moved onto October 3 is drawn once, on top of October's
     own Taxes. Moving that row must not leave the hidden copy behind.
+
+    `include_natural=False` only cancels moved-in copies. Used when healing
+    series-template twins so an intentional different amount on a moved row
+    does not wipe the natural occurrence on that day.
     """
     overrides = list(
         db.execute(
@@ -8191,23 +8196,24 @@ def _absorb_identical_occurrences_on_date(
             continue
         cancel_on.append(ovr.occurrence_date)
 
-    hits = _expected_occurrences_in_range(
-        start_date=tx.start_date,
-        end_date=tx.end_date,
-        end_count=getattr(tx, "end_count", None),
-        recurrence=tx.recurrence,
-        range_start=display_date,
-        range_end_exclusive=display_date + timedelta(days=1),
-        second_day_of_month=tx.second_day_of_month,
-        second_occurrence_month=getattr(tx, "second_occurrence_month", None),
-        day_of_month=tx.day_of_month,
-    )
-    if display_date in hits and display_date != keep_occurrence:
-        ovr = by_occ.get(display_date)
-        if ovr is None or not ovr.cancelled:
-            effective = display_date if ovr is None or ovr.moved_to_date is None else ovr.moved_to_date
-            if effective == display_date and _occurrence_payment_identity(tx, ovr) == identity:
-                cancel_on.append(display_date)
+    if include_natural:
+        hits = _expected_occurrences_in_range(
+            start_date=tx.start_date,
+            end_date=tx.end_date,
+            end_count=getattr(tx, "end_count", None),
+            recurrence=tx.recurrence,
+            range_start=display_date,
+            range_end_exclusive=display_date + timedelta(days=1),
+            second_day_of_month=tx.second_day_of_month,
+            second_occurrence_month=getattr(tx, "second_occurrence_month", None),
+            day_of_month=tx.day_of_month,
+        )
+        if display_date in hits and display_date != keep_occurrence:
+            ovr = by_occ.get(display_date)
+            if ovr is None or not ovr.cancelled:
+                effective = display_date if ovr is None or ovr.moved_to_date is None else ovr.moved_to_date
+                if effective == display_date and _occurrence_payment_identity(tx, ovr) == identity:
+                    cancel_on.append(display_date)
 
     seen: set[date] = set()
     recorded: list[dict] = []
@@ -8236,6 +8242,9 @@ def _absorb_collapsed_copies_when_date_changes(
     Changing only this date's amount used to leave the hidden copy in place.
     The calendar then drew it as a second paycheck, because the amounts no longer matched.
     Later dates in the series are left alone.
+
+    Also heals pre-damaged twins: a moved copy still at the series template amount
+    on this day is cancelled even when the edited row's previous amount already diverged.
     """
     if new_display_date is None:
         return []
@@ -8246,6 +8255,18 @@ def _absorb_collapsed_copies_when_date_changes(
         keep_occurrence=occurrence_date,
         identity=previous_identity,
     )
+    series_identity = _occurrence_payment_identity(tx, None)
+    if series_identity != previous_identity:
+        recorded.extend(
+            _absorb_identical_occurrences_on_date(
+                db,
+                tx,
+                display_date=previous_display_date,
+                keep_occurrence=occurrence_date,
+                identity=series_identity,
+                include_natural=False,
+            )
+        )
     if new_display_date != previous_display_date:
         recorded.extend(
             _absorb_identical_occurrences_on_date(
@@ -8256,6 +8277,17 @@ def _absorb_collapsed_copies_when_date_changes(
                 identity=new_identity,
             )
         )
+        if series_identity != new_identity:
+            recorded.extend(
+                _absorb_identical_occurrences_on_date(
+                    db,
+                    tx,
+                    display_date=new_display_date,
+                    keep_occurrence=occurrence_date,
+                    identity=series_identity,
+                    include_natural=False,
+                )
+            )
     return recorded
 
 
