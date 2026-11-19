@@ -370,8 +370,16 @@ var dailyReq = functionBody(app, "requestCalendarMonthDaily");
 assert.ok(dailyReq.indexOf("calendarMonthDailyCache.get") >= 0, "daily-balance requests reuse cached months");
 
 var skipFn = functionBody(app, "ensureForecastReadyModal");
-assert.ok(skipFn.indexOf("scheduleMobileForecastTop()") < 0, "skipping the welcome does not move the page");
-assert.ok(skipFn.indexOf("scrollMobileCalendarToToday()") < 0, "skipping the welcome does not jump to today");
+assert.ok(skipFn.indexOf("scheduleMobileForecastTop()") < 0, "skipping the welcome does not pin the page to the top");
+assert.ok(skipFn.indexOf("scrollMobileCalendarToToday()") < 0, "skipping the welcome does not use the explicit Today scroller");
+assert.ok(skipFn.indexOf("settleMobileCalendarAfterWelcome()") >= 0, "skipping the welcome re-settles today silently");
+assert.ok(app.indexOf("function settleMobileCalendarAfterWelcome(") >= 0, "welcome settle helper exists");
+assert.ok(app.indexOf("function mobileCalendarPlacementBlocked(") >= 0, "placement knows which overlays block it");
+var placeFn = functionBody(app, "placeMobileCalendarBeforeReveal");
+assert.ok(placeFn.indexOf("mobileCalendarPlacementBlocked()") >= 0, "silent placement uses the overlay gate");
+var blockFn = functionBody(app, "mobileCalendarPlacementBlocked");
+assert.ok(blockFn.indexOf('open.id !== "bwForecastReadyModal"') >= 0, "first-forecast welcome does not block today placement");
+assert.ok(blockFn.indexOf("bw-tour-tooltip--open") >= 0, "the guided tour still blocks today placement");
 
 var tourEnded = app.slice(app.indexOf('window.addEventListener("bw-tour-ended"'), app.indexOf("let calendarLoadingGuardTimer"));
 assert.ok(tourEnded.indexOf("scrollTo") < 0, "ending the tour does not auto-scroll to today");

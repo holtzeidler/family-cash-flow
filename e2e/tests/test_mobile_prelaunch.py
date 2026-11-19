@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from playwright.sync_api import expect
 
 from support import login
-from test_core_workflows import _register_checking
+from test_core_workflows import _complete_setup_through_forecast, _register_checking
 
 
 def _today_position(page):
@@ -22,19 +24,32 @@ def _today_position(page):
     return page.evaluate(
         """() => {
           const today = document.querySelector(".cal-cell--today");
+          const first = document.querySelector(".calendar--mobile .cal-cell:not(.cal-cell--out), .cal-cell:not(.cal-cell--out)");
           const header = document.querySelector(".top-nav");
+          const strip = document.getElementById("calCashHealthStrip");
+          const stripRect = strip && !strip.hidden && strip.classList.contains("is-active")
+            ? strip.getBoundingClientRect()
+            : null;
           const box = today.getBoundingClientRect();
           const now = new Date();
           const local = now.getFullYear() + "-"
             + String(now.getMonth() + 1).padStart(2, "0") + "-"
             + String(now.getDate()).padStart(2, "0");
+          const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+          const minTop = Math.max(headerBottom + 4, stripRect ? stripRect.bottom - 2 : headerBottom + 4);
           return {
             iso: today.getAttribute("data-iso"),
             local,
+            firstIso: first ? first.getAttribute("data-iso") : null,
             top: box.top,
             bottom: box.bottom,
-            headerBottom: header ? header.getBoundingClientRect().bottom : 0,
+            headerBottom,
+            stripBottom: stripRect ? stripRect.bottom : null,
+            inView: box.top >= minTop - 2 && box.top < window.innerHeight - 80,
+            highlighted: today.classList.contains("cal-cell--today"),
             vh: window.innerHeight,
+            tourOpen: !!document.querySelector(".bw-tour-tooltip--open"),
+            welcomeOpen: !!document.querySelector("#bwForecastReadyModal.modal-overlay--open"),
           };
         }"""
     )
@@ -42,8 +57,40 @@ def _today_position(page):
 
 def _assert_today(pos):
     assert pos["iso"] == pos["local"], pos
+    assert pos["highlighted"] is not False, pos
     assert pos["bottom"] > pos["headerBottom"] + 4, pos
     assert pos["top"] < pos["headerBottom"] + 220, pos
+    if pos.get("inView") is not None:
+        assert pos["inView"] is True, pos
+    if pos.get("firstIso") and pos["firstIso"] != pos["iso"]:
+        assert pos["firstIso"] < pos["iso"], pos
+
+
+@pytest.mark.smoke_title("After onboarding, iPhone Forecast opens on today")
+def test_mobile_onboarding_lands_on_today(page, guard):
+    page.set_viewport_size({"width": 390, "height": 844})
+    email = f"bw-smoke-today-onboard-{uuid.uuid4().hex[:8]}@example.com"
+    ready = _complete_setup_through_forecast(
+        page,
+        email,
+        txs=[{"kind": "income", "amount": "100"}, {"kind": "expense", "amount": "40"}],
+    )
+    expect(ready).to_be_visible()
+    ready.locator("#bwForecastReadySkipBtn").click()
+    expect(ready).to_be_hidden()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    assert page.evaluate("() => localStorage.getItem('bw_tour_seen_v1')")
+    page.wait_for_timeout(120)
+    pos = _today_position(page)
+    _assert_today(pos)
+    assert not pos["welcomeOpen"], pos
+    assert not pos["tourOpen"], pos
+    page.reload()
+    expect(page.locator("#calendarGrid")).to_be_visible()
+    expect(page.locator(".bw-tour-tooltip--open")).to_have_count(0)
+    expect(page.locator("#bwForecastReadyModal.modal-overlay--open")).to_have_count(0)
+    _assert_today(_today_position(page))
+    guard.assert_clean()
 
 
 @pytest.mark.smoke_title("Phone summary, report labels, and today stay in view")
