@@ -79,7 +79,7 @@ def _family(client: TestClient, email: str):
     return family_id, account.json()["id"]
 
 
-def _series(client, family_id, account_id, *, kind, amount, description, start):
+def _series(client, family_id, account_id, *, kind, amount, description, start, **extra):
     created = client.post(
         f"/api/families/{family_id}/expected-transactions",
         json={
@@ -89,6 +89,7 @@ def _series(client, family_id, account_id, *, kind, amount, description, start):
             "kind": kind,
             "amount": amount,
             "description": description,
+            **extra,
         },
     )
     assert created.status_code == 200, created.text
@@ -181,7 +182,10 @@ def test_one_date_amount_edit_changes_that_day_by_the_difference_only(
         )
 
         items, days = _refetch_matches(client, family_id, "2026-11")
+        # Only this occurrence must replace in place — never leave old + new on that date.
         assert _amounts(items, "2026-11-15", description) == [Decimal("3200.00")]
+        assert Decimal("3000.00") not in _amounts(items, "2026-11-15", description)
+        assert len(_on(items, "2026-11-15", description)) == 1
         assert _money(days["2026-11-15"]["tx_net"]) == Decimal(after_net)
         assert _money(days["2026-11-15"]["end"]) == Decimal(after_end)
         assert _money(days["2026-11-15"]["end"]) - _money(before_days["2026-11-15"]["end"]) == (
@@ -201,6 +205,148 @@ def test_one_date_amount_edit_changes_that_day_by_the_difference_only(
         posted = client.get(f"/api/families/{family_id}/transactions", params={"month": "2026-11"})
         assert posted.status_code == 200, posted.text
         assert posted.json()["items"] == []
+
+
+def test_only_this_occurrence_amount_edit_never_leaves_old_and_new_amounts():
+    """Regression for the prod bug: Only this occurrence amount edit must not duplicate the row.
+
+    Editing $4,805.35 → $5,005.35 on one recurring date must leave exactly one row with the
+    new amount. The series template stays unchanged for later dates.
+    """
+    with TestClient(app) as client:
+        family_id, account_id = _family(client, "bw-smoke-integrity-only-occ@example.com")
+        series_id = _series(
+            client,
+            family_id,
+            account_id,
+            kind="income",
+            amount="4805.35",
+            description="Holt Paycheck",
+            start="2026-11-15",
+        )
+        _override(
+            client,
+            family_id,
+            series_id,
+            "2026-11-15",
+            account_id=account_id,
+            kind="income",
+            amount="5005.35",
+            description="Holt Paycheck",
+        )
+
+        items, days = _refetch_matches(client, family_id, "2026-11")
+        on_day = _on(items, "2026-11-15", "Holt Paycheck")
+        assert len(on_day) == 1, on_day
+        assert _amounts(items, "2026-11-15", "Holt Paycheck") == [Decimal("5005.35")]
+        assert Decimal("4805.35") not in _amounts(items, "2026-11-15", "Holt Paycheck")
+        assert _money(days["2026-11-15"]["tx_net"]) == Decimal("5005.35")
+
+        later_items, _later_days = _refetch_matches(client, family_id, "2026-12")
+        assert _amounts(later_items, "2026-12-15", "Holt Paycheck") == [Decimal("4805.35")]
+        series = client.get(f"/api/families/{family_id}/expected-transactions")
+        assert series.status_code == 200, series.text
+        rows = [row for row in series.json() if row["description"] == "Holt Paycheck"]
+        assert len(rows) == 1
+        assert _money(rows[0]["amount"]) == Decimal("4805.35")
+        posted = client.get(f"/api/families/{family_id}/transactions", params={"month": "2026-11"})
+        assert posted.status_code == 200, posted.text
+        assert posted.json()["items"] == []
+
+
+def test_only_this_occurrence_amount_edit_does_not_reveal_a_hidden_moved_copy():
+    """A paycheck already parked on this day must not reappear when this date's amount changes.
+
+    This is the stacked-copy path that looked like create-instead-of-update on production:
+    move an earlier occurrence onto the same day (amounts match → one visible row), then edit
+    Only this occurrence's amount. Without absorbing the moved copy, both old and new amounts
+    appear on that date.
+    """
+    with TestClient(app) as client:
+        family_id, account_id = _family(client, "bw-smoke-integrity-stacked@example.com")
+        series_id = _series(
+            client,
+            family_id,
+            account_id,
+            kind="income",
+            amount="4805.35",
+            description="Holt Paycheck",
+            start="2026-10-15",
+        )
+        _override(
+            client,
+            family_id,
+            series_id,
+            "2026-10-15",
+            account_id=account_id,
+            kind="income",
+            amount="4805.35",
+            description="Holt Paycheck",
+            moved_to_date="2026-11-15",
+        )
+        before_items, _before_days = _forecast(client, family_id, "2026-11")
+        assert _amounts(before_items, "2026-11-15", "Holt Paycheck") == [Decimal("4805.35")]
+
+        _override(
+            client,
+            family_id,
+            series_id,
+            "2026-11-15",
+            account_id=account_id,
+            kind="income",
+            amount="5005.35",
+            description="Holt Paycheck",
+        )
+
+        items, days = _refetch_matches(client, family_id, "2026-11")
+        on_day = _on(items, "2026-11-15", "Holt Paycheck")
+        assert len(on_day) == 1, on_day
+        assert _amounts(items, "2026-11-15", "Holt Paycheck") == [Decimal("5005.35")]
+        assert Decimal("4805.35") not in _amounts(items, "2026-11-15", "Holt Paycheck")
+        assert _money(days["2026-11-15"]["tx_net"]) == Decimal("5005.35")
+        october_items, _october_days = _refetch_matches(client, family_id, "2026-10")
+        assert _on(october_items, "2026-10-15", "Holt Paycheck") == []
+        later_items, _later_days = _refetch_matches(client, family_id, "2026-12")
+        assert _amounts(later_items, "2026-12-15", "Holt Paycheck") == [Decimal("4805.35")]
+
+
+def test_only_this_occurrence_twice_monthly_amount_edit_updates_in_place():
+    """Twice-monthly Only this occurrence amount edit must not leave old + new on that day."""
+    with TestClient(app) as client:
+        family_id, account_id = _family(client, "bw-smoke-integrity-twice-mo@example.com")
+        series_id = _series(
+            client,
+            family_id,
+            account_id,
+            kind="expense",
+            amount="4800.00",
+            description="Mortgage",
+            start="2026-11-15",
+            recurrence="twice_monthly",
+            second_day_of_month=30,
+        )
+        _override(
+            client,
+            family_id,
+            series_id,
+            "2026-11-15",
+            account_id=account_id,
+            kind="expense",
+            amount="5000.00",
+            description="Mortgage",
+        )
+
+        items, days = _refetch_matches(client, family_id, "2026-11")
+        on_day = _on(items, "2026-11-15", "Mortgage")
+        assert len(on_day) == 1, on_day
+        assert _amounts(items, "2026-11-15", "Mortgage") == [Decimal("5000.00")]
+        assert Decimal("4800.00") not in _amounts(items, "2026-11-15", "Mortgage")
+        assert _money(days["2026-11-15"]["tx_net"]) == Decimal("-5000.00")
+        # The other twice-monthly date keeps the series amount.
+        assert _amounts(items, "2026-11-30", "Mortgage") == [Decimal("4800.00")]
+        later_items, _later_days = _refetch_matches(client, family_id, "2026-12")
+        assert _amounts(later_items, "2026-12-15", "Mortgage") == [Decimal("4800.00")]
+        assert _amounts(later_items, "2026-12-30", "Mortgage") == [Decimal("4800.00")]
 
 
 def test_series_amount_edit_updates_future_dates_without_a_second_payment():
