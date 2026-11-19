@@ -4,8 +4,6 @@
  */
 
 const NEEDS_REVIEW_INITIAL_LIMIT = 5;
-const NEEDS_REVIEW_EMPTY_TITLE = "All caught up.";
-const NEEDS_REVIEW_EMPTY_NONE_TITLE = "No estimates to review.";
 const NEEDS_REVIEW_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const NEEDS_REVIEW_MONTHS_LONG = [
   "January",
@@ -241,8 +239,6 @@ function collectNeedsReviewRows({
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     NEEDS_REVIEW_INITIAL_LIMIT,
-    NEEDS_REVIEW_EMPTY_TITLE,
-    NEEDS_REVIEW_EMPTY_NONE_TITLE,
     needsReviewAddDays,
     needsReviewDaysUntil,
     needsReviewYm,

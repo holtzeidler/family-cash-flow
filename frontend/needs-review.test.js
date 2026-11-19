@@ -1,8 +1,6 @@
 const assert = require("assert");
 const {
   NEEDS_REVIEW_INITIAL_LIMIT,
-  NEEDS_REVIEW_EMPTY_TITLE,
-  NEEDS_REVIEW_EMPTY_NONE_TITLE,
   needsReviewAddDays,
   isNeedsReviewMonthEligible,
   needsReviewTodayChanged,
@@ -38,8 +36,6 @@ function exp(extra) {
 
 {
   assert.strictEqual(NEEDS_REVIEW_INITIAL_LIMIT, 5);
-  assert.strictEqual(NEEDS_REVIEW_EMPTY_TITLE, "All caught up.");
-  assert.strictEqual(NEEDS_REVIEW_EMPTY_NONE_TITLE, "No estimates to review.");
   assert.strictEqual(needsReviewYm("2026-11"), "2026-11");
   assert.strictEqual(needsReviewMonthLabel("2026-11"), "November 2026");
   assert.strictEqual(needsReviewMonthLabel("2026-12"), "December 2026");
