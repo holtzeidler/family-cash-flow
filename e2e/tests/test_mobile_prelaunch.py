@@ -94,6 +94,10 @@ def test_mobile_summary_reports_and_today(page, guard):
     for opt in options:
         assert opt["text"] and "[object Object]" not in opt["text"], opt
         assert opt["value"] and "[object Object]" not in opt["value"], opt
+    groups = page.evaluate(
+        """() => [...document.querySelectorAll("#reportsMobileNavSelect optgroup")].map((g) => g.label)"""
+    )
+    assert "Reports" in groups, groups
     report = page.evaluate(
         """() => {
           const title = document.querySelector("#reportsViewPanel h1, #reportsViewPanel h2");
@@ -101,6 +105,28 @@ def test_mobile_summary_reports_and_today(page, guard):
         }"""
     )
     assert report is not None and 0 < report < 260, report
+
+    page.locator("#navSettingsView").click()
+    page.wait_for_timeout(200)
+    settings = page.evaluate(
+        """() => {
+          const cash = document.getElementById("sidebarCashHealthCard");
+          const menu = document.getElementById("settingsMobileNav");
+          const select = document.getElementById("settingsMobileNavSelect");
+          const profile = document.getElementById("settingsProfilePane");
+          return {
+            cashHidden: !cash || cash.hidden || getComputedStyle(cash).display === "none",
+            menuVisible: !!(menu && getComputedStyle(menu).display !== "none"),
+            options: select ? [...select.options].map((o) => o.textContent) : [],
+            profileTop: profile ? profile.getBoundingClientRect().top : null,
+            menuTop: menu ? menu.getBoundingClientRect().top : null,
+          };
+        }"""
+    )
+    assert settings["cashHidden"], settings
+    assert settings["menuVisible"], settings
+    assert "Profile" in settings["options"] and "Accounts" in settings["options"], settings
+    assert settings["menuTop"] is not None and 0 < settings["menuTop"] < 220, settings
 
     page.locator("#navCalendarView").click()
     page.wait_for_timeout(200)
