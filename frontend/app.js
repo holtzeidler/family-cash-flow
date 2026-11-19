@@ -245,9 +245,10 @@ async function apiRequest(path, method = "GET", body) {
     body: body ? JSON.stringify(body) : undefined,
   };
 
-  // Bound hung fetches so bootstrap cannot stall forever (cold starts still get a retry).
-  const maxRetryMs = 28000;
-  const perAttemptTimeoutMs = 14000;
+  // Free-tier Render cold starts measured ~40–50s. Keep retrying long enough to
+  // succeed without a hard refresh; paid always-on removes this path entirely.
+  const maxRetryMs = 90000;
+  const perAttemptTimeoutMs = 30000;
   const retryStarted = Date.now();
   let res;
   let attempt = 0;
@@ -277,6 +278,7 @@ async function apiRequest(path, method = "GET", body) {
           status: res && res.status,
           bytes: Number.isFinite(contentLength) ? contentLength : null,
           t: typeof performance !== "undefined" ? Math.round(performance.now()) : Date.now(),
+          attempt,
         });
       } catch (_) {}
       break;
@@ -306,12 +308,12 @@ async function apiRequest(path, method = "GET", body) {
           ? `Render env CORS_ORIGINS must include exactly: ${origin} (scheme + host, no path). Set ENV=production for login cookies.`
           : "If this is cross-origin, configure CORS on the API for this origin.";
         throw new Error(
-          `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait ~1 minute for a cold start and refresh.`
+          `${msg}\n\n${baseHint}\n${corsHint}\nIf the API is on Render free tier, wait for wake (~1 min) and try again — prefer Render Starter (always-on).`
         );
       }
       throw new Error(
         aborted
-          ? "That took too long — the server may be waking up. Please refresh and try again."
+          ? "That took too long — the server may be waking up. Please try again in a moment."
           : friendlyNetworkErrorMessage()
       );
     }
@@ -2284,21 +2286,45 @@ function syncTxEditEndsRowVisibility() {
   endsRow.hidden = !show;
 }
 
-function setTxAddSaveBusy(busy) {
+function setTxAddSaveBusy(busy, label) {
   txAddSaveInFlight = !!busy;
   const btn = txAddSave || document.getElementById("txAddSave");
   if (!btn) return;
   if (busy) {
     if (!btn.dataset.origLabel) btn.dataset.origLabel = btn.textContent.trim() || TX_ADD_SAVE_LABEL;
-    btn.textContent = "Adding…";
+    btn.textContent = label || "Adding…";
     btn.disabled = true;
     btn.setAttribute("aria-busy", "true");
   } else {
     btn.textContent = btn.dataset.origLabel || TX_ADD_SAVE_LABEL;
+    delete btn.dataset.origLabel;
     btn.disabled = false;
     btn.removeAttribute("aria-busy");
   }
   if (txAddCancel) txAddCancel.disabled = !!busy;
+}
+
+/** Keep the Render free-tier API from sleeping while a session is open. */
+function startApiKeepAlive() {
+  if (typeof window === "undefined") return;
+  if (window.__bwApiKeepAliveStarted) return;
+  window.__bwApiKeepAliveStarted = true;
+  const ping = () => {
+    try {
+      const base = apiBaseUrl();
+      if (!base) return;
+      // Fire-and-forget liveness probe (no auth required).
+      void fetch(`${base}/api/health`, { method: "GET", credentials: "omit", cache: "no-store" }).catch(() => {});
+    } catch (_) {}
+  };
+  ping();
+  const intervalMs = 8 * 60 * 1000;
+  window.setInterval(ping, intervalMs);
+  try {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") ping();
+    });
+  } catch (_) {}
 }
 
 function txAddFormValidationState() {
@@ -5463,6 +5489,7 @@ if (addCategoryGroupBtn) {
 if (txAddSave) {
   txAddSave.addEventListener("click", async () => {
     if (txAddSaveInFlight) return;
+    let wakeHintTimer = 0;
     try {
       show(txAddErr, "");
       if (!state.activeFamilyId) throw new Error("Your account isn't ready yet");
@@ -5474,6 +5501,9 @@ if (txAddSave) {
       }
 
       setTxAddSaveBusy(true);
+      wakeHintTimer = window.setTimeout(() => {
+        if (txAddSaveInFlight) setTxAddSaveBusy(true, "Waking server…");
+      }, 3500);
 
       const dateVal = txAddDate?.value || "";
       const notesRaw = txAddNotes?.value?.trim() || "";
@@ -5573,6 +5603,7 @@ if (txAddSave) {
     } catch (e) {
       show(txAddErr, e.message || "Failed to add");
     } finally {
+      if (wakeHintTimer) window.clearTimeout(wakeHintTimer);
       setTxAddSaveBusy(false);
     }
   });
@@ -27549,6 +27580,7 @@ async function main() {
   bwCalendarTrace("auth-ready", {
     ms: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - authStarted),
   });
+  startApiKeepAlive();
   if (state.needsOnboarding) {
     window.location.replace("/account-setup/?resume=1");
     return;

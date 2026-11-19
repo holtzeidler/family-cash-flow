@@ -22,6 +22,9 @@
 #   staging API    → staging Neon project endpoint ID (no -pooler)
 
 services:
+  # Production API: keep `free` here until Holt explicitly approves a paid upgrade.
+  # Free spins down after ~15m idle (~40–50s cold start). Recommended permanent fix:
+  # change plan to `starter` (~$7/mo) so the instance stays always-on.
   - type: web
     name: family-cash-flow-api
     runtime: docker
@@ -33,12 +36,15 @@ services:
     autoDeployTrigger: checksPass
     healthCheckPath: /docs
 
+  # Staging API: Starter avoids spin-down so login → Forecast → Add transaction
+  # can be verified without free-tier wake failures. Sync/apply this Blueprint
+  # change in the Render dashboard (billing required for starter).
   - type: web
     name: family-cash-flow-api-staging
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
-    plan: free
+    plan: starter
     branch: staging
     healthCheckPath: /docs
     envVars:

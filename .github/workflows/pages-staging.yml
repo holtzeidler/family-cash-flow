@@ -33,6 +33,9 @@ jobs:
       - name: Required transaction category
         run: node frontend/signup/account-setup-category.test.js
 
+      - name: API cold-start reliability
+        run: node frontend/api-cold-start.test.js
+
       - name: Cash Health summary
         run: |
           node --check frontend/cash-health-summary.js
