@@ -1128,6 +1128,17 @@ function accountSetupSavedAmountLabel(amount) {
   }
 }
 
+function accountSetupIncomeLooksLikePaycheck(txs) {
+  const list = Array.isArray(txs) ? txs : [];
+  for (const tx of list) {
+    const kind = String((tx && tx.kind) || "").trim().toLowerCase();
+    if (kind !== "income") continue;
+    const label = String((tx && (tx.category || tx.description)) || "").trim().toLowerCase();
+    if (label === "paycheck" || label.includes("paycheck")) return true;
+  }
+  return false;
+}
+
 function accountSetupStep3MoreGuidance(txs) {
   const list = Array.isArray(txs) ? txs : [];
   let income = 0;
@@ -1141,7 +1152,10 @@ function accountSetupStep3MoreGuidance(txs) {
     return "You're ready to see your first forecast! You can always add more transactions later.";
   }
   if (income > 0) {
-    return "Add a bill to make your forecast more complete, or continue for now.";
+    if (accountSetupIncomeLooksLikePaycheck(list)) {
+      return "Your paycheck is added! Add a bill to improve your forecast, or continue to your calendar.";
+    }
+    return "Your income is added! Add a bill to improve your forecast, or continue to your calendar.";
   }
   if (expense > 0) {
     return "Add income to make your forecast more complete, or continue for now.";
@@ -1150,7 +1164,8 @@ function accountSetupStep3MoreGuidance(txs) {
 }
 
 function buildAccountSetupStep3SavedItem(tx) {
-  const name = String((tx && tx.category) || "").trim() || "Uncategorized";
+  const name =
+    String((tx && (tx.category || tx.description)) || "").trim() || "Uncategorized";
   const scheduleParts = [accountSetupSavedRecurrenceLabel(tx), accountSetupSavedDateLabel(tx && tx.date)].filter(Boolean);
   const item = document.createElement("li");
   item.className = "account-setup-step3-saved__item";
@@ -1166,7 +1181,7 @@ function buildAccountSetupStep3SavedItem(tx) {
   const metaEl = document.createElement("div");
   metaEl.className = "account-setup-step3-saved__meta";
   scheduleParts.forEach((part, i) => {
-    if (i > 0) metaEl.append("\u00a0· ");
+    if (i > 0) metaEl.append(" · ");
     const partEl = document.createElement("span");
     partEl.className = "account-setup-step3-saved__metaPart";
     partEl.textContent = part;
@@ -1247,6 +1262,13 @@ function getAccountSetupStep3HubFocusTarget() {
   return document.getElementById("asTxHubAddIncomeBtn");
 }
 
+function setAccountSetupStep3ActionLabel(button, label) {
+  if (!button) return;
+  const labelEl = button.querySelector(".account-setup-step3-actionBtn__label");
+  if (labelEl) labelEl.textContent = label;
+  else button.textContent = label;
+}
+
 function syncAccountSetupStep3HubState() {
   const panel = document.getElementById("accountSetupWizardPanel2");
   const intro = document.getElementById("accountSetupWizardStep3Intro");
@@ -1259,16 +1281,28 @@ function syncAccountSetupStep3HubState() {
   }
   try { renderAccountSetupStep3SavedList(); } catch (_) {}
 
-  const syncAction = (buttonId) => {
-    const button = document.getElementById(buttonId);
-    if (button) {
-      button.disabled = false;
-      button.classList.remove("is-complete");
-    }
-  };
+  const { incomeCount, expenseCount } = getAccountSetupTransactionCounts();
+  const incomeBtn = document.getElementById("asTxHubAddIncomeBtn");
+  const expenseBtn = document.getElementById("asTxHubAddExpenseBtn");
+  const choiceWrap = intro.querySelector(".account-setup-tx-choice-wrap");
 
-  syncAction("asTxHubAddIncomeBtn");
-  syncAction("asTxHubAddExpenseBtn");
+  if (incomeBtn) {
+    incomeBtn.disabled = false;
+    incomeBtn.classList.remove("is-complete");
+    setAccountSetupStep3ActionLabel(incomeBtn, incomeCount > 0 ? "Add another income" : "Add income");
+    incomeBtn.classList.toggle("account-setup-step3-actionBtn--secondary", incomeCount > 0);
+  }
+  if (expenseBtn) {
+    expenseBtn.disabled = false;
+    expenseBtn.classList.remove("is-complete");
+    setAccountSetupStep3ActionLabel(expenseBtn, expenseCount > 0 ? "Add another bill" : "Add bill");
+    const emphasizeBill = incomeCount > 0 && expenseCount === 0;
+    expenseBtn.classList.toggle("account-setup-step3-actionBtn--emphasize", emphasizeBill);
+  }
+  if (choiceWrap) {
+    choiceWrap.dataset.hubPriority =
+      incomeCount > 0 && expenseCount === 0 ? "bill" : incomeCount === 0 && expenseCount > 0 ? "income" : "";
+  }
 }
 
 function getAccountSetupExpensePhase() {

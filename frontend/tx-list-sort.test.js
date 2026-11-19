@@ -69,6 +69,11 @@ assert.ok(txHtml.indexOf("Lowest balance this month") >= 0 && txHtml.indexOf('id
 assert.ok(functionBody(app, "refreshSidebarForecastHints").indexOf("Forecast low") < 0, "Forecast low is not a Monthly Cash Flow row");
 assert.ok(functionBody(app, "paintSidebarMonthLow").indexOf("tmForecastLowInMonthYm") >= 0, "monthly low reuses the projected daily ending balance");
 assert.ok(functionBody(app, "tmForecastLowInMonthYm").indexOf("row?.end") >= 0, "monthly low reads the daily ending balance");
+assert.ok(functionBody(app, "tmForecastLowInMonthYm").indexOf("clampIsoRangeToStartingBalance") >= 0, "monthly low clamps to starting-balance date");
+assert.ok(functionBody(app, "tmCountDaysBelowFloorInRange").indexOf("clampIsoRangeToStartingBalance") >= 0, "days-below-minimum clamps to starting-balance date");
+assert.ok(functionBody(app, "computeCalendarVisibleDailyBalancesClient").indexOf("earliestStartIso") >= 0, "client daily balances skip days before starting balance");
+assert.ok(functionBody(app, "getProjectedBalancesByDate").indexOf("isDateBeforeEarliestStartingBalance") >= 0, "reports projections drop pre-start days");
+assert.ok(app.indexOf("Unavailable before starting balance") >= 0, "month with no valid forecast dates shows unavailable");
 assert.ok(txHtml.indexOf("Search, review, and manage your past and upcoming transactions.") >= 0, "transactions description");
 assert.ok(txHtml.indexOf("tm__quickLabel") >= 0 && txHtml.indexOf("Quick filters") >= 0, "secondary quick filters are labeled");
 assert.ok(txHtml.indexOf('data-tm-when="all"') >= 0, "All stays a primary time filter");

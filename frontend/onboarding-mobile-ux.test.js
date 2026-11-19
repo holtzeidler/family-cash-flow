@@ -105,4 +105,23 @@ assert.ok(
   "Add income still focuses Amount when the form opens"
 );
 
+var hub = functionBody(signup, "syncAccountSetupStep3HubState");
+assert.ok(hub.indexOf("Add another income") >= 0, "after first income the hub renames Add income");
+assert.ok(hub.indexOf("account-setup-step3-actionBtn--secondary") >= 0, "after first income the income action is secondary");
+assert.ok(hub.indexOf("account-setup-step3-actionBtn--emphasize") >= 0, "Add bill can be emphasized when no bills yet");
+assert.ok(
+  functionBody(signup, "accountSetupStep3MoreGuidance").indexOf("continue to your calendar") >= 0,
+  "income-only helper points at calendar continue"
+);
+assert.ok(
+  functionBody(signup, "accountSetupStep3MoreGuidance").indexOf("Your paycheck is added") >= 0,
+  "paycheck-named income uses paycheck helper copy"
+);
+assert.ok(
+  functionBody(signup, "accountSetupStep3MoreGuidance").indexOf("Your income is added") >= 0,
+  "generic income uses generic helper copy"
+);
+assert.ok(css.indexOf("account-setup-step3-actionBtn--secondary") >= 0, "secondary hub action styles exist");
+assert.ok(css.indexOf("account-setup-step3-actionBtn--emphasize") >= 0, "emphasized hub action styles exist");
+
 console.log("onboarding-mobile-ux.test.js ok");

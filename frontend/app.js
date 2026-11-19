@@ -10265,13 +10265,26 @@ function tmLargestExpenseInRange(startIso, endIso) {
   return best;
 }
 
+function clampIsoRangeToStartingBalance(startIso, endIso) {
+  const earliest = getFamilyEarliestStartingBalanceIso();
+  const start = normalizeIsoDate(startIso) || startIso || "";
+  const end = normalizeIsoDate(endIso) || endIso || "";
+  if (!start || !end) return { startIso: start, endIso: end, empty: true };
+  if (!earliest) return { startIso: start, endIso: end, empty: false };
+  const clampedStart = start < earliest ? earliest : start;
+  return { startIso: clampedStart, endIso: end, empty: clampedStart > end };
+}
+
 function tmCountDaysBelowFloorInRange(startIso, endIso) {
   const floor = readStoredMinBalanceThresholdForReports();
   if (floor == null || !Number.isFinite(floor) || floor <= 0) return 0;
   if (!state.monthDailyBalances || !state.monthDailyBalances.size) return 0;
+  const range = clampIsoRangeToStartingBalance(startIso, endIso);
+  if (range.empty) return 0;
   let n = 0;
   for (const [iso, row] of state.monthDailyBalances.entries()) {
-    if (!iso || iso < startIso || iso > endIso) continue;
+    if (!iso || iso < range.startIso || iso > range.endIso) continue;
+    if (isDateBeforeEarliestStartingBalance(iso)) continue;
     const endNum = Number(row?.end);
     if (!Number.isFinite(endNum) || endNum < 0) continue;
     if (endNum < floor) n++;
@@ -10308,9 +10321,12 @@ function tmLatestReconciledIsoBefore(endIso) {
 function tmForecastLowInMonthYm(ym) {
   const { start, end } = ymBounds(ym);
   if (!start || !end || !state.monthDailyBalances || !state.monthDailyBalances.size) return null;
+  const range = clampIsoRangeToStartingBalance(start, end);
+  if (range.empty) return null;
   let low = null;
   for (const [iso, row] of state.monthDailyBalances.entries()) {
-    if (!iso || iso < start || iso > end) continue;
+    if (!iso || iso < range.startIso || iso > range.endIso) continue;
+    if (isDateBeforeEarliestStartingBalance(iso)) continue;
     const endNum = Number(row?.end);
     if (!Number.isFinite(endNum)) continue;
     if (low == null || endNum < low.bal) low = { bal: endNum, iso };
@@ -10402,6 +10418,16 @@ function paintSidebarMonthLow() {
     if (monthSummaryStatus === "error") {
       el.hidden = false;
       paintSummarySlot(valueEl, sidebarSummaryPresentation("error", "", ""));
+      return;
+    }
+    const { start, end } = ymBounds(ym);
+    const range = start && end ? clampIsoRangeToStartingBalance(start, end) : { empty: true };
+    if (monthSummaryStatus === "ready" && range.empty) {
+      valueEl.classList.remove("sidebar-summary-pending", "sidebar-summary-error");
+      valueEl.removeAttribute("aria-busy");
+      valueEl.textContent = "Unavailable before starting balance";
+      el.hidden = false;
+      el.classList.remove("is-negative");
       return;
     }
     el.hidden = true;
@@ -20612,12 +20638,15 @@ async function loadCalendarMonthDaily(gen, options) {
   };
   const fillInMonthGapsFromClient = () => {
     // Only backfill days inside the requested month — never adjacent/out-of-month
-    // wrap days (client approx has no reliable prior-month carry).
+    // wrap days (client approx has no reliable prior-month carry). Never invent
+    // balances before the family's starting-balance date (those would read as $0).
     try {
       const wrap = computeCalendarVisibleDailyBalancesClient();
       const prefix = `${month}-`;
+      const earliest = getFamilyEarliestStartingBalanceIso();
       for (const [iso, row] of wrap.entries()) {
         if (!iso.startsWith(prefix)) continue;
+        if (earliest && iso < earliest) continue;
         if (!nextBalances.has(iso)) nextBalances.set(iso, row);
       }
     } catch (_) {}
@@ -21759,6 +21788,7 @@ function computeCalendarVisibleDailyBalancesClient() {
   }
 
   const monthPrefix = `${String(year)}-${String(monthIndex + 1).padStart(2, "0")}-`;
+  const earliestStartIso = getFamilyEarliestStartingBalanceIso();
   for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
     const iso = toISODate(d);
     const dayStart = carry + (startAdds.get(iso) || 0);
@@ -21770,9 +21800,10 @@ function computeCalendarVisibleDailyBalancesClient() {
     const vb = state.verifiedBalances?.get(iso);
     const verified = vb && Number.isFinite(Number(vb.amount));
     const dayEnd = verified ? Number(vb.amount) : calculatedEnd;
-    // Only seed in-month days. Out-of-month (gray) cells must come from the adjacent
-    // month API or repairOutOfMonthBalanceContinuity — never a flat starting-balance approx.
-    if (iso.startsWith(monthPrefix)) {
+    // Only seed in-month days on/after the starting-balance date. Out-of-month
+    // (gray) cells and pre-start days must not invent a $0 forecast balance.
+    const beforeStart = !!(earliestStartIso && iso < earliestStartIso);
+    if (iso.startsWith(monthPrefix) && !beforeStart) {
       out.set(iso, {
         start: dayStart,
         txNet,
@@ -22506,13 +22537,17 @@ function renderCalendar() {
   try {
     const monthStartIso = `${String(year)}-${String(monthIndex + 1).padStart(2, "0")}-01`;
     const monthEndIso = `${String(year)}-${String(monthIndex + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
-    for (const [iso, bal] of state.monthDailyBalances.entries()) {
-      if (!iso || iso < monthStartIso || iso > monthEndIso) continue;
-      const endNum = Number(bal?.end ?? NaN);
-      if (!Number.isFinite(endNum)) continue;
-      if (monthLowPointBal == null || endNum < monthLowPointBal) {
-        monthLowPointBal = endNum;
-        monthLowPointIso = iso;
+    const lowRange = clampIsoRangeToStartingBalance(monthStartIso, monthEndIso);
+    if (!lowRange.empty) {
+      for (const [iso, bal] of state.monthDailyBalances.entries()) {
+        if (!iso || iso < lowRange.startIso || iso > lowRange.endIso) continue;
+        if (isDateBeforeEarliestStartingBalance(iso)) continue;
+        const endNum = Number(bal?.end ?? NaN);
+        if (!Number.isFinite(endNum)) continue;
+        if (monthLowPointBal == null || endNum < monthLowPointBal) {
+          monthLowPointBal = endNum;
+          monthLowPointIso = iso;
+        }
       }
     }
   } catch (_) {}
@@ -24159,6 +24194,9 @@ function estimatedMonthlyFromRecurrence(amount, recurrence) {
 function getProjectedBalancesByDate(source, options = {}) {
   const startIso = normalizeIsoDate(options.startIso) || "";
   const endIso = normalizeIsoDate(options.endIso) || "";
+  const range = clampIsoRangeToStartingBalance(startIso || "0000-01-01", endIso || "9999-12-31");
+  const boundStart = startIso ? range.startIso : getFamilyEarliestStartingBalanceIso() || "";
+  const boundEnd = endIso || "";
   let rows = [];
   if (Array.isArray(source)) {
     rows = source.map((row) => {
@@ -24180,7 +24218,8 @@ function getProjectedBalancesByDate(source, options = {}) {
   }
   return rows
     .filter((row) => row.date && Number.isFinite(row.balance))
-    .filter((row) => (!startIso || row.date >= startIso) && (!endIso || row.date <= endIso))
+    .filter((row) => !isDateBeforeEarliestStartingBalance(row.date))
+    .filter((row) => (!boundStart || row.date >= boundStart) && (!boundEnd || row.date <= boundEnd))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -26871,8 +26910,28 @@ function drawProjectionChart(daily) {
 
   ensureProjectionChartDefaults();
 
-  const dateLabels = items.map((d) => d.date);
-  const values = items.map((d) => Number(d.total_balance ?? 0));
+  const earliestStartIso = getFamilyEarliestStartingBalanceIso();
+  const chartItems = earliestStartIso
+    ? items.filter((d) => String(d?.date || "") >= earliestStartIso)
+    : items;
+  if (chartItems.length < 2) {
+    if (emptyEl) {
+      emptyEl.style.display = "flex";
+      emptyEl.textContent = earliestStartIso
+        ? "No forecast data before your starting balance for this range."
+        : "Not enough data points to draw the chart.";
+    }
+    const leg = document.getElementById("reportsBalanceLegend");
+    if (leg) leg.innerHTML = "";
+    const take = document.getElementById("reportsBalanceTakeaway");
+    if (take) {
+      take.textContent = "";
+      take.hidden = true;
+    }
+    return;
+  }
+  const dateLabels = chartItems.map((d) => d.date);
+  const values = chartItems.map((d) => Number(d.total_balance ?? 0));
   const thr = readStoredMinBalanceThresholdForReports();
   const onReports = !!(reportsViewPanel && !reportsViewPanel.hidden);
 
@@ -26892,15 +26951,15 @@ function drawProjectionChart(daily) {
 
   const outflowMarkers = new Set();
   const inflowMarkers = new Set();
-  if (onReports && items.length === values.length) {
-    const ranked = items
+  if (onReports && chartItems.length === values.length) {
+    const ranked = chartItems
       .map((row, i) => ({ i, n: Number(row?.net_cashflow ?? NaN) }))
       .filter((x) => Number.isFinite(x.n) && x.n < 0)
       .sort((a, b) => a.n - b.n)
       .slice(0, 2);
     for (const x of ranked) outflowMarkers.add(x.i);
 
-    const rankedIn = items
+    const rankedIn = chartItems
       .map((row, i) => ({ i, n: Number(row?.net_cashflow ?? NaN) }))
       .filter((x) => Number.isFinite(x.n) && x.n > 0)
       .sort((a, b) => b.n - a.n)
@@ -26919,8 +26978,8 @@ function drawProjectionChart(daily) {
     return "rgba(55, 130, 115, 0)";
   });
 
-  renderReportsBalanceLegend(items, dateLabels, values);
-  renderReportsBalanceTakeaway(items, dateLabels, values);
+  renderReportsBalanceLegend(chartItems, dateLabels, values);
+  renderReportsBalanceTakeaway(chartItems, dateLabels, values);
 
   // Slightly stronger fills on the reports view so positive vs. negative
   // regions read as zones instead of empty whitespace.
@@ -26943,7 +27002,7 @@ function drawProjectionChart(daily) {
   const annotations = [];
   if (onReports) {
     for (const i of outflowMarkers) {
-      const net = Number(items[i]?.net_cashflow ?? 0);
+      const net = Number(chartItems[i]?.net_cashflow ?? 0);
       if (!Number.isFinite(net) || net >= 0) continue;
       annotations.push({
         idx: i,
@@ -26954,7 +27013,7 @@ function drawProjectionChart(daily) {
       });
     }
     for (const i of inflowMarkers) {
-      const net = Number(items[i]?.net_cashflow ?? 0);
+      const net = Number(chartItems[i]?.net_cashflow ?? 0);
       if (!Number.isFinite(net) || net <= 0) continue;
       annotations.push({
         idx: i,
@@ -27082,7 +27141,7 @@ function drawProjectionChart(daily) {
             footer: (ctxItems) => {
               if (!ctxItems || !ctxItems.length) return "";
               const i = ctxItems[0]?.dataIndex ?? 0;
-              const net = Number(items[i]?.net_cashflow ?? 0);
+              const net = Number(chartItems[i]?.net_cashflow ?? 0);
               if (!net) return "";
               const sign = net >= 0 ? "+" : "−";
               return `Day net ${sign}$${fmtMoney(Math.abs(net))}`;
